@@ -2,7 +2,7 @@
 title: "Teaching Assistant"
 description: "Brigham Young Univeristy (Provo)"
 dateString: June 2022 - August 2022
-draft: false
+draft: true
 tags: [BYU, Teach]
 showToc: false
 showReadingTime: false

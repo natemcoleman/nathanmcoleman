@@ -13,8 +13,6 @@ I've never been very good at keeping a traditional journal, and I have scores of
 
 When I came across [this Mona Lisa of a blog](https://ciechanow.ski/), I felt inspired to document my projects in a similar format. I know that historically, the odds of this panning out like I originally envisioned are slim (skill issue), but I hope that like all coding projects I can have fun while doing it. 
 
-![young me](/blog/first-post/young_nathan.jpg)
-
 \- Nate
 
 <!--  [giraffes](/projects/yearofthegiraffe) along the way!

@@ -32,7 +32,7 @@ params:
   TocOpen: false
   ShowBreadCrumbs: true
   ShowCodeCopyButtons: true
-  ShowReadingTime: true
+  ShowReadingTime: false
   hideMeta: false
 
   # for enchanced SEO
