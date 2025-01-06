@@ -43,7 +43,7 @@ params:
     enabled: true
     title: "Nathan Coleman"
     subtitle: Advanced Weapons Engineer
-    imageUrl: "home/headshot.png"
+    imageUrl: "home/headshot.jpg"
     imageWidth: 220
     imageHeight: 220
     # buttons:
