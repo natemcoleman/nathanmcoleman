@@ -3,7 +3,7 @@ title: "Systems IPT Lead"
 description: "Barzan Aero Engineering Capstone (Charelston)"
 dateString: August 2021 - April 2022
 draft: false
-tags: [lead, teach, manage, organization, organize, systems engineer, uav, drone]
+tags: [byu, UAS, drone, systems engineer, clemson, purdue]
 showToc: false
 showReadingTime: false
 weight: 400

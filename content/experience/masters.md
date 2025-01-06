@@ -3,10 +3,10 @@ title: "Graduate Research Lead"
 description: "Brigham Young Univeristy (Provo)"
 dateString: August 2021 - April 2022
 draft: false
-tags: [lead, teach, manage, organization, organize, systems engineer, uav, drone, research, origami, compliant mechanism, satellite, cubesat]
+tags: [byu, research, origami, compliant mechanism, satellite, cubesat]
 showToc: false
 showReadingTime: false
-weight: 500
+weight: 200
 --- 
 
 ### Description

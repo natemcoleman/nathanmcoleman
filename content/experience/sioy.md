@@ -3,10 +3,10 @@ title: "Co-Director, Student Innovator of the Year Competition"
 description: "Brigham Young Univeristy (Provo)"
 dateString: May 2020 - April 2021
 draft: false
-tags: [byu, engineer, management, organization, organize]
+tags: [byu, lead, organizational behavior, soft skills]
 showToc: false
 showReadingTime: false
-weight: 200
+weight: 800
 --- 
 
 ### Description

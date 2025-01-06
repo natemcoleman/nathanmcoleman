@@ -3,10 +3,10 @@ title: "Project Lead"
 description: "Self"
 dateString: Novemeber 2019 - April 2020
 draft: false
-tags: [lead, teach, manage, organization, organize]
+tags: [byu, 3D printing, patent]
 showToc: false
 showReadingTime: false
-weight: 200
+weight: 900
 --- 
 
 ### Description

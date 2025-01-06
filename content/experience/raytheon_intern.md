@@ -3,10 +3,10 @@ title: "Systems Engineering Intern"
 description: "Raytheon Missiles and Defense (Tucson)"
 dateString: June 2023 - August 2023
 draft: false
-tags: [raytheon, defense, systems engineering, engineer, missile, tomahawk]
+tags: [raytheon, systems engineering, missile, defense]
 showToc: false
 showReadingTime: false
-weight: 500
+weight: 300
 --- 
 
 ### Description

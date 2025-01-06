@@ -3,10 +3,10 @@ title: "Full-time Missionary"
 description: "Cabo Verde"
 dateString: June 2016 - June 2018
 draft: false
-tags: [lead, teach, manage, organization, organize]
+tags: [lead, teach, soft skills]
 showToc: false
 showReadingTime: false
-weight: 200
+weight: 800
 --- 
 
 ### Description
