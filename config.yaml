@@ -1,6 +1,6 @@
-baseURL: "https://www.gabrieljreed.com/"
+baseURL: "https://www.nathanmcoleman.com/"
 languageCode: en-us
-title: Gabriel Reed
+title: Nathan Coleman
 theme: PaperMod
 
 menu:
@@ -41,8 +41,8 @@ params:
   # Home Page
   profileMode:
     enabled: true
-    title: "Gabriel Reed"
-    subtitle: Pipeline TD & Software Developer
+    title: "Nathan Coleman"
+    subtitle: Advanced Weapons Engineer
     imageUrl: "home/headshot.png"
     imageWidth: 220
     imageHeight: 220
@@ -60,13 +60,13 @@ params:
 
   socialIcons:
     - name: "email"
-      url: "mailto:gabrieljreed@gmail.com"
+      url: "mailto:natecolemancv@gmail.com"
     - name: github
-      url:  https://github.com/gabrieljreed
+      url:  https://github.com/natemcoleman
     - name: linkedin
-      url:  https://www.linkedin.com/in/gabriel-reed-614636102/
+      url:  https://www.linkedin.com/in/natemcoleman/
     - name: instagram
-      url:  https://www.instagram.com/gabe.giraffes/
+      url:  https://www.instagram.com/nate_theaverage/
 
   # text search
   fuseOpts:
