@@ -2,7 +2,7 @@
 title: "Working with Maya and Pip"
 description: ""
 date: 2023-10-23T13:02:23-06:00
-draft: false
+draft: true
 cover:
     image: "/blog/maya-pip/autodesk-instructions.png"
 ---
