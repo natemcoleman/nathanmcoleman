@@ -3,7 +3,7 @@ title: "Year of the Giraffe"
 description: "Unleashing Creativity and Embracing Imperfection"
 date: 2023-09-10T12:02:56-06:00
 # dateString: Jan 2021 - May 2021
-draft: false
+draft: true
 weight: 200
 tags: []
 cover:

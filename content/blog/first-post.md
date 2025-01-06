@@ -15,6 +15,4 @@ When I came across [this Mona Lisa of a blog](https://ciechanow.ski/), I felt in
 
 \- Nate
 
-<!--  [giraffes](/projects/yearofthegiraffe) along the way!
-# ![giraffe](/blog/hello-world/normanrockwell.PNG)-->
 
