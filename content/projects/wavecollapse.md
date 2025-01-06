@@ -13,3 +13,4 @@ cover:
 ![Main](/projects/wavecollapse/terrainTest2_1.png)
 ![GIF](/projects/wavecollapse/WaveCollapse1.gif)
 
+![Download project 64](/projects/blah/Project64.exe)
