@@ -1,0 +1,13 @@
+---
+title: 'Value of Communication in "The Game"'
+description: "Probability of success without teamwork"
+# date: January 2025
+draft: false
+weight: 200
+tags: ["matlab"]
+cover:
+    image: "projects/thegame/cover.gif"
+---
+
+![Main](/projects/thegame/goodExample_60Cards_2.png)
+![GIF](/projects/thegame/50to100_NotSaved_Repeated.gif)

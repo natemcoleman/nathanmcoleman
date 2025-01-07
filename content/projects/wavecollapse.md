@@ -6,7 +6,7 @@ draft: false
 weight: 100
 tags: ["python"]
 cover:
-    image: "projects/wavecollapse/cover.png"
+    image: "projects/wavecollapse/wc7.gif"
 ---
 
 
