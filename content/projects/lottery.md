@@ -1,6 +1,6 @@
 ---
 title: "How to Win the Lottery"
-description: "Historically lucky triplets"
+description: "Analysis of historically lucky triplets"
 # date: January 2025
 draft: false
 weight: 100

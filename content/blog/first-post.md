@@ -6,7 +6,7 @@ draft: false
 tags: []
 # weight: 101
 cover:
-    image: "/blog/first-post/young_nathan.jpg"
+    image: "/blog/first-post/young_nathan.JPG"
 ---
 
 I've never been very good at keeping a traditional journal, and I have scores of Moleskin notebooks with just a few pages filled out and abandoned. Lately, I have spent most of my free time doing coding projects, and although the prospect of printing out my python and pasting it into another ill-fated journal, creating a website seemed like the more reasonable option. 
