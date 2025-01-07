@@ -6,11 +6,12 @@ draft: false
 weight: 100
 tags: ["python", "optimization"]
 cover:
-    image: "publications/flasher_optimization/cover.gif"
+    image: "/publications/flasher_optimization/OptimizedPrototype_Open.jpg"
 ---
 
 For more details, you can visit the publication page on the ASME Digital Collection:
-[View Publication](https://asmedigitalcollection.asme.org/IDETC-CIE/proceedings-abstract/IDETC-CIE2023/87363/V008T08A050/1170785)
+<a href="https://asmedigitalcollection.asme.org/IDETC-CIE/proceedings-abstract/IDETC-CIE2023/87363/V008T08A050/1170785" target="_blank">View Publication</a>
+
 
 If you don't want to pay $25 to ASME, you can download the PDF of the publication using the link below:
-[Download PDF](publications/flasher_optimization/IDETC_FlasherOptimization.pdf)
+<a href="/publications/flasher_optimization/IDETC_FlasherOptimization.pdf" target="_blank">Download PDF</a>

@@ -14,3 +14,5 @@ cover:
 ![GIF](/projects/wavecollapse/WaveCollapse1.gif)
 
 ![Download project 64](/projects/blah/Project64.exe)
+
+[Download file.stl](/projects/wavecollapse/file.stl)

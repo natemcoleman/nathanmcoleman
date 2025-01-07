@@ -6,11 +6,12 @@ draft: false
 weight: 200
 tags: ["matlab", "optimization"]
 cover:
-    image: "publications/gossamer/RollModelSimpleExample.png"
+    image: "publications/gossamer/RollModelSimpleExample.jpg"
 ---
 
 For more details, you can visit the publication page on the ASME Digital Collection:
-[View Publication](https://asmedigitalcollection.asme.org/mechanismsrobotics/article-abstract/17/4/044505/1207337/Modeling-and-Analysis-of-Inter-Panel-Slipping-for?redirectedFrom=fulltext)
+<a href="https://asmedigitalcollection.asme.org/mechanismsrobotics/article-abstract/17/4/044505/1207337/Modeling-and-Analysis-of-Inter-Panel-Slipping-for?redirectedFrom=fulltext" target="_blank">View Publication</a>
+
 
 If you don't want to pay $25 to ASME, you can download the PDF of the publication using the link below:
-[Download PDF](publications/gossamer/IDETC_Rolled_Gossamer_Slip_Modeling.pdf)
+<a href="/publications/gossamer/IDETC_Rolled_Gossamer_Slip_Modeling.pdf" target="_blank">Download PDF</a>
