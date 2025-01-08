@@ -54,6 +54,7 @@ Make sure to include comments explaining each step of the algorithm.
     </style>
 </head>
 <body>
+    <button id="collapseOneButton">Collapse One Cell</button>
     <button id="resetButton">Collapse Grid</button>
     <div class="grid" id="grid"></div>
     <script>
@@ -66,6 +67,11 @@ Make sure to include comments explaining each step of the algorithm.
             grid = Array.from({ length: gridSize }, () => 
                 Array.from({ length: gridSize }, () => [...states])
             );
+            const randomX = Math.floor(Math.random() * gridSize);
+            const randomY = Math.floor(Math.random() * gridSize);
+            const randomState = states[Math.floor(Math.random() * states.length)];
+            grid[randomX][randomY] = [randomState];
+            propagate(randomX, randomY, randomState);
             renderGrid();
         }
         function collapseCell(x, y) {
@@ -73,8 +79,10 @@ Make sure to include comments explaining each step of the algorithm.
             const state = possibleStates[Math.floor(Math.random() * possibleStates.length)];
             grid[x][y] = [state];
             propagate(x, y, state);
+            //renderGrid();
         }
         function propagate(x, y, state) {
+            renderGrid();
             const neighbors = [
                 [x - 1, y], [x + 1, y],
                 [x, y - 1], [x, y + 1]
@@ -84,7 +92,7 @@ Make sure to include comments explaining each step of the algorithm.
                     grid[nx][ny] = grid[nx][ny].filter(s => isValidNeighbor(state, s));
                     if (grid[nx][ny].length > 1) {
                         if (grid[nx][ny].length === 1) {
-                            propagate(nx, ny, grid[nx][ny][0]);
+                            setTimeout(() => propagate(nx, ny, grid[nx][ny][0]), 1000);
                         }
                     }
                 }
@@ -141,15 +149,30 @@ Make sure to include comments explaining each step of the algorithm.
             while (cellsToCollapse.length > 0) {
                 const [x, y] = cellsToCollapse.splice(Math.floor(Math.random() * cellsToCollapse.length), 1)[0];
                 if (grid[x][y].length > 1) {
-                    collapseCell(x, y);
-                }
+                    collapseCell(x, y);    }
                 //console.log(grid);
-                renderGrid();
             }
         }
         resetButton.addEventListener('click', () => {
             initializeGrid();
-            collapseGrid();
+            //collapseGrid();
+        });
+        function collapseOneCell() {
+            let cellsToCollapse = [];
+            for (let x = 0; x < gridSize; x++) {
+                for (let y = 0; y < gridSize; y++) {
+                    cellsToCollapse.push([x, y]);
+                }
+            }
+            if (cellsToCollapse.length > 0) {
+                const [x, y] = cellsToCollapse.splice(Math.floor(Math.random() * cellsToCollapse.length), 1)[0];
+                if (grid[x][y].length > 1) {
+                    collapseCell(x, y);
+                }
+            }
+        }
+        collapseOneButton.addEventListener('click', () => {
+            collapseOneCell();
         });
         // initializeGrid();
         // collapseGrid();
