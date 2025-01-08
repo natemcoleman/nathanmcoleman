@@ -32,13 +32,11 @@ cover:
             height: 20px;
             border: 0px solid #ccc;
         }
-        .state-0 { background-color:rgb(19, 89, 121); } /* Water */
-        .state-1 { background-color:rgb(81, 180, 222); } /* Water */
-        .state-2 { background-color:rgb(187, 120, 57); } /* Sand */
-        .state-3 { background-color: #a0b741; } /* Grass */
-        .state-4 { background-color:rgb(13, 59, 22); } /* Grass */
-        .state-5 { background-color:rgb(113, 113, 113); } /* Mountain */
-        .state-6 { background-color: #ffffff; } /* Snow */
+        .state-0 { background-color:rgb(41, 140, 185); } /* Water */
+        .state-1 { background-color:rgb(187, 120, 57); } /* Sand */
+        .state-2 { background-color: #a0b741; } /* Grass */
+        .state-3 { background-color:rgb(113, 113, 113); } /* Mountain */
+        .state-4 { background-color: #ffffff; } /* Snow */
     </style>
 </head>
 <label for="speedSlider">Cells to add: <span id="sliderValue">5</span></label>
@@ -50,23 +48,30 @@ cover:
         sliderValue.textContent = speedSlider.value;
     });
 </script>
+<style>
+    .button-container {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+    }
+</style>
     <button id="resetButton">Reset</button>
-    <button id="collapseOneButton">Collapse One Cell</button>
+    <button id="collapseOneButton">Collapse Cells</button>
     <button id="collapseButton">Collapse Grid</button>
     <div class="grid" id="grid"></div>
     <script>
         const gridElement = document.getElementById('grid');
         const resetButton = document.getElementById('resetButton');
         const gridSize = 15;
-        const states = [0, 1, 2, 3, 4, 5, 6];
+        const states = [0, 1, 2, 3, 4];
         let grid = [];
         initializeGrid();
         function initializeGrid() {
             grid = Array.from({ length: gridSize }, () => 
                 Array.from({ length: gridSize }, () => [...states])
             );
-            const n = 3; // Number of cells to be state 0
-            const m = 3; // Number of cells to be state 6
+            const n = 1; // Number of cells to be state 0
+            const m = 1; // Number of cells to be state 6
             function setRandomCellsToState(state, count) {
                 let cellsSet = 0;
                 while (cellsSet < count) {
@@ -80,7 +85,7 @@ cover:
                 }
             }
             setRandomCellsToState(0, n);
-            setRandomCellsToState(6, m);
+            setRandomCellsToState(4, m);
             renderGrid();
             console.log(grid);
         }
@@ -109,25 +114,21 @@ cover:
         }
         function isValidNeighbor(state, neighborState) {
             const rules = {
-                0: [0, 0, 0, 1],
-                1: [0, 1, 1, 2],
-                2: [1, 2, 2, 3],
-                3: [2, 3, 3, 4],
-                4: [3, 4, 4, 5],
-                5: [4, 5, 5, 6],
-                6: [5, 5, 6, 6],
+                0: [0, 1, 2],
+                1: [0, 1, 2],
+                2: [1, 2, 3],
+                3: [2, 3, 4],
+                4: [3, 4, 2],
             };
             return rules[state].includes(neighborState);
         }
         function averageColor(states) {
             const colors = {
                 0: [19,  89,  121],
-                1: [81,  180, 222],
-                2: [187, 120, 57],
-                3: [160, 183, 65],
-                4: [13,  59,  22],
-                5: [113, 113, 113],
-                6: [255, 255, 255],
+                1: [187, 120, 57],
+                2: [160, 183, 65],
+                3: [13,  59,  22],
+                4: [113, 113, 113],
             };
             const avgColor = states.reduce((acc, state) => {
                 acc[0] += colors[state][0];
@@ -143,6 +144,7 @@ cover:
                 for (let cell of row) {
                     const cellElement = document.createElement('div');
                     cellElement.classList.add('cell');
+                    //cellElement.style.borderRadius = '5px'; // Add this line to make corners rounded
                     if (cell.length === 1) {
                         cellElement.classList.add(`state-${cell[0]}`);
                     } else {
