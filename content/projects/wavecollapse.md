@@ -39,27 +39,51 @@ cover:
         .state-4 { background-color: #ffffff; } /* Snow */
     </style>
 </head>
-<label for="speedSlider">Cells to add: <span id="sliderValue">5</span></label>
-<input type="range" id="speedSlider" name="speedSlider" min="1" max="10" value="5">
-<script>
-    const speedSlider = document.getElementById('speedSlider');
-    const sliderValue = document.getElementById('sliderValue');
-    speedSlider.addEventListener('input', () => {
-        sliderValue.textContent = speedSlider.value;
-    });
-</script>
 <style>
     .button-container {
         display: flex;
         gap: 10px;
         margin-top: 10px;
+        justify-content: center;
+        }
+    .button-container button {
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 10px 20px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        margin: 4px 2px;
+        cursor: pointer;
+        transition-duration: 0.4s;
+    }
+    .button-container button:hover {
+        background-color: white;
+        color: black;
+        border: 2px solid #4CAF50;
+    }
     }
 </style>
-    <button id="resetButton">Reset</button>
-    <button id="collapseOneButton">Collapse Cells</button>
-    <button id="collapseButton">Collapse Grid</button>
+    <div style="display: flex; flex-direction: column; align-items: center;">
+        <label for="speedSlider">Speed:<span id="sliderValue">5</span></label>
+        <input type="range" id="speedSlider" name="speedSlider" min="1" max="10" value="5">
+        <script>
+            const speedSlider = document.getElementById('speedSlider');
+            const sliderValue = document.getElementById('sliderValue');
+            speedSlider.addEventListener('input', () => {
+                sliderValue.textContent = speedSlider.value;
+            });
+        </script>
+        <div class="button-container">
+            <button id="resetButton">Reset</button>
+            <button id="collapseOneButton">Create</button>
+    </div>
     <div class="grid" id="grid"></div>
     <script>
+        //    <button id="collapseButton">Collapse Grid</button>
         const gridElement = document.getElementById('grid');
         const resetButton = document.getElementById('resetButton');
         const gridSize = 15;
@@ -140,11 +164,13 @@ cover:
         }
         function renderGrid() {
             gridElement.innerHTML = '';
+            gridElement.style.display = 'grid';
+            gridElement.style.justifyContent = 'center';
+            gridElement.style.alignItems = 'center';
             for (let row of grid) {
                 for (let cell of row) {
                     const cellElement = document.createElement('div');
                     cellElement.classList.add('cell');
-                    //cellElement.style.borderRadius = '5px'; // Add this line to make corners rounded
                     if (cell.length === 1) {
                         cellElement.classList.add(`state-${cell[0]}`);
                     } else {
@@ -216,9 +242,9 @@ cover:
                 }
             }
         }
-        collapseButton.addEventListener('click', () => {
-            collapseGrid();
-        });
+        //collapseButton.addEventListener('click', () => {
+        //    collapseGrid();
+        //});
         collapseOneButton.addEventListener('click', () => {
             collapseOneCell();
         });
