@@ -26,6 +26,7 @@ cover:
             grid-template-columns: repeat(15, 20px);
             grid-template-rows: repeat(15, 20px);
             gap: 0px;
+            margin-bottom: 20px;
         }
         .cell {
             width: 20px;
@@ -45,7 +46,7 @@ cover:
         gap: 10px;
         margin-top: 10px;
         justify-content: center;
-        }
+    }
     .button-container button {
         background-color: #4CAF50;
         color: white;
@@ -63,27 +64,25 @@ cover:
     .button-container button:hover {
         background-color: white;
         color: black;
-        border: 2px solid #4CAF50;
-    }
     }
 </style>
-    <div style="display: flex; flex-direction: column; align-items: center;">
-        <label for="speedSlider">Speed:<span id="sliderValue">5</span></label>
+    <div class="grid" id="grid"></div>
+     <div style="display: flex; flex-direction: row; align-items: center; gap: 35px; justify-content: center;">     <div class="button-container">
+            <button id="resetButton">Reset</button>
+        </div>
         <input type="range" id="speedSlider" name="speedSlider" min="1" max="10" value="5">
+        <label for="speedSlider">Speed: <span id="sliderValue">5</span></label>
         <script>
             const speedSlider = document.getElementById('speedSlider');
             const sliderValue = document.getElementById('sliderValue');
             speedSlider.addEventListener('input', () => {
                 sliderValue.textContent = speedSlider.value;
             });
-        </script>
-        <div class="button-container">
-            <button id="resetButton">Reset</button>
-            <button id="collapseOneButton">Create</button>
+        </script>       
     </div>
-    <div class="grid" id="grid"></div>
     <script>
         //    <button id="collapseButton">Collapse Grid</button>
+         //<button id="collapseOneButton">Create</button>
         const gridElement = document.getElementById('grid');
         const resetButton = document.getElementById('resetButton');
         const gridSize = 15;
@@ -129,7 +128,8 @@ cover:
                     grid[nx][ny] = grid[nx][ny].filter(s => isValidNeighbor(state, s));
                     if (grid[nx][ny].length > 1) {
                         if (grid[nx][ny].length === 1) {
-                            setTimeout(() => propagate(nx, ny, grid[nx][ny][0]), 1000);
+                            //setTimeout(() => propagate(nx, ny, grid[nx][ny][0]), 1000);
+                            propagate(nx, ny, grid[nx][ny][0])
                         }
                     }
                 }
@@ -239,17 +239,27 @@ cover:
                         const [x, y] = minStateCells[Math.floor(Math.random() * minStateCells.length)];
                         collapseCell(x, y);
                     }   
+                //else
+                //    clearInterval(intervalId);
                 }
             }
         }
         //collapseButton.addEventListener('click', () => {
         //    collapseGrid();
         //});
-        collapseOneButton.addEventListener('click', () => {
-            collapseOneCell();
-        });
+        let intervalId; // To store the interval ID
+        window.onload = function() {
+            intervalId = setInterval(collapseOneCell, 250);
+        };
+        //collapseOneButton.addEventListener('click', () => {
+        //    collapseOneCell();
+        //});
         resetButton.addEventListener('click', () => {
             initializeGrid();
+            let intervalId; // To store the interval ID
+            window.onload = function() {
+                intervalId = setInterval(collapseOneCell, 250);
+            };
         });
     </script>
 </body>
