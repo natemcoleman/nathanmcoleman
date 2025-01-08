@@ -47,31 +47,29 @@ Make sure to include comments explaining each step of the algorithm.
             border: 1px solid #ccc;
         }
         .state-0 { background-color: #1e81b0; } /* Water */
-        .state-1 { background-color: #7f4a1a; } /* Sand */
+        .state-1 { background-color:rgb(187, 120, 57); } /* Sand */
         .state-2 { background-color: #a0b741; } /* Grass */
         .state-3 { background-color: #b3b3b3; } /* Mountain */
         .state-4 { background-color: #ffffff; } /* Snow */
     </style>
 </head>
 <body>
+    <button id="resetButton">Reset</button>
     <button id="collapseOneButton">Collapse One Cell</button>
-    <button id="resetButton">Collapse Grid</button>
+    <button id="collapseButton">Collapse Grid</button>
     <div class="grid" id="grid"></div>
     <script>
         const gridElement = document.getElementById('grid');
         const resetButton = document.getElementById('resetButton');
         const gridSize = 10;
         const states = [0, 1, 2, 3, 4];
+        //const states = [0, 1, 2];
         let grid = [];
+        initializeGrid();
         function initializeGrid() {
             grid = Array.from({ length: gridSize }, () => 
                 Array.from({ length: gridSize }, () => [...states])
             );
-            const randomX = Math.floor(Math.random() * gridSize);
-            const randomY = Math.floor(Math.random() * gridSize);
-            const randomState = states[Math.floor(Math.random() * states.length)];
-            grid[randomX][randomY] = [randomState];
-            propagate(randomX, randomY, randomState);
             renderGrid();
         }
         function collapseCell(x, y) {
@@ -79,10 +77,8 @@ Make sure to include comments explaining each step of the algorithm.
             const state = possibleStates[Math.floor(Math.random() * possibleStates.length)];
             grid[x][y] = [state];
             propagate(x, y, state);
-            //renderGrid();
         }
         function propagate(x, y, state) {
-            renderGrid();
             const neighbors = [
                 [x - 1, y], [x + 1, y],
                 [x, y - 1], [x, y + 1]
@@ -97,14 +93,15 @@ Make sure to include comments explaining each step of the algorithm.
                     }
                 }
             }
+            renderGrid();
         }
         function isValidNeighbor(state, neighborState) {
             const rules = {
-                0: [1, 2, 3, 4],
-                1: [0, 2, 3, 4],
-                4: [0, 1, 2, 3],
-                2: [0, 1, 3, 4],
-                3: [0, 1, 2, 4],
+                0: [0, 0, 0, 1],
+                1: [0, 1, 1, 2],
+                2: [1, 2, 2, 3],
+                3: [2, 3, 3, 4],
+                4: [3, 4, 4, 4],
             };
             return rules[state].includes(neighborState);
         }
@@ -150,12 +147,11 @@ Make sure to include comments explaining each step of the algorithm.
                 const [x, y] = cellsToCollapse.splice(Math.floor(Math.random() * cellsToCollapse.length), 1)[0];
                 if (grid[x][y].length > 1) {
                     collapseCell(x, y);    }
-                //console.log(grid);
             }
         }
-        resetButton.addEventListener('click', () => {
-            initializeGrid();
-            //collapseGrid();
+        collapseButton.addEventListener('click', () => {
+            collapseGrid();
+            //console.log(grid);
         });
         function collapseOneCell() {
             let cellsToCollapse = [];
@@ -165,7 +161,16 @@ Make sure to include comments explaining each step of the algorithm.
                 }
             }
             if (cellsToCollapse.length > 0) {
-                const [x, y] = cellsToCollapse.splice(Math.floor(Math.random() * cellsToCollapse.length), 1)[0];
+                const cellsWithMultipleStates = cellsToCollapse.filter(([x, y]) => grid[x][y].length > 1);
+                if (cellsWithMultipleStates.length > 0) {
+                    const minStates = Math.min(...cellsWithMultipleStates.map(([x, y]) => grid[x][y].length));
+                    const minStateCells = cellsWithMultipleStates.filter(([x, y]) => grid[x][y].length === minStates);
+                    const [x, y] = minStateCells[Math.floor(Math.random() * minStateCells.length)];
+                    collapseCell(x, y);
+                }   
+                console.log(x);
+                console.log(y);
+                //const [x, y] = cellsToCollapse.splice(Math.floor(Math.random() * cellsToCollapse.length), 1)[0];
                 if (grid[x][y].length > 1) {
                     collapseCell(x, y);
                 }
@@ -173,6 +178,9 @@ Make sure to include comments explaining each step of the algorithm.
         }
         collapseOneButton.addEventListener('click', () => {
             collapseOneCell();
+        });
+        resetButton.addEventListener('click', () => {
+            initializeGrid();
         });
         // initializeGrid();
         // collapseGrid();
