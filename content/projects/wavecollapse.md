@@ -25,7 +25,7 @@ cover:
             display: grid;
             grid-template-columns: repeat(15, 20px);
             grid-template-rows: repeat(15, 20px);
-            gap: 2px;
+            gap: 0px;
         }
         .cell {
             width: 20px;
@@ -41,7 +41,15 @@ cover:
         .state-6 { background-color: #ffffff; } /* Snow */
     </style>
 </head>
-<body>
+<label for="speedSlider">Cells to add: <span id="sliderValue">5</span></label>
+<input type="range" id="speedSlider" name="speedSlider" min="1" max="10" value="5">
+<script>
+    const speedSlider = document.getElementById('speedSlider');
+    const sliderValue = document.getElementById('sliderValue');
+    speedSlider.addEventListener('input', () => {
+        sliderValue.textContent = speedSlider.value;
+    });
+</script>
     <button id="resetButton">Reset</button>
     <button id="collapseOneButton">Collapse One Cell</button>
     <button id="collapseButton">Collapse Grid</button>
@@ -51,8 +59,6 @@ cover:
         const resetButton = document.getElementById('resetButton');
         const gridSize = 15;
         const states = [0, 1, 2, 3, 4, 5, 6];
-        //const states = [0, 1, 2, 3, 4];
-        //const states = [0, 1, 2];
         let grid = [];
         initializeGrid();
         function initializeGrid() {
@@ -113,13 +119,6 @@ cover:
             };
             return rules[state].includes(neighborState);
         }
-        //.state-0 { background-color:rgb(19,  89,  121); } /* Water */
-        //.state-1 { background-color:rgb(81,  180, 222); } /* Water */
-        //.state-2 { background-color:rgb(187, 120, 57); } /* Sand */
-        //.state-3 { background-color:rgb(160, 183, 65); } /* Grass */
-        //.state-4 { background-color:rgb(13,  59,  22); } /* Grass */
-        //.state-5 { background-color:rgb(113, 113, 113); } /* Mountain */
-        //.state-6 { background-color:rgb(255, 255, 255); } /* Snow */
         function averageColor(states) {
             const colors = {
                 0: [19,  89,  121],
@@ -195,20 +194,24 @@ cover:
                     cellsToCollapse.push([x, y]);
                 }
             }
-            if (cellsToCollapse.length > 0) {
-                cellsWithZeroStates = cellsToCollapse.filter(([x, y]) => grid[x][y].length === 0);
-                if (cellsWithZeroStates.length > 0) {
-                    const [x, y] = cellsWithZeroStates[Math.floor(Math.random() * cellsWithZeroStates.length)];
-                    pickNeighbor(x, y);
+            const speedSlider = document.getElementById('speedSlider');
+            const sliderValue = speedSlider.value;
+            for (let i = 0; i < sliderValue; i++) {
+                if (cellsToCollapse.length > 0) {
                     cellsWithZeroStates = cellsToCollapse.filter(([x, y]) => grid[x][y].length === 0);
+                    if (cellsWithZeroStates.length > 0) {
+                        const [x, y] = cellsWithZeroStates[Math.floor(Math.random() * cellsWithZeroStates.length)];
+                        pickNeighbor(x, y);
+                        cellsWithZeroStates = cellsToCollapse.filter(([x, y]) => grid[x][y].length === 0);
+                    }
+                    const cellsWithMultipleStates = cellsToCollapse.filter(([x, y]) => grid[x][y].length > 1);
+                    if (cellsWithMultipleStates.length > 0) {
+                        const minStates = Math.min(...cellsWithMultipleStates.map(([x, y]) => grid[x][y].length));
+                        const minStateCells = cellsWithMultipleStates.filter(([x, y]) => grid[x][y].length === minStates);
+                        const [x, y] = minStateCells[Math.floor(Math.random() * minStateCells.length)];
+                        collapseCell(x, y);
+                    }   
                 }
-                const cellsWithMultipleStates = cellsToCollapse.filter(([x, y]) => grid[x][y].length > 1);
-                if (cellsWithMultipleStates.length > 0) {
-                    const minStates = Math.min(...cellsWithMultipleStates.map(([x, y]) => grid[x][y].length));
-                    const minStateCells = cellsWithMultipleStates.filter(([x, y]) => grid[x][y].length === minStates);
-                    const [x, y] = minStateCells[Math.floor(Math.random() * minStateCells.length)];
-                    collapseCell(x, y);
-                }   
             }
         }
         collapseButton.addEventListener('click', () => {
