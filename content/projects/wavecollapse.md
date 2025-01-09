@@ -299,16 +299,18 @@ For more detailed information, you can check out the following resources:
 Below are some examples of maps that were generated using this method. Weighting can also be applied to different cells, so that for example grass can be by water, but has a higher liklihood of being next to sand instead. 
 
 Another interesting method shown below is to use multiple rounds of the wave function collapse algorithm to first generate "biomes", like forest, sea, etc., and then generate terrain specific to those biomes to give a more refined look.
-
+<div style="text-align: center;">
+    <img src="/projects/wavecollapse/matlab/WaveCollapse13.gif" alt="GIF" style="display: block; margin-left: auto; margin-right: auto;">
+</div>
 
 <div style="text-align: center;">
-    <img src="/projects/wavecollapse/matlab/WaveCollapse23.gif" alt="GIF">
-    <img src="/projects/wavecollapse/matlab/WaveCollapse24.gif" alt="GIF">
-    <img src="/projects/wavecollapse/matlab/WaveCollapse25.gif" alt="GIF">
-    <img src="/projects/wavecollapse/wc23.gif" alt="GIF">
-    <img src="/projects/wavecollapse/wc31.gif" alt="GIF">
-    <img src="/projects/wavecollapse/wc33.gif" alt="GIF">
-    <img src="/projects/wavecollapse/matlab/300x300Pic.png" alt="Main">
+    <img src="/projects/wavecollapse/matlab/WaveCollapse23.gif" alt="GIF"  style="display: block; margin-left: auto; margin-right: auto;">
+    <img src="/projects/wavecollapse/matlab/WaveCollapse24.gif" alt="GIF"  style="display: block; margin-left: auto; margin-right: auto;">
+    <img src="/projects/wavecollapse/matlab/WaveCollapse25.gif" alt="GIF"  style="display: block; margin-left: auto; margin-right: auto;">
+    <img src="/projects/wavecollapse/wc23.gif" alt="GIF"  style="display: block; margin-left: auto; margin-right: auto;">
+    <img src="/projects/wavecollapse/wc31.gif" alt="GIF"  style="display: block; margin-left: auto; margin-right: auto;">
+    <img src="/projects/wavecollapse/wc33.gif" alt="GIF"  style="display: block; margin-left: auto; margin-right: auto;">
+    <img src="/projects/wavecollapse/matlab/300x300Pic.png" alt="Main"  style="display: block; margin-left: auto; margin-right: auto;">
 </div>
 
 <!-- ![GIF](/projects/wavecollapse/matlab/WaveCollapse13.gif) make the last three above repeat
