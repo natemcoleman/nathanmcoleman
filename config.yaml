@@ -5,22 +5,22 @@ theme: PaperMod
 
 menu:
   main:
-    - identifier: home
-      name: Home
-      url: /
-      weight: 10
+    # - identifier: home
+    #   name: Home
+    #   url: /
+    #   weight: 10
     - identifier: blog
       name: Blog
       url: /blog
-      weight: 20
+      weight: 40
     - identifier: projects
       name: Projects
       url: /projects
-      weight: 30
+      weight: 20
     - identifier: publications
       name: Publications
       url: /publications
-      weight: 40
+      weight: 30
     - identifier: experience
       name: Experience
       url: /experience
