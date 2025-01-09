@@ -12,6 +12,9 @@ cover:
 The Wave Function Collapse (WFC) algorithm is a procedural content generation technique used to create unique and visually appealing patterns or structures based on a given input. It works by analyzing a small example pattern and then generating a larger output that maintains the local properties and rules of the input.
 
 The algorithm is inspired by quantum mechanics, where the "wave function" represents all possible states of a system. In the context of WFC, each cell in the output grid can be in multiple states (e.g., different tiles or patterns) until constraints from neighboring cells collapse it into a single state. This process continues until the entire grid is filled with a coherent pattern that resembles the input.
+<div style="text-align: center;">
+    <img src="/projects/wavecollapse/matlab/WaveCollapse13.gif" alt="GIF" style="display: block; margin-left: auto; margin-right: auto;">
+</div>
 
 WFC is particularly useful in applications like terrain generation, texture synthesis, and level design in games, where it can produce complex and varied results from simple examples.
 
@@ -291,21 +294,20 @@ For more detailed information, you can check out the following resources:
 </html> -->
 
 
-<br><br><br><br>
-
+<br>
 
 
 <div style="text-align: center;">
-    <img src="/projects/wavecollapse/matlab/WaveCollapse13.gif" alt="GIF">
-    <img src="/projects/wavecollapse/matlab/WaveCollapse21.gif" alt="GIF">
-    <img src="/projects/wavecollapse/matlab/WaveCollapse22.gif" alt="GIF">
     <img src="/projects/wavecollapse/matlab/WaveCollapse23.gif" alt="GIF">
     <img src="/projects/wavecollapse/matlab/WaveCollapse24.gif" alt="GIF">
     <img src="/projects/wavecollapse/matlab/WaveCollapse25.gif" alt="GIF">
+    <img src="/projects/wavecollapse/wc23.gif" alt="GIF">
+    <img src="/projects/wavecollapse/wc31.gif" alt="GIF">
+    <img src="/projects/wavecollapse/wc33.gif" alt="GIF">
     <img src="/projects/wavecollapse/matlab/300x300Pic.png" alt="Main">
 </div>
 
-<!-- ![GIF](/projects/wavecollapse/matlab/WaveCollapse13.gif)
+<!-- ![GIF](/projects/wavecollapse/matlab/WaveCollapse13.gif) make the last three above repeat
 ![GIF](/projects/wavecollapse/matlab/WaveCollapse21.gif)
 ![GIF](/projects/wavecollapse/matlab/WaveCollapse22.gif)
 ![GIF](/projects/wavecollapse/matlab/WaveCollapse23.gif)
