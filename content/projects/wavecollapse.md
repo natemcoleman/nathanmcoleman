@@ -37,8 +37,8 @@ For more detailed information, you can check out the following resources:
     <style>
         .grid {
             display: grid;
-            grid-template-columns: repeat(35, 15px);
-            grid-template-rows: repeat(35, 15px);
+            grid-template-columns: repeat(35, 12px);
+            grid-template-rows: repeat(35, 12px);
             gap: 0px;
             margin-bottom: 20px;
         }
@@ -80,7 +80,7 @@ For more detailed information, you can check out the following resources:
      <div style="display: flex; flex-direction: row; align-items: center; gap: 35px; justify-content: center;">     <div class="button-container">
             <button id="resetButton">Reset</button>
         </div>
-        <input type="range" id="speedSlider" name="speedSlider" min="1" max="10" value="5", style="width: 300px;">
+        <input type="range" id="speedSlider" name="speedSlider" min="1" max="10" value="5", style="width: 200px;">
         <script>
             const speedSlider = document.getElementById('speedSlider');
             const sliderValue = document.getElementById('sliderValue');
