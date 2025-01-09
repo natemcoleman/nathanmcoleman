@@ -75,24 +75,12 @@ For more detailed information, you can check out the following resources:
         cursor: pointer;
         transition-duration: 0.4s;
     }
-<<<<<<< HEAD
-    .button-container button:hover {
-        background-color: white;
-        color: black;
-    }
-=======
->>>>>>> wave_collapse
 </style>
     <div class="grid" id="grid"></div>
      <div style="display: flex; flex-direction: row; align-items: center; gap: 35px; justify-content: center;">     <div class="button-container">
             <button id="resetButton">Reset</button>
         </div>
-<<<<<<< HEAD
-        <input type="range" id="speedSlider" name="speedSlider" min="1" max="10" value="5">
-        <label for="speedSlider">Speed: <span id="sliderValue">5</span></label>
-=======
         <input type="range" id="speedSlider" name="speedSlider" min="1" max="10" value="5", style="width: 300px;">
->>>>>>> wave_collapse
         <script>
             const speedSlider = document.getElementById('speedSlider');
             const sliderValue = document.getElementById('sliderValue');
@@ -102,12 +90,8 @@ For more detailed information, you can check out the following resources:
         </script>       
     </div>
     <script>
-<<<<<<< HEAD
-        //    <button id="collapseButton">Collapse Grid</button>
-=======
         //<label for="speedSlider">Speed: <span id="sliderValue">5</span></label>
         //<button id="collapseButton">Collapse Grid</button>
->>>>>>> wave_collapse
          //<button id="collapseOneButton">Create</button>
         const gridElement = document.getElementById('grid');
         const resetButton = document.getElementById('resetButton');
@@ -156,10 +140,6 @@ For more detailed information, you can check out the following resources:
                     if (grid[nx][ny].length > 1) {
                          grid[nx][ny] = grid[nx][ny].filter(s => isValidNeighbor(state, s));
                         if (grid[nx][ny].length === 1) {
-<<<<<<< HEAD
-                            //setTimeout(() => propagate(nx, ny, grid[nx][ny][0]), 1000);
-=======
->>>>>>> wave_collapse
                             propagate(nx, ny, grid[nx][ny][0])
                         }
                     }
