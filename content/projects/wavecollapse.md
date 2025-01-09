@@ -8,8 +8,6 @@ tags: ["python"]
 cover:
     image: "projects/wavecollapse/wc7.gif"
 ---
-<!--![Main](/projects/wavecollapse/terrainTest2_1.png)
-![GIF](/projects/wavecollapse/WaveCollapse1.gif)-->
 
 The Wave Function Collapse (WFC) algorithm is a procedural content generation technique used to create unique and visually appealing patterns or structures based on a given input. It works by analyzing a small example pattern and then generating a larger output that maintains the local properties and rules of the input.
 
@@ -17,7 +15,7 @@ The algorithm is inspired by quantum mechanics, where the "wave function" repres
 
 WFC is particularly useful in applications like terrain generation, texture synthesis, and level design in games, where it can produce complex and varied results from simple examples.
 
-You can watch terrain be generated using this method to create a map-like scene with water, sand, grass, rocks, and snow. Use the slider to control the speed, and use the button to create a new map!
+You can watch terrain be generated using this method to create a map-like scene with water, sand, grass, rocks, and snow. Use the slider to control the speed, and click the button to create a new map! You can also see some other examples from my GitHub repos below. 
 
 For more detailed information, you can check out the following resources:
 
@@ -26,6 +24,10 @@ For more detailed information, you can check out the following resources:
 <a href="https://github.com/mxgmn/WaveFunctionCollapse" target="_blank">Wave Function Collapse GitHub Repository</a>: The official GitHub repository for the Wave Function Collapse algorithm, containing the source code and documentation, as well as some cool examples of how it can be used in a variety of circumstances. 
 
 <a href="https://m.youtube.com/watch?v=qRtrj6Pua2A" target="_blank">Wave Function Collapse YouTube Video</a>: A YouTube video that visually demonstrates the Wave Function Collapse algorithm in action and how to go about coding it.
+
+<a href="https://github.com/natemcoleman/MatlabWaveCollapseFunction" target="_blank">My GitHub repo</a> for a wave collapse algorithm in Matlab
+
+<a href="https://github.com/natemcoleman/WaveCollapsePython" target="_blank">My GitHub repo</a> for a wave collapse algorithm in Python
 
 
 <!DOCTYPE html>
@@ -275,3 +277,39 @@ For more detailed information, you can check out the following resources:
     </script>
 </body>
 </html>
+<!-- 
+<html>
+<style>
+.center-image {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+    }
+</style>
+<img src="/projects/wavecollapse/matlab/WaveCollapse13.gif" alt="Image description" class="center-image" />
+</html> -->
+
+
+<br><br><br><br>
+
+
+
+<div style="text-align: center;">
+    <img src="/projects/wavecollapse/matlab/WaveCollapse13.gif" alt="GIF">
+    <img src="/projects/wavecollapse/matlab/WaveCollapse21.gif" alt="GIF">
+    <img src="/projects/wavecollapse/matlab/WaveCollapse22.gif" alt="GIF">
+    <img src="/projects/wavecollapse/matlab/WaveCollapse23.gif" alt="GIF">
+    <img src="/projects/wavecollapse/matlab/WaveCollapse24.gif" alt="GIF">
+    <img src="/projects/wavecollapse/matlab/WaveCollapse25.gif" alt="GIF">
+    <img src="/projects/wavecollapse/matlab/300x300Pic.png" alt="Main">
+</div>
+
+<!-- ![GIF](/projects/wavecollapse/matlab/WaveCollapse13.gif)
+![GIF](/projects/wavecollapse/matlab/WaveCollapse21.gif)
+![GIF](/projects/wavecollapse/matlab/WaveCollapse22.gif)
+![GIF](/projects/wavecollapse/matlab/WaveCollapse23.gif)
+![GIF](/projects/wavecollapse/matlab/WaveCollapse24.gif)
+![GIF](/projects/wavecollapse/matlab/WaveCollapse25.gif)
+![Main](/projects/wavecollapse/matlab/300x300Pic.png) -->
+
