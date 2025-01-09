@@ -37,8 +37,8 @@ For more detailed information, you can check out the following resources:
     <style>
         .grid {
             display: grid;
-            grid-template-columns: repeat(35, 12px);
-            grid-template-rows: repeat(35, 12px);
+            grid-template-columns: repeat(35, 10px);
+            grid-template-rows: repeat(35, 10px);
             gap: 0px;
             margin-bottom: 20px;
         }
