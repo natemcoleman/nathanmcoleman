@@ -296,6 +296,10 @@ For more detailed information, you can check out the following resources:
 
 <br>
 
+Below are some examples of maps that were generated using this method. Weighting can also be applied to different cells, so that for example grass can be by water, but has a higher liklihood of being next to sand instead. 
+
+Another interesting method shown below is to use multiple rounds of the wave function collapse algorithm to first generate "biomes", like forest, sea, etc., and then generate terrain specific to those biomes to give a more refined look.
+
 
 <div style="text-align: center;">
     <img src="/projects/wavecollapse/matlab/WaveCollapse23.gif" alt="GIF">
