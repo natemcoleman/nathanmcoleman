@@ -9,14 +9,16 @@ cover:
     image: "projects/wavecollapse/wc7.gif"
 ---
 
+# Introduction
 The Wave Function Collapse (WFC) algorithm is a way to procedurally generate content used to create unique patterns or structures based on a given input. It works by using an example, which can be rules that tell it how the pattern should look or an existing pattern it can analyze, and then generating a large output that follows the rules established. 
 
-The algorithm is inspired by quantum mechanics, where the "wave function" represents all possible states of a system until the system is observed, collapsing it into a single observable state. In the context of WFC, each cell, pixel, or unit in the output grid can be in multiple states (e.g., different tiles or patterns) until constraints from neighboring cells restrict or collapse it into a single state. This process continues until the entire grid is filled with a coherent pattern that resembles the input. <a href="https://robertheaton.com/2018/12/17/wavefunction-collapse-algorithm/" target="_blank">Robert Heaton</a> gives a very good and simple explanation of how the WFC algorithm works using examples and illustrations.
+The algorithm is inspired by quantum mechanics, where the "wave function" represents all possible states of a system until the system is observed, collapsing it into a single observable state. In the context of WFC, each cell, pixel, or unit in the output grid can be in multiple states (e.g., different tiles or patterns) until constraints from neighboring cells restrict or collapse it into a single state. This process continues until the entire grid is filled with a coherent pattern that resembles the input. <a href="https://robertheaton.com/2018/12/17/wavefunction-collapse-algorithm/" target="_blank">Robert Heaton</a> gives a very clear explanation of how the WFC algorithm works using examples and illustrations.
 
 <div style="text-align: center;">
     <img src="/projects/wavecollapse/matlab/WaveCollapse13.gif" alt="GIF" style="display: block; margin-left: auto; margin-right: auto;">
 </div>
 
+# Terrain Example
 Imagine a simple map, which may show features like water, grass, trees, mountains, snow, cliffs, deserts, etc. Intuitively, you might expect cliffs to be near mountains, snow to fall on top of a mountain rather than in the ocean, or some sort of bank to be between grass and water. If we want to create a terrain map that looks like this simple map, we can include all of these rules that explain how we expect the terrain to look. When we initialize our new map, any of the map can be any of the features - we haven't told it anything about how to begin! We can pick one or more places to have specific features, like putting a snow-capped mountain in the northeast, a river in the west, or a meadow in the south. Because we have now restricted the map in a location, we have "collapsed" the possibilities around it! Desert should not border snow, and so there are less possibilities next to our new mountain. Our algorithm now finds the place on our map with the least possibilities and randomly picks one of its possible states to restrict it. Perhaps our fresh snow can only be next to other snow, or mountain, whereas any of the other places on the map still have many possibilities, the algorithm may randomly chooses snow for the area next to it. Now there are two places on our map which have only one state, the areas directly surrounding them have two possibilities (snow and mountain), and every other place can be any of the possible states. The process of finding the area with the least number of possibilities and restricting it continues until the whole map is defined by terrain! 
 
 <div style="text-align: center;">
@@ -29,10 +31,12 @@ One benefit of the versatility of the WFC method is that multiple rounds of the 
     <img src="/projects/wavecollapse/wc33.gif" alt="GIF"  style="display: block; margin-left: auto; margin-right: auto;">
 </div>
 
+# Additional Resources
 WFC is particularly useful in applications like terrain generation and level design in games, where it can produce unique, complex, and varied results from simple examples. It can also be used for much more than the simple terrain generation shown on this site - check out <a href="https://github.com/mxgmn/WaveFunctionCollapse" target="_blank">the official GitHub repository</a>  for the Wave Function Collapse algorithm, containing the source code and documentation, as well as some cool examples of how it can be used in a variety of ways! 
 
 If you're still interested, you can watch <a href="https://m.youtube.com/watch?v=qRtrj6Pua2A" target="_blank">Coding Train teach how to create your own WFC algorithm</a> with additional examples, or visit my GitHub repositories for this project in <a href="https://github.com/natemcoleman/MatlabWaveCollapseFunction" target="_blank">Matlab</a> and <a href="https://github.com/natemcoleman/WaveCollapsePython" target="_blank">Python</a>. 
 
+# Interactive Example
 Play with the example below and watch terrain be generated using this method to create a map-like scene with water, sand, grass, rocks, and snow. Use the slider to control the speed, and click the button to create a new map!
 
 <!DOCTYPE html>
@@ -283,8 +287,8 @@ Play with the example below and watch terrain be generated using this method to 
 </body>
 </html>
 
-<br>
-
+<br><br><br>
+# Additional Examples
 <div style="text-align: center;">
     <img src="/projects/wavecollapse/matlab/WaveCollapse23.gif" alt="GIF"  style="display: block; margin-left: auto; margin-right: auto;">
     <img src="/projects/wavecollapse/matlab/WaveCollapse24.gif" alt="GIF"  style="display: block; margin-left: auto; margin-right: auto;">
