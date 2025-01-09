@@ -8,11 +8,25 @@ tags: ["python"]
 cover:
     image: "projects/wavecollapse/wc7.gif"
 ---
+<!--![Main](/projects/wavecollapse/terrainTest2_1.png)
+![GIF](/projects/wavecollapse/WaveCollapse1.gif)-->
 
-<!--
-![Main](/projects/wavecollapse/terrainTest2_1.png)
-![GIF](/projects/wavecollapse/WaveCollapse1.gif)
--->
+The Wave Function Collapse (WFC) algorithm is a procedural content generation technique used to create unique and visually appealing patterns or structures based on a given input. It works by analyzing a small example pattern and then generating a larger output that maintains the local properties and rules of the input.
+
+The algorithm is inspired by quantum mechanics, where the "wave function" represents all possible states of a system. In the context of WFC, each cell in the output grid can be in multiple states (e.g., different tiles or patterns) until constraints from neighboring cells collapse it into a single state. This process continues until the entire grid is filled with a coherent pattern that resembles the input.
+
+WFC is particularly useful in applications like terrain generation, texture synthesis, and level design in games, where it can produce complex and varied results from simple examples.
+
+You can watch terrain be generated using this method to create a map-like scene with water, sand, grass, rocks, and snow. Use the slider to control the speed, and use the button to create a new map!
+
+For more detailed information, you can check out the following resources:
+
+<a href="https://robertheaton.com/2018/12/17/wavefunction-collapse-algorithm/" target="_blank">Wave Function Collapse Algorithm by Robert Heaton</a>: A very good, simple explanation of how the Wave Function Collapse Algorithm works by Robert Heaton. He uses some good examples and illustrations.
+
+<a href="https://github.com/mxgmn/WaveFunctionCollapse" target="_blank">Wave Function Collapse GitHub Repository</a>: The official GitHub repository for the Wave Function Collapse algorithm, containing the source code and documentation, as well as some cool examples of how it can be used in a variety of circumstances. 
+
+<a href="https://m.youtube.com/watch?v=qRtrj6Pua2A" target="_blank">Wave Function Collapse YouTube Video</a>: A YouTube video that visually demonstrates the Wave Function Collapse algorithm in action and how to go about coding it.
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -23,8 +37,8 @@ cover:
     <style>
         .grid {
             display: grid;
-            grid-template-columns: repeat(15, 20px);
-            grid-template-rows: repeat(15, 20px);
+            grid-template-columns: repeat(35, 15px);
+            grid-template-rows: repeat(35, 15px);
             gap: 0px;
             margin-bottom: 20px;
         }
@@ -61,17 +75,24 @@ cover:
         cursor: pointer;
         transition-duration: 0.4s;
     }
+<<<<<<< HEAD
     .button-container button:hover {
         background-color: white;
         color: black;
     }
+=======
+>>>>>>> wave_collapse
 </style>
     <div class="grid" id="grid"></div>
      <div style="display: flex; flex-direction: row; align-items: center; gap: 35px; justify-content: center;">     <div class="button-container">
             <button id="resetButton">Reset</button>
         </div>
+<<<<<<< HEAD
         <input type="range" id="speedSlider" name="speedSlider" min="1" max="10" value="5">
         <label for="speedSlider">Speed: <span id="sliderValue">5</span></label>
+=======
+        <input type="range" id="speedSlider" name="speedSlider" min="1" max="10" value="5", style="width: 300px;">
+>>>>>>> wave_collapse
         <script>
             const speedSlider = document.getElementById('speedSlider');
             const sliderValue = document.getElementById('sliderValue');
@@ -81,11 +102,16 @@ cover:
         </script>       
     </div>
     <script>
+<<<<<<< HEAD
         //    <button id="collapseButton">Collapse Grid</button>
+=======
+        //<label for="speedSlider">Speed: <span id="sliderValue">5</span></label>
+        //<button id="collapseButton">Collapse Grid</button>
+>>>>>>> wave_collapse
          //<button id="collapseOneButton">Create</button>
         const gridElement = document.getElementById('grid');
         const resetButton = document.getElementById('resetButton');
-        const gridSize = 15;
+        const gridSize = 35;
         const states = [0, 1, 2, 3, 4];
         let grid = [];
         initializeGrid();
@@ -93,8 +119,8 @@ cover:
             grid = Array.from({ length: gridSize }, () => 
                 Array.from({ length: gridSize }, () => [...states])
             );
-            const n = 1; // Number of cells to be state 0
-            const m = 1; // Number of cells to be state 6
+            const n = 8; // Number of cells to be state 0
+            const m = 8; // Number of cells to be state 6
             function setRandomCellsToState(state, count) {
                 let cellsSet = 0;
                 while (cellsSet < count) {
@@ -110,25 +136,30 @@ cover:
             setRandomCellsToState(0, n);
             setRandomCellsToState(4, m);
             renderGrid();
-            console.log(grid);
         }
         function collapseCell(x, y) {
             const possibleStates = grid[x][y];
-            const state = possibleStates[Math.floor(Math.random() * possibleStates.length)];
+            let rand_num = Math.random();
+            const state = possibleStates[Math.floor(rand_num * possibleStates.length)];
             grid[x][y] = [state];
             propagate(x, y, state);
         }
         function propagate(x, y, state) {
             const neighbors = [
                 [x - 1, y], [x + 1, y],
-                [x, y - 1], [x, y + 1]
+                [x, y - 1], [x, y + 1],
+                [x - 1, y - 1], [x + 1, y + 1],
+                [x + 1, y - 1], [x - 1, y + 1]
             ];
             for (let [nx, ny] of neighbors) {
                 if (nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize) {
-                    grid[nx][ny] = grid[nx][ny].filter(s => isValidNeighbor(state, s));
                     if (grid[nx][ny].length > 1) {
+                         grid[nx][ny] = grid[nx][ny].filter(s => isValidNeighbor(state, s));
                         if (grid[nx][ny].length === 1) {
+<<<<<<< HEAD
                             //setTimeout(() => propagate(nx, ny, grid[nx][ny][0]), 1000);
+=======
+>>>>>>> wave_collapse
                             propagate(nx, ny, grid[nx][ny][0])
                         }
                     }
@@ -138,11 +169,11 @@ cover:
         }
         function isValidNeighbor(state, neighborState) {
             const rules = {
-                0: [0, 1, 2],
+                0: [0, 1],
                 1: [0, 1, 2],
                 2: [1, 2, 3],
                 3: [2, 3, 4],
-                4: [3, 4, 2],
+                4: [3, 4],
             };
             return rules[state].includes(neighborState);
         }
@@ -223,7 +254,7 @@ cover:
                 }
             }
             const speedSlider = document.getElementById('speedSlider');
-            const sliderValue = speedSlider.value;
+            const sliderValue = speedSlider.value*2;
             for (let i = 0; i < sliderValue; i++) {
                 if (cellsToCollapse.length > 0) {
                     cellsWithZeroStates = cellsToCollapse.filter(([x, y]) => grid[x][y].length === 0);

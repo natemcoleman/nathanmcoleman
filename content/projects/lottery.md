@@ -3,7 +3,7 @@ title: "How to Win the Lottery"
 description: "Analysis of historically lucky triplets"
 # date: January 2025
 draft: false
-weight: 100
+weight: 200
 tags: ["matlab"]
 cover:
     image: "projects/lottery/cover.gif"
