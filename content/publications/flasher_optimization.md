@@ -19,8 +19,14 @@ For the source code and additional materials, you can visit the GitHub repositor
 <a href="https://github.com/natemcoleman/optimization" target="_blank">GitHub Repository</a>
 
 
-![Origami Flasher pattern overview](/publications/flasher_optimization/FlasherOverviewV2.PNG)
+<!-- ![Origami Flasher pattern overview](/publications/flasher_optimization/FlasherOverviewV2.PNG) -->
 
-![Optimized Flasher Prototype - Z Frame](/publications/flasher_optimization/z.gif)
+<div style="text-align: center;">
+    <img src="/publications/flasher_optimization/z.gif" alt="Optimized Flasher Prototype - Z Frame"  style="display: block; margin-left: auto; margin-right: auto;">
+    <img src="/publications/flasher_optimization/cross.gif" alt="Optimized Flasher Prototype - Cross"  style="display: block; margin-left: auto; margin-right: auto;">
+    <img src="/publications/flasher_optimization/diamond.gif" alt="Optimized Flasher Prototype - Diamond"  style="display: block; margin-left: auto; margin-right: auto;">
+</div>
+
+<!-- ![Optimized Flasher Prototype - Z Frame](/publications/flasher_optimization/z.gif)
 ![Optimized Flasher Prototype - Cross](/publications/flasher_optimization/cross.gif)
-![Optimized Flasher Prototype - Diamond](/publications/flasher_optimization/diamond.gif)
+![Optimized Flasher Prototype - Diamond](/publications/flasher_optimization/diamond.gif) -->
