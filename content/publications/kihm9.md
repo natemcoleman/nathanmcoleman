@@ -1,17 +1,16 @@
 ---
-title: "A Framework For Origami Flasher Pattern Optimization To Mitigate Rigid-Foldability Issues"
-description: "Published in International Design Engineering Technical Conferences & Computers and Information in Engineering Conference 2023"
+title: "The KiHM-9: A Self-deploying PicoSat Holographic Metasurface Antenna (HMA) Design"
+description: "Published in AIAA SCITECH 2024 Small Satellite Deployable Structures Session"
 # date: January 2025
-draft: true
-weight: 100
-tags: ["python", "optimization"]
+draft: false
+weight: 200
+tags: ["origami", "smallsat"]
 cover:
-    image: "/publications/flasher_optimization/OptimizedPrototype_Open.jpg"
+    image: "/publications/kihm9/cover.jpg"
 ---
 
 For more details, you can visit the publication page on the ASME Digital Collection:
-<a href="https://asmedigitalcollection.asme.org/IDETC-CIE/proceedings-abstract/IDETC-CIE2023/87363/V008T08A050/1170785" target="_blank">View Publication</a>
+<a href="https://arc.aiaa.org/doi/abs/10.2514/6.2024-1429" target="_blank">View Publication</a>
 
-
-If you don't want to pay $25 to ASME, you can download the PDF of the publication using the link below:
-<a href="/publications/flasher_optimization/IDETC_FlasherOptimization.pdf" target="_blank">Download PDF</a>
+You can view and download the PDF of the publication using the link below:
+<a href="/publications/kihm9/AIAASciTech_KiHM_9.pdf" target="_blank">Download PDF</a>

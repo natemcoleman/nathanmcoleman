@@ -3,7 +3,7 @@ title: "Wave Function Collapse"
 description: "Generating pseudo-random scenes"
 # date: January 2025
 draft: false
-weight: 100
+weight: 50
 tags: ["python"]
 cover:
     image: "projects/wavecollapse/wc7.gif"

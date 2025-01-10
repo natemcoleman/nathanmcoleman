@@ -11,3 +11,6 @@ cover:
 
 ![Main](/projects/thegame/goodExample_60Cards_2.png)
 ![GIF](/projects/thegame/50to100_NotSaved_Repeated.gif)
+
+For the source code and additional materials, you can visit the GitHub repository:
+<a href="https://github.com/natemcoleman/TheGame" target="_blank">GitHub Repository</a>
