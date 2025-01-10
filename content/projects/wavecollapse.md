@@ -9,7 +9,7 @@ cover:
     image: "projects/wavecollapse/wc7.gif"
 ---
 
-Read about the Wave Function Collapse algorithm below, or [skip](#interactive-example) to the interactive example!
+Read about the Wave Function Collapse algorithm below, or [skip to an interactive example!](#interactive-example)
 
 # Introduction
 The Wave Function Collapse (WFC) algorithm is a way to procedurally generate content used to create unique patterns or structures based on a given input. It works by using an example, which can be rules that tell it how the pattern should look or an existing pattern it can analyze, and then generating a large output that follows the rules established. 
