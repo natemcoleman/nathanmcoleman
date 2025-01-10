@@ -22,4 +22,4 @@ For more details, you can visit the publication page on the ASME Digital Collect
 
 
 
-![Graduate Experience](/experience/grad.jpg)
+![Graduate Experience](/experience/grad.JPG)

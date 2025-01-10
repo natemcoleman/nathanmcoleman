@@ -13,4 +13,4 @@ weight: 800
 - Supervised, motivated, and trained 130 other volunteers, including teaching 20+ workshops on goal setting, relationship building, communication, conflict resolution, and leadership skills
 - Maintained an 80+ hour work week for 24 months, working in the Portuguese language
 
-![Mindelo](/experience/mindelo.jpg)
+![Mindelo](/experience/mindelo.JPG)
