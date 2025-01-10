@@ -21,11 +21,14 @@ For the source code and additional materials, you can visit the GitHub repositor
 
 <!-- ![Origami Flasher pattern overview](/publications/flasher_optimization/FlasherOverviewV2.PNG) -->
 
-<div style="text-align: center;">
+You can view and download the gif here:
+<a href="/publications/flasher_optimization/z.gif" target="_blank">gif donwload</a>
+
+<!-- <div style="text-align: center;">
     <img src="/publications/flasher_optimization/z.gif" alt="Optimized Flasher Prototype - Z Frame"  style="display: block; margin-left: auto; margin-right: auto;">
     <img src="/publications/flasher_optimization/cross.gif" alt="Optimized Flasher Prototype - Cross"  style="display: block; margin-left: auto; margin-right: auto;">
     <img src="/publications/flasher_optimization/diamond.gif" alt="Optimized Flasher Prototype - Diamond"  style="display: block; margin-left: auto; margin-right: auto;">
-</div>
+</div> -->
 
 <!-- ![Optimized Flasher Prototype - Z Frame](/publications/flasher_optimization/z.gif)
 ![Optimized Flasher Prototype - Cross](/publications/flasher_optimization/cross.gif)
