@@ -2,7 +2,7 @@
 title: 'Value of Communication in "The Game"'
 description: "Probability of success without teamwork"
 # date: January 2025
-draft: false
+draft: true
 weight: 200
 tags: ["matlab"]
 cover:

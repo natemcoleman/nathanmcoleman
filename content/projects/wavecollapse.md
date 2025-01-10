@@ -59,7 +59,7 @@ Play with the example below and watch terrain be generated using this method to 
             border: 0px solid #ccc;
         }
         .state-0 { background-color:rgb(41, 140, 185); } /* Water */
-        .state-1 { background-color:rgb(187, 120, 57); } /* Sand */
+        .state-1 { background-color: #e1bf92; } /* Sand */
         .state-2 { background-color: #a0b741; } /* Grass */
         .state-3 { background-color:rgb(113, 113, 113); } /* Mountain */
         .state-4 { background-color: #ffffff; } /* Snow */
@@ -241,18 +241,20 @@ Play with the example below and watch terrain be generated using this method to 
             let cellsToCollapse = [];
             for (let x = 0; x < gridSize; x++) {
                 for (let y = 0; y < gridSize; y++) {
-                    cellsToCollapse.push([x, y]);
+                    if (grid[x][y].length > 1) { // Only include cells that have not been collapsed
+                        cellsToCollapse.push([x, y]);
+                    }
                 }
             }
             const speedSlider = document.getElementById('speedSlider');
-            const sliderValue = speedSlider.value*2;
+            const sliderValue = speedSlider.value * 2;
             for (let i = 0; i < sliderValue; i++) {
                 if (cellsToCollapse.length > 0) {
-                    cellsWithZeroStates = cellsToCollapse.filter(([x, y]) => grid[x][y].length === 0);
+                    const cellsWithZeroStates = cellsToCollapse.filter(([x, y]) => grid[x][y].length === 0);
                     if (cellsWithZeroStates.length > 0) {
                         const [x, y] = cellsWithZeroStates[Math.floor(Math.random() * cellsWithZeroStates.length)];
                         pickNeighbor(x, y);
-                        cellsWithZeroStates = cellsToCollapse.filter(([x, y]) => grid[x][y].length === 0);
+                        cellsToCollapse = cellsToCollapse.filter(([cx, cy]) => grid[cx][cy].length > 1); // Update cellsToCollapse
                     }
                     const cellsWithMultipleStates = cellsToCollapse.filter(([x, y]) => grid[x][y].length > 1);
                     if (cellsWithMultipleStates.length > 0) {
@@ -260,12 +262,38 @@ Play with the example below and watch terrain be generated using this method to 
                         const minStateCells = cellsWithMultipleStates.filter(([x, y]) => grid[x][y].length === minStates);
                         const [x, y] = minStateCells[Math.floor(Math.random() * minStateCells.length)];
                         collapseCell(x, y);
-                    }   
-                //else
-                //    clearInterval(intervalId);
+                        cellsToCollapse = cellsToCollapse.filter(([cx, cy]) => grid[cx][cy].length > 1); // Update cellsToCollapse
+                    }
                 }
             }
         }
+        // function collapseOneCell() {
+        //     let cellsToCollapse = [];
+        //     for (let x = 0; x < gridSize; x++) {
+        //         for (let y = 0; y < gridSize; y++) {
+        //             cellsToCollapse.push([x, y]);
+        //         }
+        //     }
+        //     const speedSlider = document.getElementById('speedSlider');
+        //     const sliderValue = speedSlider.value*2;
+        //     for (let i = 0; i < sliderValue; i++) {
+        //         if (cellsToCollapse.length > 0) {
+        //             cellsWithZeroStates = cellsToCollapse.filter(([x, y]) => grid[x][y].length === 0);
+        //             if (cellsWithZeroStates.length > 0) {
+        //                 const [x, y] = cellsWithZeroStates[Math.floor(Math.random() * cellsWithZeroStates.length)];
+        //                 pickNeighbor(x, y);
+        //                 cellsWithZeroStates = cellsToCollapse.filter(([x, y]) => grid[x][y].length === 0);
+        //             }
+        //             const cellsWithMultipleStates = cellsToCollapse.filter(([x, y]) => grid[x][y].length > 1);
+        //             if (cellsWithMultipleStates.length > 0) {
+        //                 const minStates = Math.min(...cellsWithMultipleStates.map(([x, y]) => grid[x][y].length));
+        //                 const minStateCells = cellsWithMultipleStates.filter(([x, y]) => grid[x][y].length === minStates);
+        //                 const [x, y] = minStateCells[Math.floor(Math.random() * minStateCells.length)];
+        //                 collapseCell(x, y);
+        //             }   
+        //         }
+        //     }
+        // }
         //collapseButton.addEventListener('click', () => {
         //    collapseGrid();
         //});
