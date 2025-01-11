@@ -17,9 +17,6 @@ weight: 200
 - Author, “[The KiHM-9: A Novel Self-deploying PicoSat Antenna Design for Reflectarray Antennas](/publications/kihm9)”, Published and presented in the 37th Annual Small Satellite Conference
 - Author, “[Framework For Designing And Improving Novel Origami Patterns Using The Hamiltonian Circuit Methodology](/publications/hamiltonian)”, Published and presented in the 6th International Conference on Reconfigurable Mechanisms and Robots
 
-
-
 You can view and download the PDF of my thesis <a href="/experience/Coleman_Thesis_Final_Version.pdf" target="_blank">here</a> or visit <a href="https://scholarsarchive.byu.edu/etd/10361/" target="_blank">BYU's website</a> for more details. 
-For more details, you can visit the publication page on the ASME Digital Collection:
 
 ![Graduate Experience](/experience/grad.JPG)
