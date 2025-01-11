@@ -1,5 +1,5 @@
 ---
-title: "The KiHM-9: A Self-deploying PicoSat Holographic Metasurface Antenna (HMA) Design"
+title: "The KiHM-9: A Self-deploying PicoSat Holographic Metasurface Antenna Design"
 description: "Published in AIAA SCITECH 2024 Small Satellite Deployable Structures Session"
 # date: January 2025
 draft: false

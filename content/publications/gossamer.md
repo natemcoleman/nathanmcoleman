@@ -1,6 +1,6 @@
 ---
 title: "Modeling And Analysis Of Inter-Panel Slipping For The Design Of Rolled Gossamer Arrays"
-description: "Published in International Design Engineering Technical Conferences & Computers and Information in Engineering Conference 2024"
+description: "Published in the Journal of Mechanisms and Robotics IDETC24 Special Issue and the International Design Engineering Technical Conferences & Computers and Information in Engineering Conference 2024"
 # date: January 2025
 draft: false
 weight: 400
@@ -14,6 +14,9 @@ For more details, you can visit the publication page on the ASME Digital Collect
 
 You can view and download the PDF of the publication using the link below:
 <a href="/publications/gossamer/IDETC_Rolled_Gossamer_Slip_Modeling.pdf" target="_blank">Download PDF</a>
+
+You can view and download the PDF of the Journal of Mechanisms and Robotics publication using the link below:
+<a href="/publications/gossamer/FMANU-JMR-24-1460.pdf" target="_blank">Download PDF</a>
 
 For the source code and additional materials, you can visit the GitHub repository:
 <a href="https://github.com/natemcoleman/RolledMembraneMatlab" target="_blank">GitHub Repository</a>
