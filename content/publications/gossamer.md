@@ -6,8 +6,13 @@ draft: false
 weight: 400
 tags: ["matlab", "optimization"]
 cover:
-    image: "publications/gossamer/RollModelSimpleExample.jpg"
+    image: "publications/gossamer/DoubleRoll_HingeDistances_7Hinges_Fine.GIF"
+    # image: "publications/gossamer/Model_DoubleRoll.jpg"
 ---
+
+<!-- <div style="text-align: center;">
+    <img src="/publications/gossamer/DoubleRoll_HingeDistances_7Hinges_Fine.GIF" alt="GIF"  style="display: block; margin-left: auto; margin-right: auto;">
+</div> -->
 
 For more details, you can visit the publication page on the ASME Digital Collection:
 <a href="https://asmedigitalcollection.asme.org/mechanismsrobotics/article-abstract/17/4/044505/1207337/Modeling-and-Analysis-of-Inter-Panel-Slipping-for?redirectedFrom=fulltext" target="_blank">View Publication</a>

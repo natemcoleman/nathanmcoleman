@@ -27,6 +27,9 @@ For the source code and additional materials, you can visit the GitHub repositor
     <img src="/publications/flasher_optimization/diamond.GIF" alt="Optimized Flasher Prototype - Diamond"  style="display: block; margin-left: auto; margin-right: auto;">
 </div>
 
+![Flasher Closed](/publications/flasher_optimization/OptimizedPrototype_Closed.jpg)
+
+
 <!-- ![Optimized Flasher Prototype - Z Frame](/publications/flasher_optimization/z.gif)
 ![Optimized Flasher Prototype - Cross](/publications/flasher_optimization/cross.gif)
 ![Optimized Flasher Prototype - Diamond](/publications/flasher_optimization/diamond.gif) -->
