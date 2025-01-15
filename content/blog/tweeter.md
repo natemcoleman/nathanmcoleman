@@ -1,22 +1,11 @@
 ---
 title: "Tweets"
 description: "A feed of short messages that look like tweets"
-draft: true
+draft: false
 ---
 
 <div id="tweets">
-    <div class="tweet">
-        <p><strong>@natec</strong> Just finished a new project! #excited</p>
-        <p><small>2h ago</small></p>
-    </div>
-    <div class="tweet">
-        <p><strong>@natec</strong> Working on some new ideas for my next blog post. Stay tuned! #blogging</p>
-        <p><small>1d ago</small></p>
-    </div>
-    <div class="tweet">
-        <p><strong>@natec</strong> Exploring the world of 3D printing. It's amazing what you can create! #3Dprinting</p>
-        <p><small>3d ago</small></p>
-    </div>
+    <!-- Existing tweets will be loaded here -->
 </div>
 
 <form id="tweetForm">
@@ -31,7 +20,6 @@ draft: true
     margin-bottom: 10px;
     border-radius: 10px;
     background-color: #ffffff;
-    color: #000000;
 }
 .tweet p {
     margin: 5px 0;
@@ -46,24 +34,6 @@ form {
     margin-top: 20px;
 }
 </style>
-<!-- 
-<script>
-function addTweet() {
-    const tweetText = document.getElementById('tweetText').value;
-    if (tweetText.trim() === '') return;
-
-    const tweetContainer = document.createElement('div');
-    tweetContainer.className = 'tweet';
-    tweetContainer.innerHTML = `
-        <p><strong>@natec</strong> ${tweetText}</p>
-        <p><small>Just now</small></p>
-    `;
-
-    document.getElementById('tweets').appendChild(tweetContainer);
-    document.getElementById('tweetText').value = '';
-}
-</script> -->
-
 
 <script>
 async function addTweet() {
@@ -95,5 +65,25 @@ async function addTweet() {
         console.error('Failed to add tweet');
     }
 }
-</script>
 
+async function loadTweets() {
+    const response = await fetch('/.netlify/functions/tweets.json');
+    if (response.ok) {
+        const tweets = await response.json();
+        const tweetsContainer = document.getElementById('tweets');
+        tweets.forEach(tweet => {
+            const tweetContainer = document.createElement('div');
+            tweetContainer.className = 'tweet';
+            tweetContainer.innerHTML = `
+                <p><strong>${tweet.username}</strong> ${tweet.text}</p>
+                <p><small>${new Date(tweet.timestamp).toLocaleString()}</small></p>
+            `;
+            tweetsContainer.appendChild(tweetContainer);
+        });
+    } else {
+        console.error('Failed to load tweets');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadTweets);
+</script>

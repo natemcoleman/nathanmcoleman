@@ -20,11 +20,11 @@ menu:
     - identifier: publications
       name: Publications
       url: /publications
-      weight: 30
+      weight: 50
     - identifier: experience
       name: Experience
       url: /experience
-      weight: 50
+      weight: 40
     - identifier: search
       name: Search
       url: /search
