@@ -1,16 +1,19 @@
 ---
-title: "Tweets"
-description: "A feed of short messages that look like tweets"
+title: "Feedback"
+description: Let me know what you think of my projects and what you'd like to see in the future!
 draft: false
 ---
 
 <div id="tweets">
-    <!-- Existing tweets will be loaded here -->
+    <!-- <script>
+    document.addEventListener('DOMContentLoaded', loadTweets);
+    </script> -->
 </div>
 
 <form id="tweetForm">
+    <input type="text" id="username" placeholder="Username" style="width: 100%; margin-bottom: 10px;">
     <textarea id="tweetText" placeholder="What's happening?" rows="3" style="width: 100%;"></textarea>
-    <button type="button" onclick="addTweet()">Tweet</button>
+    <button type="button" onclick="addTweet()">Post</button>
 </form>
 
 <style>
@@ -20,9 +23,12 @@ draft: false
     margin-bottom: 10px;
     border-radius: 10px;
     background-color: #ffffff;
-}
+
+    border: 5px solidrgb(31, 31, 31);
+
 .tweet p {
     margin: 5px 0;
+    color:rgb(27, 27, 27); 
 }
 .tweet strong {
     color: #1da1f2;
@@ -37,16 +43,17 @@ form {
 
 <script>
 async function addTweet() {
+    const username = document.getElementById('username').value;
     const tweetText = document.getElementById('tweetText').value;
-    if (tweetText.trim() === '') return;
+    if (username.trim() === '' || tweetText.trim() === '') return;
 
     const tweet = {
-        username: '@natec',
+        username: '@' + username,
         text: tweetText,
         timestamp: new Date().toISOString(),
     };
 
-    const response = await fetch('/.netlify/functions/addTweet', {
+    const response = await fetch('/netlify/functions/addTweet.js', {
         method: 'POST',
         body: JSON.stringify(tweet),
     });
@@ -67,7 +74,7 @@ async function addTweet() {
 }
 
 async function loadTweets() {
-    const response = await fetch('/.netlify/functions/tweets.json');
+    const response = await fetch('/netlify/functions/tweets.json');
     if (response.ok) {
         const tweets = await response.json();
         const tweetsContainer = document.getElementById('tweets');
