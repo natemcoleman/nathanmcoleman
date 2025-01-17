@@ -4,8 +4,6 @@ description: "Let me know what you think of my projects and what you'd like to s
 draft: false
 ---
 
-<!DOCTYPE html>
-<html lang="en">
 <div id="tweets"></div>
 
 <form id="tweetForm" onsubmit="return addTweet(event)">
@@ -52,7 +50,6 @@ form {
     }
 }
 </style>
-</html>
 
 <script>
 async function addTweet(event) {
