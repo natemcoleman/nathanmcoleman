@@ -6,10 +6,10 @@ draft: false
 
 <div id="tweets"></div>
 
-<form id="tweetForm" onsubmit="return addTweet(event)">
-    <input type="text" id="username" placeholder="Username" style="width: 100%; margin-bottom: 10px;" required>
-    <textarea id="tweetText" placeholder="What's happening?" rows="3" style="width: 100%;" required></textarea>
-    <button type="submit">Post</button>
+<form id="tweetForm">
+    <input type="text" id="username" placeholder="Username" style="width: 100%; margin-bottom: 10px;">
+    <textarea id="tweetText" placeholder="What's happening?" rows="3" style="width: 100%;"></textarea>
+    <button type="button" onclick="addTweet()">Post</button>
 </form>
 
 <style>
@@ -52,9 +52,7 @@ form {
 </style>
 
 <script>
-async function addTweet(event) {
-    event.preventDefault(); // Prevent the form from submitting the traditional way
-
+async function addTweet() {
     const username = document.getElementById('username').value;
     const tweetText = document.getElementById('tweetText').value;
     if (username.trim() === '' || tweetText.trim() === '') return;
@@ -65,7 +63,7 @@ async function addTweet(event) {
         timestamp: new Date().toISOString(),
     };
 
-    const response = await fetch('/netlify/functions/addTweet', {
+    const response = await fetch('/.netlify/functions/addTweet', {
         method: 'POST',
         body: JSON.stringify(tweet),
     });
@@ -87,7 +85,7 @@ async function addTweet(event) {
 }
 
 async function loadTweets() {
-    const response = await fetch('/netlify/functions/tweets.json');
+    const response = await fetch('/.netlify/functions/tweets.json');
     if (response.ok) {
         const tweets = await response.json();
         const tweetsContainer = document.getElementById('tweets');
