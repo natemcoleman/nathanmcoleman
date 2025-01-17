@@ -1,18 +1,26 @@
 ---
 title: "Feedback"
 description: Let me know what you think of my projects and what you'd like to see in the future!
-draft: false
+draft: true
 ---
 
-<!DOCTYPE html>
+<form name="contact" netlify>
+  <p>
+    <label>Name <input type="text" name="name" /></label>
+  </p>
+  <p>
+    <label>Email <input type="email" name="email" /></label>
+  </p>
+  <p>
+    <button type="submit">Send</button>
+  </p>
+</form>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <div id="tweets">
-    <!-- <script>
-    document.addEventListener('DOMContentLoaded', loadTweets);
-    </script> -->
 </div>
 
-<form id="tweetForm">
+<form id="tweetForm" method="POST" data-netlify="true">
     <input type="text" id="username" placeholder="Username" style="width: 100%; margin-bottom: 10px;">
     <textarea id="tweetText" placeholder="What's happening?" rows="3" style="width: 100%;"></textarea>
     <button type="button" onclick="addTweet()">Post</button>
@@ -109,4 +117,4 @@ async function loadTweets() {
 
 document.addEventListener('DOMContentLoaded', loadTweets);
 </script>
-</html>
+</html> -->

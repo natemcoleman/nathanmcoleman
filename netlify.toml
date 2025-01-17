@@ -1,0 +1,11 @@
+[build]
+  publish = "public"
+  command = "hugo --gc --minify"
+
+[functions]
+  directory = "netlify/functions"
+
+[[redirects]]
+  from = "/.netlify/functions/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
