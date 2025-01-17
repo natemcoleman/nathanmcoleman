@@ -4,6 +4,8 @@ description: Let me know what you think of my projects and what you'd like to se
 draft: false
 ---
 
+<!DOCTYPE html>
+<html lang="en">
 <div id="tweets">
     <!-- <script>
     document.addEventListener('DOMContentLoaded', loadTweets);
@@ -18,14 +20,14 @@ draft: false
 
 <style>
 .tweet {
-    border: 1px solid #e1e8ed;
+    /* border: 1px solid #e1e8ed; */
     padding: 10px;
     margin-bottom: 10px;
     border-radius: 10px;
     background-color: #ffffff;
-
-    border: 5px solidrgb(31, 31, 31);
-
+    border: 5px #000000;
+    color: #000000; /* Ensure text is black */
+}
 .tweet p {
     margin: 5px 0;
     color:rgb(27, 27, 27); 
@@ -38,6 +40,19 @@ draft: false
 }
 form {
     margin-top: 20px;
+}
+@media (prefers-color-scheme: dark) {
+    .tweet {
+        background-color: #ffffff; /* Ensure background is white */
+        color: #000000; /* Ensure text is black */
+    }
+    .tweet p {
+        color: #000000; /* Ensure text is black */
+    }
+    input[type="text"], textarea {
+        background-color: #333333; 
+        color: #ffffff; 
+    }
 }
 </style>
 
@@ -94,3 +109,4 @@ async function loadTweets() {
 
 document.addEventListener('DOMContentLoaded', loadTweets);
 </script>
+</html>
