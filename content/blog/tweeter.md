@@ -1,10 +1,16 @@
 ---
 title: "Feedback"
-description: "Let me know what you think of my projects and what you'd like to see in the future!"
+description: Let me know what you think of my projects and what you'd like to see in the future!
 draft: false
 ---
 
-<div id="tweets"></div>
+<!DOCTYPE html>
+<html lang="en">
+<div id="tweets">
+    <!-- <script>
+    document.addEventListener('DOMContentLoaded', loadTweets);
+    </script> -->
+</div>
 
 <form id="tweetForm">
     <input type="text" id="username" placeholder="Username" style="width: 100%; margin-bottom: 10px;">
@@ -14,16 +20,17 @@ draft: false
 
 <style>
 .tweet {
-    border: 1px solid #e1e8ed;
+    /* border: 1px solid #e1e8ed; */
     padding: 10px;
     margin-bottom: 10px;
     border-radius: 10px;
     background-color: #ffffff;
+    border: 5px #000000;
     color: #000000; /* Ensure text is black */
 }
 .tweet p {
     margin: 5px 0;
-    color: rgb(27, 27, 27);
+    color:rgb(27, 27, 27); 
 }
 .tweet strong {
     color: #1da1f2;
@@ -34,8 +41,6 @@ draft: false
 form {
     margin-top: 20px;
 }
-
-/* Dark mode specific styles */
 @media (prefers-color-scheme: dark) {
     .tweet {
         background-color: #ffffff; /* Ensure background is white */
@@ -45,8 +50,8 @@ form {
         color: #000000; /* Ensure text is black */
     }
     input[type="text"], textarea {
-        background-color: #333333; /* Dark background for input fields */
-        color: #ffffff; /* White text for input fields */
+        background-color: #333333; 
+        color: #ffffff; 
     }
 }
 </style>
@@ -77,7 +82,6 @@ async function addTweet() {
         `;
 
         document.getElementById('tweets').appendChild(tweetContainer);
-        document.getElementById('username').value = '';
         document.getElementById('tweetText').value = '';
     } else {
         console.error('Failed to add tweet');
@@ -85,7 +89,7 @@ async function addTweet() {
 }
 
 async function loadTweets() {
-    const response = await fetch('/.netlify/functions/tweets.json');
+    const response = await fetch('/netlify/functions/tweets.json');
     if (response.ok) {
         const tweets = await response.json();
         const tweetsContainer = document.getElementById('tweets');
@@ -105,3 +109,4 @@ async function loadTweets() {
 
 document.addEventListener('DOMContentLoaded', loadTweets);
 </script>
+</html>
