@@ -65,7 +65,7 @@ async function addTweet(event) {
         timestamp: new Date().toISOString(),
     };
 
-    const response = await fetch('/netlify/functions/addTweet', {
+    const response = await fetch('/netlify/functions/addTweet.js', {
         method: 'POST',
         body: JSON.stringify(tweet),
     });
