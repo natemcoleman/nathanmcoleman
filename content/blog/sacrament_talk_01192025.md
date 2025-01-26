@@ -79,7 +79,7 @@ In the Doctrine and Covenants, God gives us the following counsel to draw closer
 
 Can you know what Joseph Smith knew? Can you experience what he experienced? The Prophet Joseph Smith taught, “God hath not revealed anything to Joseph, but what He will make known unto the Twelve, and even the least Saint may know all things as fast as he is able to bear them”<a href="https://history.churchofjesuschrist.org/content/joseph-comes-to-know-god?lang=eng" target="_blank">(History of the Church, 3:380)</a>.
 But he added, perhaps as a warning to any who would seek cheap knowledge, “Let us here observe, that a religion that does not require the sacrifice of all things never has power sufficient to produce the faith necessary unto life and salvation” (<a href="https://www.churchofjesuschrist.org/study/scriptures/gs/sacrifice?lang=eng" target="_blank">Lectures on Faith, 6:7</a>). 
-What did it cost Joseph? Everything. What are we willing to give? 
+What did it cost Joseph? **Everything**. What are we willing to give? 
 
 As we covenant with God to give Him all that we have, faithfully keep our covenants with Him, and diligently seek Him, He promises that He will answer and we will find Him. 
 

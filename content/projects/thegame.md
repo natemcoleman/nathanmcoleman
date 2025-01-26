@@ -1,12 +1,12 @@
 ---
-title: '(COMING SOON) Value of Communication in "The Game"'
+title: 'Value of Communication in "The Game"'
 description: "Probability of success without teamwork"
 # date: January 2025
 draft: false
 weight: 300
 tags: ["matlab"]
 cover:
-    image: "projects/thegame/cover.gif"
+    image: "projects/thegame/cover_inf.gif"
 ---
 
 "The Game" is a cooperative card game where players work together to play cards in numerical order on multiple piles. **"The Game" requires strategic planning and communication among players to ensure that cards are played in the most efficient order possible.** We can quanitfy the value of communication by looking at the odds of winning without any coopertive play between players. Anecdotely, in a group of 4 people, the group wins around 25%-50% of games. To demonstrate this, here’s a brief overview of how the game works:
@@ -49,6 +49,7 @@ By including these simple rules in Python, we can simulate the basic gameplay. M
 Well that's disappointing. This suggests in a 100 card game, it is essentially impossible to win without communicating at all. Because we're already here, let's compare to games with a fewer number of cards.
 
 ![GIF](/projects/thegame/50to100_NotSaved_Repeated.gif)
+![GIF](/projects/thegame/cover.gif)
 
 For the source code and additional materials, you can visit the GitHub repository:
 <a href="https://github.com/natemcoleman/TheGame" target="_blank">GitHub Repository</a>
