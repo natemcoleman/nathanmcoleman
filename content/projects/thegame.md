@@ -1,5 +1,5 @@
 ---
-title: 'Value of Communication in "The Game"'
+title: '(COMING SOON) Value of Communication in "The Game"'
 description: "Probability of success without teamwork"
 # date: January 2025
 draft: false
@@ -9,7 +9,7 @@ cover:
     image: "projects/thegame/cover.gif"
 ---
 
-"The Game" is a cooperative card game where players work together to play cards in numerical order on multiple piles. Here’s a brief overview of how it works:
+"The Game" is a cooperative card game where players work together to play cards in numerical order on multiple piles. **"The Game" requires strategic planning and communication among players to ensure that cards are played in the most efficient order possible.** We can quanitfy the value of communication by looking at the odds of winning without any coopertive play between players. Anecdotely, in a group of 4 people, the group wins around 25%-50% of games. To demonstrate this, here’s a brief overview of how the game works:
 
 Objective
 - The goal of "The Game" is to play as many cards as possible in ascending or descending order on four different piles.
@@ -40,9 +40,14 @@ Winning and Losing
 - The game ends when players can no longer play any cards.
 - The fewer cards left unplayed, the better the team has performed.
 
-**"The Game" requires strategic planning and communication among players to ensure that cards are played in the most efficient order possible.** To highlight the importance
 
-![Main](/projects/thegame/goodExample_60Cards_2.png)
+# Python 
+By including these simple rules in Python, we can simulate the basic gameplay. More advanced mechanics, like optimizing each move to be the best for the entire group and maximize the chances of winning, is quite a bit more complicated, so this example uses a greedy algorithm to allow each player to do the best move for themselves. This simulates non-cooperative play, and we can see what percentage of games are won with a different number of players.
+
+![Main](/projects/thegame/100cards.png)
+
+Well that's disappointing. This suggests in a 100 card game, it is essentially impossible to win without communicating at all. Because we're already here, let's compare to games with a fewer number of cards.
+
 ![GIF](/projects/thegame/50to100_NotSaved_Repeated.gif)
 
 For the source code and additional materials, you can visit the GitHub repository:
