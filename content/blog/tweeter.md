@@ -1,7 +1,9 @@
 ---
 title: "Feed"
 description: 
-draft: false
+draft: true
+weight: 200
+
 ---
 
 <div id="tweets">
@@ -40,37 +42,39 @@ form {
 </style>
 
 <script>
-async function addTweet() {
-    const username = document.getElementById('username').value;
-    const tweetText = document.getElementById('tweetText').value;
-    if (username.trim() === '' || tweetText.trim() === '') return;
+// async function addTweet() {
+//     const username = document.getElementById('username').value;
+//     const tweetText = document.getElementById('tweetText').value;
+//     if (username.trim() === '' || tweetText.trim() === '') return;
 
-    const tweet = {
-        username: 'Nate',
-        // username: '@n' + username,
-        text: tweetText,
-        timestamp: new Date().toISOString(),
-    };
+//     const tweet = {
+//         username: 'Nate',
+//         // username: '@n' + username,
+//         text: tweetText,
+//         timestamp: new Date().toISOString(),
+//     };
 
-    const response = await fetch('/netlify/functions/addTweet.js', {
-        method: 'POST',
-        body: JSON.stringify(tweet),
-    });
+//     const response = await fetch('/netlify/functions/addTweet.js', {
+//         method: 'POST',
+//         body: JSON.stringify(tweet),
+//     });
 
-    if (response.ok) {
-        const tweetContainer = document.createElement('div');
-        tweetContainer.className = 'tweet';
-        tweetContainer.innerHTML = `
-            <p><strong>${tweet.username}</strong> ${tweet.text}</p>
-            <p><small>Just now</small></p>
-        `;
+//     if (response.ok) {
+//         const tweetContainer = document.createElement('div');
+//         tweetContainer.className = 'tweet';
+//         tweetContainer.innerHTML = `
+//             <p><strong>${tweet.username}</strong> ${tweet.text}</p>
+//             <p><small>Just now</small></p>
+//         `;
 
-        document.getElementById('tweets').appendChild(tweetContainer);
-        document.getElementById('tweetText').value = '';
-    } else {
-        console.error('Failed to add tweet');
-    }
-}
+//         document.getElementById('tweets').appendChild(tweetContainer);
+//         document.getElementById('tweetText').value = '';
+//     } else {
+//         console.error('Failed to add tweet');
+//     }
+// }
+
+// <p><strong>${tweet.username}</strong> ${tweet.text}</p>
 
 async function loadTweets() {
     const response = await fetch('/netlify/functions/tweets.json');
@@ -81,8 +85,8 @@ async function loadTweets() {
             const tweetContainer = document.createElement('div');
             tweetContainer.className = 'tweet';
             tweetContainer.innerHTML = `
-                <p><strong>${tweet.username}</strong> ${tweet.text}</p>
-                <p><small>${new Date(tweet.timestamp).toLocaleString()}</small></p>
+                <p>${tweet.text}</p>
+                <p><small>${new Date(tweet.timestamp).toLocaleDateString()}</small></p>
             `;
             tweetsContainer.appendChild(tweetContainer);
         });

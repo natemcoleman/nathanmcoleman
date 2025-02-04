@@ -1,7 +1,11 @@
 [
     {
-        "username": "@FeatherMcGraw2",
+        "text": "Emily Gilmore is the best character on Gilmore Girls",
+        "timestamp": "2025-02-03"
+    },
+    
+    {
         "text": "Chamber 140",
-        "timestamp": "2025-01-01T12:00:00Z"
+        "timestamp": "2025-01-14"
     }
 ]

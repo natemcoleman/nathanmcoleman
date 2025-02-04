@@ -4,7 +4,7 @@ description: "Sacrament Meeting January 19, 2025"
 dateString: January 2025    
 draft: false
 tags: []
-# weight: 101
+weight: 100
 cover:
     image: "/blog/first_vision_trim.jpg"
 ---
