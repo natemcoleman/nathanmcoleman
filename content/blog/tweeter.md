@@ -1,41 +1,29 @@
 ---
-title: "Feedback"
-description: Let me know what you think of my projects and what you'd like to see in the future!
-draft: true
+title: "Feed"
+description: 
+draft: false
 ---
 
-<form name="contact" netlify>
-  <p>
-    <label>Name <input type="text" name="name" /></label>
-  </p>
-  <p>
-    <label>Email <input type="email" name="email" /></label>
-  </p>
-  <p>
-    <button type="submit">Send</button>
-  </p>
-</form>
-<!-- <!DOCTYPE html>
-<html lang="en">
 <div id="tweets">
+    <!-- <script>
+    document.addEventListener('DOMContentLoaded', loadTweets);
+    </script> -->
 </div>
 
-<form id="tweetForm" method="POST" data-netlify="true">
+<!-- <form id="tweetForm">
     <input type="text" id="username" placeholder="Username" style="width: 100%; margin-bottom: 10px;">
     <textarea id="tweetText" placeholder="What's happening?" rows="3" style="width: 100%;"></textarea>
     <button type="button" onclick="addTweet()">Post</button>
-</form>
+</form> -->
 
 <style>
 .tweet {
-    /* border: 1px solid #e1e8ed; */
+    border: 1px solid #e1e8ed;
     padding: 10px;
     margin-bottom: 10px;
     border-radius: 10px;
     background-color: #ffffff;
-    border: 5px #000000;
-    color: #000000; /* Ensure text is black */
-}
+    border: 5px solidrgb(31, 31, 31);
 .tweet p {
     margin: 5px 0;
     color:rgb(27, 27, 27); 
@@ -49,19 +37,6 @@ draft: true
 form {
     margin-top: 20px;
 }
-@media (prefers-color-scheme: dark) {
-    .tweet {
-        background-color: #ffffff; /* Ensure background is white */
-        color: #000000; /* Ensure text is black */
-    }
-    .tweet p {
-        color: #000000; /* Ensure text is black */
-    }
-    input[type="text"], textarea {
-        background-color: #333333; 
-        color: #ffffff; 
-    }
-}
 </style>
 
 <script>
@@ -71,12 +46,13 @@ async function addTweet() {
     if (username.trim() === '' || tweetText.trim() === '') return;
 
     const tweet = {
-        username: '@' + username,
+        username: 'Nate',
+        // username: '@n' + username,
         text: tweetText,
         timestamp: new Date().toISOString(),
     };
 
-    const response = await fetch('/.netlify/functions/addTweet', {
+    const response = await fetch('/netlify/functions/addTweet.js', {
         method: 'POST',
         body: JSON.stringify(tweet),
     });
@@ -117,4 +93,3 @@ async function loadTweets() {
 
 document.addEventListener('DOMContentLoaded', loadTweets);
 </script>
-</html> -->

@@ -2,7 +2,7 @@
 title: "To Whom It May Concern (Me)"
 description: "Welcome to my website, let's party like it's 1999. "
 dateString: January 2025    
-draft: false
+draft: true
 tags: []
 # weight: 101
 cover:
