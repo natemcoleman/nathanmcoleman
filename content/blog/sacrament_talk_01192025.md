@@ -1,6 +1,6 @@
 ---
 title: "How I Know God Loves Me And You"
-description: "Sacrament Meeting January 19, 2025"
+# description: "Sacrament Meeting January 19, 2025"
 dateString: January 2025    
 draft: false
 tags: []
