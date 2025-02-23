@@ -32,7 +32,7 @@ For God sent not his Son into the world to condemn the world; but that the world
 2 Nephi 26:24 - “He doeth not anything save it be for the benefit of the world; for he loveth the world, even that he layeth down his own life that he may draw all men unto him. Wherefore, he commandeth none that they shall not partake of his salvation.”
 
 <!-- <a href="https://www.churchofjesuschrist.org/study/scriptures/dc-testament/dc/14?lang=eng&id=p9#p9" target="_blank">created the heavens and the earth</a> -->
-Is this all he has done for us?
+Is this all He has done for us? Of course not. 
 Dallin H Oaks (<a href="https://www.churchofjesuschrist.org/study/general-conference/2021/04/35oaks?lang=eng" target="_blank">April 2021 GC, What Has Our Savior Done for Us?</a>) - “What has Jesus Christ done for me?”
 - Under the plan of our Heavenly Father, He “created the heavens and the earth" so that each of us could have the mortal experience necessary to seek our divine destiny. 
 - As part of the Father’s plan, the Resurrection of Jesus Christ overcame death to assure each of us immortality. 
