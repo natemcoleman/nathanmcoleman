@@ -17,12 +17,12 @@ backpacking in Yellowstone National Park, Teton National Park, and my favorite, 
 I have spent countless hours exploring the landscapes in these incredible parks, and in them, I see the love of a 
 Father who created these incredible landscapes for us to enjoy, and I feel His desire to be close to us. It doesn’t take long in these spaces to understand the words of the Italian poet and author Dante Alighieri, “Nature is the art of God.”
 
-Outline
-- God shows His Love for us through all that He does
-- God shows His Love for us by giving us all He has
-- God shows His Love for us by showing us that He wants us to know Him
+## Outline
+- <a href="#all-that-he-does" target="_blank">God shows His Love for us through all that He does</a>
+- <a href="#giving" target="_blank">God shows His Love for us by giving us all He has</a>
+- <a href="#knowing" target="_blank">God shows His Love for us by showing us that He wants us to know Him</a>
 
-# God shows His Love for us through all that He does
+# God shows His Love for us through all that He does {#all-that-he-does}
 <!-- <a href="https://www.churchofjesuschrist.org/study/scriptures/nt/john/3?lang=eng&id=p16#p16" target="_blank">John 3:16-17</a>  -->
 John 3:16-17 - “For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, 
 but have everlasting life.
@@ -43,7 +43,7 @@ And our Savior willingly experienced all mortal pains and infirmities that He wo
 In short, we can see that everything that God does for us is because of His love for us. 
 
 
-# God shows His Love for us by giving us all He has
+# God shows His Love for us by giving us all He has {#giving}
 For God so loved the world, He gave his only Begotten Son, and for God so loves us, He asks us to give our lives to Him. For most of us, this does not mean being put to death for Him, but rather giving of our time, talents, and all else with which we are blessed to God. While the burden and pain of our sacrifices are intentionally real, the reality is that He will always return to us more than we give him, and He asks us to give precisely because of His love for us. 
 King Benjamin taught (Mosiah 2:21) - “I say unto you that if ye should serve him who has created you from the beginning, and is preserving you from day to day, by lending you breath, that ye may live and move and do according to your own will, and even supporting you from one moment to another—I say, if ye should serve him with all your whole souls yet ye would be unprofitable servants.”
 
@@ -54,7 +54,7 @@ In Ether, the brother of Jared needed light in his barges while his people cross
 By giving us opportunities to act, He allows us to share in His glory. <a href="https://www.churchofjesuschrist.org/study/scriptures/pgp/moses/4.1-4?lang=eng#p1" target="_blank">Satan wanted to take the glory for himself</a>, but when we sacrifice and willingly submit to God, He multiplies and returns our sacrifices and efforts to us. By allowing us to take responsibility, he enables us to earn <a href="https://www.churchofjesuschrist.org/study/scriptures/pgp/abr/3?lang=eng&id=26#p26" target="_blank">the very glory</a> that Satan sought to take by force, because as Elder Uchtdorf recently said, “it is the sacrifice that makes it sacred.”
 
 
-# God shows His Love for us by showing us that He wants us to know Him
+# God shows His Love for us by showing us that He wants us to know Him {#knowing}
 God describes himself as loving, not only because of his generous mercy and sincere forgiveness, but also because He wants to know us and be known by us.
 One way that we can see God’s love for us is by studying the Doctrine and Covenants. This year as we focus our Sunday School and at home study on the Doctrine and Covenants, we can come to better understand the kind of relationship God wants to have with us by understanding the relationship that He had with Joseph Smith. 
 
