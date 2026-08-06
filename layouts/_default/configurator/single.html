@@ -70,6 +70,25 @@
             font-size: 0.9rem;
         }
 
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            width: 100%;
+            max-width: 400px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 0.5rem;
+        }
+        
+        .btn-secondary:hover {
+            background-color: var(--border-color);
+        }
+
         .summary-title {
             margin: 0 0 0.75rem 0;
             font-weight: 600;
@@ -395,17 +414,18 @@
         </div>
         <!-- Sticky Checkout Bar -->
         <div class="checkout-container">
-            <!-- Dynamic Summary Panel -->
             <div class="build-summary">
                 <h4 class="summary-title">Your Configuration</h4>
                 <ul class="summary-list">
                     <li>Housing: <span id="summary-housing">Matte Black</span></li>
-                    <li>Faceplate: <span id="summary-faceplate">White</span></li>
+                    <li>Faceplate: <span id="summary-faceplate">Matte Black</span></li>
                 </ul>
                 <p class="summary-note">Please select these options from the dropdown menus on Etsy.</p>
             </div>
-
-            <!-- Existing Etsy Button -->
+        
+            <!-- NEW SHARE BUTTON -->
+            <button id="share-btn" class="btn-secondary">🔗 Share My Configuration</button>
+            
             <a href="https://www.etsy.com/listing/4541612698/mini-desktop-radar?show_sold_out_detail=1&ref=nla_listing_details" target="_blank" class="btn-primary checkout-btn">Complete on Etsy</a>
         </div>
     </div>
@@ -442,11 +462,37 @@
             bodyMat.pbrMetallicRoughness.setMetallicFactor(0); 
         }
 
-        // B. Wait exactly one frame for the plastics to render, THEN load the screen theme
+       // B. Check URL Parameters to auto-load configuration
         requestAnimationFrame(() => {
-            const defaultThemeBtn = document.querySelector('.theme-btn[data-texture*="classic2_large.jpg"]');
-            if (defaultThemeBtn) {
-                defaultThemeBtn.click();
+            const params = new URLSearchParams(window.location.search);
+            const urlH = params.get('h');
+            const urlF = params.get('f');
+            const urlT = params.get('t');
+
+            let customLoad = false;
+
+            // If parameters exist, simulate clicks on the specific swatches
+            if (urlH || urlF || urlT) {
+                if (urlH) {
+                    document.querySelector(`#housing-swatches .color-swatch[data-color="#${urlH}"]`)?.click();
+                    customLoad = true;
+                }
+                if (urlF) {
+                    document.querySelector(`#faceplate-swatches .color-swatch[data-color="#${urlF}"]`)?.click();
+                    customLoad = true;
+                }
+                if (urlT) {
+                    document.querySelector(`.theme-btn[data-texture*="${urlT}"]`)?.click();
+                    customLoad = true;
+                }
+            }
+            
+            // If no parameters were found in the URL, load the default theme
+            if (!customLoad) {
+                const defaultThemeBtn = document.querySelector('.theme-btn[data-texture*="classic2_large.jpg"]');
+                if (defaultThemeBtn) {
+                    defaultThemeBtn.click();
+                }
             }
         });
     });
@@ -495,6 +541,7 @@
                 material.pbrMetallicRoughness.setMetallicFactor(0);     
             }
             updateCheckoutSummary();
+            updateURLParameters();
         });
     });
 
@@ -521,6 +568,8 @@
                 material.emissiveTexture.setTexture(texture);
                 material.setEmissiveFactor([2.5, 2.5, 2.5]); 
             }
+
+            updateURLParameters();
         });
     });
 
@@ -548,6 +597,56 @@
                 // 2. Make it a shiny, reflective glass surface
                 material.pbrMetallicRoughness.setRoughnessFactor(0.05); // 0 = perfect mirror, 1 = chalky matte
                 material.pbrMetallicRoughness.setMetallicFactor(0.8);  // Cranks up environmental reflections
+            }
+        });
+    }
+
+    // --- 8. URL PARAMETER MANAGEMENT & SHARING ---
+
+    // A. Function to update the URL without reloading the page
+    function updateURLParameters() {
+        const activeHousing = document.querySelector('#housing-swatches .color-swatch.active');
+        const activeFaceplate = document.querySelector('#faceplate-swatches .color-swatch.active');
+        const activeTheme = document.querySelector('.theme-btn.active');
+    
+        const params = new URLSearchParams();
+    
+        // Strip the '#' from the hex code to make the URL cleaner
+        if (activeHousing) params.set('h', activeHousing.getAttribute('data-color').replace('#', ''));
+        if (activeFaceplate) params.set('f', activeFaceplate.getAttribute('data-color').replace('#', ''));
+        
+        if (activeTheme) {
+            // Extract a simple theme name from the texture path (e.g., 'classic' from '/radar/classic_large.jpg')
+            const texPath = activeTheme.getAttribute('data-texture');
+            const simpleName = texPath.split('/').pop().split('_')[0];
+            params.set('t', simpleName);
+        }
+    
+        // Replace the current URL silently
+        const newURL = `${window.location.pathname}?${params.toString()}`;
+        window.history.replaceState({}, '', newURL);
+    }
+    
+    // B. Share Button Logic (Copy to Clipboard)
+    const shareBtn = document.getElementById('share-btn');
+    if (shareBtn) {
+        shareBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(window.location.href);
+                
+                // Temporary success feedback
+                const originalText = shareBtn.textContent;
+                shareBtn.textContent = "✅ Link Copied!";
+                shareBtn.style.borderColor = "#34c759";
+                shareBtn.style.color = "#34c759";
+                
+                setTimeout(() => {
+                    shareBtn.textContent = originalText;
+                    shareBtn.style.borderColor = "var(--border-color)";
+                    shareBtn.style.color = "var(--text-color)";
+                }, 2000);
+            } catch (err) {
+                console.error("Failed to copy link: ", err);
             }
         });
     }
