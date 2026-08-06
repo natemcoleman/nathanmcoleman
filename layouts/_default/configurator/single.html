@@ -95,10 +95,9 @@
         /* --- Swap Button --- */
         .swap-container {
             display: flex;
-            justify-content: flex-start;
+            justify-content: center; /* Centers the button perfectly */
             margin-top: 12px;
             margin-bottom: 12px;
-            padding-left: 12px;
             position: relative;
             z-index: 2;
         }
@@ -106,14 +105,18 @@
         .swap-btn {
             background: var(--panel-bg);
             border: 1px solid var(--border-color);
-            border-radius: 50%;
-            width: 32px;
-            height: 32px;
+            border-radius: 24px; /* Creates the oval/pill shape */
+            padding: 8px 16px; /* Gives the text room to breathe */
+            width: auto; /* Removes the previous circle constraints */
+            height: auto;
             display: flex;
             align-items: center;
             justify-content: center;
+            gap: 8px; /* Adds space between the arrows and the text */
             cursor: pointer;
             color: var(--text-color);
+            font-size: 13px; /* Matches your section titles nicely */
+            font-weight: 500;
             transition: transform 0.3s ease, background-color 0.2s;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
@@ -434,6 +437,7 @@
                     <polyline points="13 7 17 3 21 7"></polyline>
                     <line x1="17" y1="3" x2="17" y2="15"></line>
                 </svg>
+                <span>Swap Colors</span>
             </button>
         </div>
 
