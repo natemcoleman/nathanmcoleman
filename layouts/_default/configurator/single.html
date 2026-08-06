@@ -467,7 +467,7 @@
         
         // OVERDRIVE THE SATURATION HERE!
         // Increase this number (e.g., 2.0 or 2.5) if you want the orange/blue to be insanely vibrant
-        const saturationBoost = 0.2; 
+        const saturationBoost = 0.4; 
         
         r = Math.pow(r, 2.2) * saturationBoost;
         g = Math.pow(g, 2.2) * saturationBoost;
@@ -533,13 +533,21 @@
             const material = modelViewer.model.materials.find(mat => mat.name === "1.000000_0.000000_0.000000_0.000000_0.000000"); 
             
             if (e.target.checked) {
+                // Turn On: Programmatically click the active theme to restore texture and glow
                 const activeTheme = document.querySelector('.theme-btn.active');
                 if (activeTheme) activeTheme.click();
             } else {
+                // Turn Off: Remove textures and kill the emissive light
                 material.pbrMetallicRoughness.baseColorTexture.setTexture(null);
                 material.emissiveTexture.setTexture(null);
-                material.pbrMetallicRoughness.setBaseColorFactor([0.05, 0.05, 0.05, 1]);
+                
+                // 1. Set the physical color to pure pitch black
+                material.pbrMetallicRoughness.setBaseColorFactor([0, 0, 0, 1]);
                 material.setEmissiveFactor([0, 0, 0]); 
+                
+                // 2. Make it a shiny, reflective glass surface
+                material.pbrMetallicRoughness.setRoughnessFactor(0.05); // 0 = perfect mirror, 1 = chalky matte
+                material.pbrMetallicRoughness.setMetallicFactor(0.8);  // Cranks up environmental reflections
             }
         });
     }
