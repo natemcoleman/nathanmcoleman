@@ -46,6 +46,60 @@
             height: 100%;
         }
 
+        .checkout-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+            /* position: sticky;
+            bottom: 0;
+            background-color: var(--bg-color); /* Matches your dark/light mode background */
+            z-index: 10; */
+        }
+
+        .build-summary {
+            background-color: var(--panel-bg);
+            padding: 1.25rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .summary-title {
+            margin: 0 0 0.75rem 0;
+            font-weight: 600;
+            color: var(--text-color);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.85rem;
+        }
+
+        .summary-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 0.75rem 0;
+            color: var(--text-color);
+        }
+
+        .summary-list li {
+            margin-bottom: 0.4rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .summary-list span {
+            font-weight: 600;
+        }
+
+        .summary-note {
+            margin: 0;
+            font-size: 0.8rem;
+            color: var(--text-color);
+            opacity: 0.7;
+            font-style: italic;
+        }
+
         .viewer-section {
             flex: 1;
             background-color: var(--bg-color);
@@ -102,6 +156,8 @@
             border-top-right-radius: 24px;
             padding: 24px;
             overflow-y: auto;
+            height: 100%; 
+            padding-bottom: 2rem;
             box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
             padding-bottom: 100px; /* Space for sticky button */
         }
@@ -269,7 +325,7 @@
 <div class="configurator-wrapper">
     <!-- 3D Viewer Half -->
     <div class="viewer-section">
-        <model-viewer id="radar-viewer" src="/radar/radar_v7.glb" environment-image="neutral" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1"></model-viewer>
+        <model-viewer id="radar-viewer" src="/radar/radar_v7.glb" touch-action="pan-y" environment-image="neutral" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1"></model-viewer>
     </div>
     <!-- Controls Half -->
     <div class="controls-section">
@@ -320,12 +376,22 @@
                 <span class="slider"></span>
             </label>
         </div>
+        <!-- Sticky Checkout Bar -->
+<div class="checkout-container">
+    <!-- Dynamic Summary Panel -->
+    <div class="build-summary">
+        <h4 class="summary-title">Your Configuration</h4>
+        <ul class="summary-list">
+            <li>Housing: <span id="summary-housing">Matte Black</span></li>
+            <li>Faceplate: <span id="summary-faceplate">White</span></li>
+        </ul>
+        <p class="summary-note">Please select these exact options from the dropdown menus on Etsy.</p>
     </div>
-</div>
 
-<!-- Sticky Checkout Bar -->
-<div class="checkout-bar">
-    <button class="btn-primary" onclick="window.location.href='https://www.etsy.com/listing/4541612698/mini-desktop-radar?show_sold_out_detail=1&ref=nla_listing_details'">Order on Etsy</button>
+    <!-- Existing Etsy Button -->
+    <a href="https://www.etsy.com/listing/4541612698/mini-desktop-radar?show_sold_out_detail=1&ref=nla_listing_details" target="_blank" class="btn-primary checkout-btn">Complete on Etsy</a>
+</div>
+    </div>
 </div>
 
 <!-- Logic -->
@@ -391,6 +457,7 @@
                 material.pbrMetallicRoughness.setMetallicFactor(0);     
             }
         });
+        updateCheckoutSummary();
     });
 
     // --- BUTTON CLICK LOGIC (Theme Textures) ---
@@ -517,6 +584,24 @@
         b = Math.pow(b, 2.2);
         
         return [r, g, b, 1];
+    }
+
+    // Function to update the text in the summary box
+    function updateCheckoutSummary() {
+        // 1. Find whichever buttons currently have the 'active' class
+        // (Adjust these class selectors if your buttons are named differently)
+        const activeHousing = document.querySelector('.housing-btn.active');
+        const activeFaceplate = document.querySelector('.faceplate-btn.active');
+
+        // 2. Grab the name of the selection (using a data-name attribute or the button's inner text)
+        // Example: <button class="theme-btn active" data-name="Modern">...</button>
+        if (activeHousing) {
+            document.getElementById('summary-housing').textContent = activeHousing.getAttribute('data-name') || activeHousing.textContent.trim();
+        }
+        
+        if (activeFaceplate) {
+            document.getElementById('summary-faceplate').textContent = activeFaceplate.getAttribute('data-name') || activeFaceplate.textContent.trim();
+        }
     }
 </script>
 
