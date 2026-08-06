@@ -95,9 +95,9 @@
         /* --- Swap Button --- */
         .swap-container {
             display: flex;
-            justify-content: center; /* Centers the button perfectly */
-            margin-top: 12px;
-            margin-bottom: 12px;
+            justify-content: center; /* Keeps it dead center */
+            margin-top: -12px;
+            margin-bottom: -12px;
             position: relative;
             z-index: 2;
         }
@@ -105,20 +105,17 @@
         .swap-btn {
             background: var(--panel-bg);
             border: 1px solid var(--border-color);
-            border-radius: 24px; /* Creates the oval/pill shape */
-            padding: 8px 16px; /* Gives the text room to breathe */
-            width: auto; /* Removes the previous circle constraints */
-            height: auto;
+            border-radius: 50%; /* Back to a perfect circle */
+            width: 32px;
+            height: 32px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px; /* Adds space between the arrows and the text */
             cursor: pointer;
             color: var(--text-color);
-            font-size: 13px; /* Matches your section titles nicely */
-            font-weight: 500;
             transition: transform 0.3s ease, background-color 0.2s;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            padding: 0; /* Clears the pill-shape padding */
         }
         
         .swap-btn:hover {
@@ -427,7 +424,7 @@
             <div class="color-swatch" style="background-color: #FC8E4F;" data-name="Matte Orange" data-target="0.000000_0.000000_1.000000_0.000000_0.000000" data-color="#FC8E4F"></div>
         </div>
 
-        <!-- NEW SWAP BUTTON HERE -->
+        <!-- SWAP BUTTON HERE -->
         <div class="swap-container">
             <button id="swap-colors-btn" class="swap-btn" aria-label="Swap Colors">
                 <!-- Up and Down Arrow SVG -->
@@ -437,7 +434,6 @@
                     <polyline points="13 7 17 3 21 7"></polyline>
                     <line x1="17" y1="3" x2="17" y2="15"></line>
                 </svg>
-                <span>Swap Colors</span>
             </button>
         </div>
 
