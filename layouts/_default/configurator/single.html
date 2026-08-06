@@ -95,10 +95,10 @@
         /* --- Swap Button --- */
         .swap-container {
             display: flex;
-            justify-content: flex-end;
-            margin-top: -12px;
-            margin-bottom: -12px;
-            padding-right: 12px;
+            justify-content: flex-start;
+            margin-top: 12px;
+            margin-bottom: 12px;
+            padding-left: 12px;
             position: relative;
             z-index: 2;
         }
@@ -427,11 +427,12 @@
         <!-- NEW SWAP BUTTON HERE -->
         <div class="swap-container">
             <button id="swap-colors-btn" class="swap-btn" aria-label="Swap Colors">
+                <!-- Up and Down Arrow SVG -->
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="17 11 21 7 17 3"></polyline>
-                    <line x1="21" y1="7" x2="9" y2="7"></line>
-                    <polyline points="7 13 3 17 7 21"></polyline>
-                    <line x1="3" y1="17" x2="15" y2="17"></line>
+                    <polyline points="11 17 7 21 3 17"></polyline>
+                    <line x1="7" y1="21" x2="7" y2="9"></line>
+                    <polyline points="13 7 17 3 21 7"></polyline>
+                    <line x1="17" y1="3" x2="17" y2="15"></line>
                 </svg>
             </button>
         </div>
