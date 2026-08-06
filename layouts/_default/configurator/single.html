@@ -332,12 +332,24 @@
             if (!modelViewer.model) return;
             const texturePath = e.target.getAttribute('data-texture');
             const texture = await modelViewer.createTexture(texturePath);
-            const material = modelViewer.model.materials.find(mat => mat.name === "1.000000_0.000000_0.000000_0.000000_0.000000"); // Update this too!
+            // const material = modelViewer.model.materials.find(mat => mat.name === "1.000000_0.000000_0.000000_0.000000_0.000000"); // Update this too!
+            
+            // if (material) {
+            //     material.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
+            //     // When showing a texture, we remove the base color so the image shows perfectly
+            //     material.pbrMetallicRoughness.setBaseColorFactor([1, 1, 1, 1]); 
+            //     material.setEmissiveFactor([1, 1, 1]);
+            // }
+            // TARGETING THE RED MATERIAL (Screen)
+            const material = modelViewer.model.materials.find(mat => mat.name === "1.000000_0.000000_0.000000_0.000000_0.000000"); 
             
             if (material) {
+                // Keep the base color texture applied
                 material.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
-                // When showing a texture, we remove the base color so the image shows perfectly
-                material.pbrMetallicRoughness.setBaseColorFactor([1, 1, 1, 1]); 
+                
+                // Add the EMISSIVE properties to make it glow brightly from within
+                material.emissiveTexture.setTexture(texture);
+                material.setEmissiveFactor([1, 1, 1]); // Set glow color/intensity to pure white
             }
         });
     });
@@ -351,16 +363,18 @@
             // Target the Screen material (using the Red string from Onshape)
             const material = modelViewer.model.materials.find(mat => mat.name === "1.000000_0.000000_0.000000_0.000000_0.000000"); 
             
-            if (material) {
-                if (e.target.checked) {
-                    // Turn On: Find whichever theme is active and programmatically click it to restore the texture
-                    const activeTheme = document.querySelector('.theme-btn.active');
-                    if (activeTheme) activeTheme.click();
-                } else {
-                    // Turn Off: Remove the texture image entirely and set the screen color to pitch black
-                    material.pbrMetallicRoughness.baseColorTexture.setTexture(null);
-                    material.pbrMetallicRoughness.setBaseColorFactor([0.05, 0.05, 0.05, 1]); 
-                }
+            if (e.target.checked) {
+                // Turn On: Programmatically click the active theme to restore texture and glow
+                const activeTheme = document.querySelector('.theme-btn.active');
+                if (activeTheme) activeTheme.click();
+            } else {
+                // Turn Off: Remove textures and kill the emissive light
+                material.pbrMetallicRoughness.baseColorTexture.setTexture(null);
+                material.emissiveTexture.setTexture(null);
+                
+                // Set color to pitch black and turn off the glow
+                material.pbrMetallicRoughness.setBaseColorFactor([0.05, 0.05, 0.05, 1]);
+                material.setEmissiveFactor([0, 0, 0]); 
             }
         });
     }
