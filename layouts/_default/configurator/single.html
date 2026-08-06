@@ -41,6 +41,9 @@
             flex-direction: column;
             height: 100vh;
             overflow: hidden;
+            height: 100dvh; /* Adapts to the mobile address bar hiding/showing */
+            width: 100%;
+            position: fixed; /* Prevents the whole page canvas from being dragged up */
         }
 
         /* --- Layout: Desktop Split / Mobile Stacked --- */
@@ -86,6 +89,36 @@
         }
         
         .btn-secondary:hover {
+            background-color: var(--border-color);
+        }
+
+        /* --- Swap Button --- */
+        .swap-container {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: -12px;
+            margin-bottom: -12px;
+            padding-right: 12px;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .swap-btn {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-color);
+            transition: transform 0.3s ease, background-color 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .swap-btn:hover {
             background-color: var(--border-color);
         }
 
@@ -369,7 +402,9 @@
         <div class="price">$65 (Free Shipping)</div>
 
        <!-- Faceplate Colors -->
-        <div class="section-title">Faceplate Color</div>
+        <div class="section-title">
+            Faceplate Color <span id="faceplate-display-name" style="text-transform: none; color: var(--text-color); font-weight: normal; margin-left: 6px;">- Matte Black</span>
+        </div>
         <div class="swatch-grid" id="faceplate-swatches">
             <!-- Black (Default) -->
             <div class="color-swatch active" style="background-color: #2C2D2A;" data-name="Matte Black" data-target="0.000000_0.000000_1.000000_0.000000_0.000000" data-color="#2C2D2A"></div>
@@ -389,8 +424,22 @@
             <div class="color-swatch" style="background-color: #FC8E4F;" data-name="Matte Orange" data-target="0.000000_0.000000_1.000000_0.000000_0.000000" data-color="#FC8E4F"></div>
         </div>
 
+        <!-- NEW SWAP BUTTON HERE -->
+        <div class="swap-container">
+            <button id="swap-colors-btn" class="swap-btn" aria-label="Swap Colors">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="17 11 21 7 17 3"></polyline>
+                    <line x1="21" y1="7" x2="9" y2="7"></line>
+                    <polyline points="7 13 3 17 7 21"></polyline>
+                    <line x1="3" y1="17" x2="15" y2="17"></line>
+                </svg>
+            </button>
+        </div>
+
         <!-- Housing Colors -->
-        <div class="section-title">Housing Color</div>
+        <div class="section-title">
+            Housing Color <span id="housing-display-name" style="text-transform: none; color: var(--text-color); font-weight: normal; margin-left: 6px;">- Matte Black</span>
+        </div>
         <div class="swatch-grid" id="housing-swatches">
             <!-- Black (Default) -->
             <div class="color-swatch active" style="background-color: #2C2D2A;" data-name="Matte Black" data-target="1.000000_1.000000_0.000000_0.000000_0.000000" data-color="#2C2D2A"></div>
@@ -707,22 +756,65 @@
     });
 
 
-    // --- 7. ETSY CHECKOUT SUMMARY UPDATE ---
+    // --- 7. ETSY CHECKOUT SUMMARY & TITLE UPDATE ---
     function updateCheckoutSummary() {
-        // Fixed the selectors to match your HTML structure!
         const activeHousing = document.querySelector('#housing-swatches .color-swatch.active');
         const activeFaceplate = document.querySelector('#faceplate-swatches .color-swatch.active');
 
-        // To make the names display perfectly, you should add a data-name attribute 
-        // to your HTML swatches (e.g., data-name="Orange"). 
-        // If it isn't there, this falls back to just showing the hex code so it doesn't break.
         if (activeHousing) {
-            document.getElementById('summary-housing').textContent = activeHousing.getAttribute('data-name') || activeHousing.getAttribute('data-color');
+            const colorName = activeHousing.getAttribute('data-name') || activeHousing.getAttribute('data-color');
+            
+            // Update Etsy summary box
+            document.getElementById('summary-housing').textContent = colorName;
+            
+            // Update Section Title
+            const housingTitleDisplay = document.getElementById('housing-display-name');
+            if (housingTitleDisplay) housingTitleDisplay.textContent = `- ${colorName}`;
         }
+        
         if (activeFaceplate) {
-            document.getElementById('summary-faceplate').textContent = activeFaceplate.getAttribute('data-name') || activeFaceplate.getAttribute('data-color');
+            const colorName = activeFaceplate.getAttribute('data-name') || activeFaceplate.getAttribute('data-color');
+            
+            // Update Etsy summary box
+            document.getElementById('summary-faceplate').textContent = colorName;
+            
+            // Update Section Title
+            const faceplateTitleDisplay = document.getElementById('faceplate-display-name');
+            if (faceplateTitleDisplay) faceplateTitleDisplay.textContent = `- ${colorName}`;
         }
     }
+
+    // --- 9. SWAP COLORS LOGIC ---
+    const swapBtn = document.getElementById('swap-colors-btn');
+    if (swapBtn) {
+        swapBtn.addEventListener('click', () => {
+            // 1. Find the currently active swatches
+            const activeFaceplate = document.querySelector('#faceplate-swatches .color-swatch.active');
+            const activeHousing = document.querySelector('#housing-swatches .color-swatch.active');
+
+            if (!activeFaceplate || !activeHousing) return;
+
+            // 2. Get the hex colors currently selected
+            const faceplateColor = activeFaceplate.getAttribute('data-color');
+            const housingColor = activeHousing.getAttribute('data-color');
+
+            // 3. Find the matching swatches in the OPPOSITE categories
+            const newFaceplateSwatch = document.querySelector(`#faceplate-swatches .color-swatch[data-color="${housingColor}"]`);
+            const newHousingSwatch = document.querySelector(`#housing-swatches .color-swatch[data-color="${faceplateColor}"]`);
+
+            // 4. Click them programmatically! 
+            // (This automatically updates the 3D model, the URL, and the Etsy summary)
+            if (newFaceplateSwatch) newFaceplateSwatch.click();
+            if (newHousingSwatch) newHousingSwatch.click();
+            
+            // 5. Spin the button for satisfying visual feedback
+            let currentRotation = swapBtn.getAttribute('data-rotation') || 0;
+            currentRotation = parseInt(currentRotation) + 180;
+            swapBtn.style.transform = `rotate(${currentRotation}deg)`;
+            swapBtn.setAttribute('data-rotation', currentRotation);
+        });
+    }
+    
 </script>
 
 </body>
