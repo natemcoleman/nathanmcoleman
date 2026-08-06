@@ -451,47 +451,6 @@
 <script>
     const modelViewer = document.querySelector('model-viewer');
 
-    / --- 0. DYNAMIC COLOR SWATCH GENERATOR ---
-    // Define your colors here ONCE
-    const availableColors = [
-        { name: "Matte Black", hex: "#2C2D2A" },
-        { name: "Off White", hex: "#DAD8CC" },
-        { name: "Navy", hex: "#2c4571" },
-        { name: "Lilac", hex: "#C9B6EA" },
-        { name: "Moss Green", hex: "#BFB959" },
-        { name: "Summer Yellow", hex: "#FFD866" },
-        { name: "American Flag Red", hex: "#CE4D4D" },
-        { name: "Matte Orange", hex: "#FC8E4F" },
-    ];
-
-    // // The internal 3D material names from Onshape
-    // const faceplateMaterial = "0.000000_0.000000_1.000000_0.000000_0.000000";
-    // const housingMaterial = "1.000000_1.000000_0.000000_0.000000_0.000000";
-
-    // // Function to build the HTML for a specific section
-    // function generateSwatches(containerId, targetMaterial) {
-    //     const container = document.getElementById(containerId);
-    //     if (!container) return;
-
-    //     container.innerHTML = availableColors.map((color, index) => {
-    //         // Make the first color in the list the default "active" one
-    //         const isActive = index === 0 ? "active" : "";
-            
-    //         return `
-    //             <div class="color-swatch ${isActive}" 
-    //                  style="background-color: ${color.hex};" 
-    //                  data-name="${color.name}" 
-    //                  data-target="${targetMaterial}" 
-    //                  data-color="${color.hex}">
-    //             </div>
-    //         `;
-    //     }).join('');
-    // }
-
-    // // Build both menus instantly
-    // generateSwatches('faceplate-swatches', faceplateMaterial);
-    // generateSwatches('housing-swatches', housingMaterial);
-
     // --- 1. SETUP SEQUENCE ON LOAD ---
     // We merged the two load events into one clean sequence to stop them from fighting
     modelViewer.addEventListener('load', () => {
