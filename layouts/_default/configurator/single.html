@@ -199,28 +199,37 @@
 <div class="configurator-wrapper">
     <!-- 3D Viewer Half -->
     <div class="viewer-section">
-        <model-viewer id="radar-viewer" src="/radar/radar_v3.gltf" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1"></model-viewer>
+        <model-viewer id="radar-viewer" src="/radar/radar_v4.gltf" environment-image="neutral" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1"></model-viewer>
     </div>
     <!-- Controls Half -->
     <div class="controls-section">
         <h2>Configure your Radar</h2>
-        <div class="price">$119.00 USD</div>
+        <div class="price">$65 (Free Shipping)</div>
 
-        <!-- Faceplate Colors (Targeting Blue) -->
+        <!-- Faceplate Colors -->
         <div class="section-title">Faceplate Color</div>
         <div class="swatch-grid" id="faceplate-swatches">
+            <!-- Black (Default) -->
             <div class="color-swatch active" style="background-color: #2c2c2c;" data-target="0.000000_0.000000_1.000000_0.000000_0.000000" data-color="#2c2c2c"></div>
-            <div class="color-swatch" style="background-color: #e6e6e6;" data-target="0.000000_0.000000_1.000000_0.000000_0.000000" data-color="#e6e6e6"></div>
-            <div class="color-swatch" style="background-color: #ff8c00;" data-target="0.000000_0.000000_1.000000_0.000000_0.000000" data-color="#ff8c00"></div>
-            <div class="color-swatch" style="background-color: #007aff;" data-target="0.000000_0.000000_1.000000_0.000000_0.000000" data-color="#007aff"></div>
+            <!-- White -->
+            <div class="color-swatch" style="background-color: #DAD8CC;" data-target="0.000000_0.000000_1.000000_0.000000_0.000000" data-color="#DAD8CC"></div>
+            <!-- Orange -->
+            <div class="color-swatch" style="background-color: #FC8E4F;" data-target="0.000000_0.000000_1.000000_0.000000_0.000000" data-color="#FC8E4F"></div>
+            <!-- Blue -->
+            <div class="color-swatch" style="background-color: #B7DEFD;" data-target="0.000000_0.000000_1.000000_0.000000_0.000000" data-color="#B7DEFD"></div>
         </div>
 
-        <!-- Housing Colors (Targeting Yellow) -->
+        <!-- Housing Colors -->
         <div class="section-title">Housing Color</div>
         <div class="swatch-grid" id="housing-swatches">
+            <!-- Black (Default) -->
             <div class="color-swatch active" style="background-color: #2c2c2c;" data-target="1.000000_1.000000_0.000000_0.000000_0.000000" data-color="#2c2c2c"></div>
-            <div class="color-swatch" style="background-color: #e6e6e6;" data-target="1.000000_1.000000_0.000000_0.000000_0.000000" data-color="#e6e6e6"></div>
-            <div class="color-swatch" style="background-color: #4a5568;" data-target="1.000000_1.000000_0.000000_0.000000_0.000000" data-color="#4a5568"></div>
+            <!-- White -->
+            <div class="color-swatch" style="background-color: #DAD8CC;" data-target="1.000000_1.000000_0.000000_0.000000_0.000000" data-color="#DAD8CC"></div>
+            <!-- Orange -->
+            <div class="color-swatch" style="background-color: #FC8E4F;" data-target="1.000000_1.000000_0.000000_0.000000_0.000000" data-color="#FC8E4F"></div>
+            <!-- Blue -->
+            <div class="color-swatch" style="background-color: #B7DEFD;" data-target="1.000000_1.000000_0.000000_0.000000_0.000000" data-color="#B7DEFD"></div>
         </div>
 
         <!-- Themes -->
@@ -228,30 +237,25 @@
         <div class="theme-grid">
             <button class="theme-btn active" style="background-image: url('/radar/classic.jpg');" data-texture="/assets/radar/classic.png">Classic</button>
             <button class="theme-btn" style="background-image: url('/radar/modern.jpg');" data-texture="/assets/radar/modern.png">Modern</button>
-            <button class="theme-btn" style="background-image: url('/radar/party-thumb.jpg');" data-texture="/assets/radar/party.png">Party</button>
-            <button class="theme-btn" style="background-image: url('/radar/callsign-thumb.jpg');" data-texture="/assets/radar/callsign.png">Callsigns</button>
+            <button class="theme-btn" style="background-image: url('/radar/party.jpg');" data-texture="/assets/radar/party.png">Party</button>
+            <button class="theme-btn" style="background-image: url('/radar/callsign.jpg');" data-texture="/assets/radar/callsign.png">Callsigns</button>
         </div>
 
-        <!-- Software Features (Dummy UI for feel) -->
-        <div class="section-title">Software Features (Included)</div>
+        <!-- Power Options -->
+        <div class="section-title">Power Options</div>
         <div class="toggle-row">
-            <span>Live Flight Tracking</span>
-            <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
-        </div>
-        <div class="toggle-row">
-            <span>Weather Overlays</span>
-            <label class="toggle-switch"><input type="checkbox"><span class="slider"></span></label>
-        </div>
-        <div class="toggle-row">
-            <span>Auto-Dimming</span>
-            <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
+            <span>Screen Display</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="power-toggle" checked>
+                <span class="slider"></span>
+            </label>
         </div>
     </div>
 </div>
 
 <!-- Sticky Checkout Bar -->
 <div class="checkout-bar">
-    <button class="btn-primary" onclick="window.location.href='YOUR_ETSY_LINK_HERE'">Order on Etsy</button>
+    <button class="btn-primary" onclick="window.location.href='https://www.etsy.com/listing/4541612698/mini-desktop-radar?show_sold_out_detail=1&ref=nla_listing_details'">Order on Etsy</button>
 </div>
 
 <!-- Logic -->
@@ -286,14 +290,14 @@
         const faceplateMat = materials.find(mat => mat.name === '0.000000_0.000000_1.000000_0.000000_0.000000');
         if (faceplateMat) {
             faceplateMat.pbrMetallicRoughness.setBaseColorFactor(hexToRgba('#2c2c2c'));
-            faceplateMat.pbrMetallicRoughness.setRoughnessFactor(0.85); // Very matte
+            faceplateMat.pbrMetallicRoughness.setRoughnessFactor(0.5); // Very matte
             faceplateMat.pbrMetallicRoughness.setMetallicFactor(0); // Removes default CAD shine
         }
 
         const bodyMat = materials.find(mat => mat.name === '1.000000_1.000000_0.000000_0.000000_0.000000');
         if (bodyMat) {
             bodyMat.pbrMetallicRoughness.setBaseColorFactor(hexToRgba('#2c2c2c'));
-            bodyMat.pbrMetallicRoughness.setRoughnessFactor(0.85); // Very matte
+            bodyMat.pbrMetallicRoughness.setRoughnessFactor(0.5); // Very matte
             bodyMat.pbrMetallicRoughness.setMetallicFactor(0); // Removes default CAD shine
         }
     });
@@ -313,9 +317,7 @@
             if (material) {
                 // Apply the color
                 material.pbrMetallicRoughness.setBaseColorFactor(hexToRgba(hexColor));
-                
-                // Force a matte, non-reflective finish to stop the colors from washing out
-                material.pbrMetallicRoughness.setRoughnessFactor(0.85); 
+                material.pbrMetallicRoughness.setRoughnessFactor(0.9); 
                 material.pbrMetallicRoughness.setMetallicFactor(0);     
             }
         });
@@ -339,6 +341,29 @@
             }
         });
     });
+
+    // --- BUTTON CLICK LOGIC (Screen Power Toggle) ---
+    const powerToggle = document.getElementById('power-toggle');
+    if (powerToggle) {
+        powerToggle.addEventListener('change', (e) => {
+            if (!modelViewer.model) return;
+            
+            // Target the Screen material (using the Red string from Onshape)
+            const material = modelViewer.model.materials.find(mat => mat.name === "1.000000_0.000000_0.000000_0.000000_0.000000"); 
+            
+            if (material) {
+                if (e.target.checked) {
+                    // Turn On: Find whichever theme is active and programmatically click it to restore the texture
+                    const activeTheme = document.querySelector('.theme-btn.active');
+                    if (activeTheme) activeTheme.click();
+                } else {
+                    // Turn Off: Remove the texture image entirely and set the screen color to pitch black
+                    material.pbrMetallicRoughness.baseColorTexture.setTexture(null);
+                    material.pbrMetallicRoughness.setBaseColorFactor([0.05, 0.05, 0.05, 1]); 
+                }
+            }
+        });
+    }
 
     // --- HELPER FUNCTION ---
     function hexToRgba(hex) {
