@@ -14,8 +14,8 @@ menu:
       url: /blog
       weight: 40
     - identifier: configurator
-      name: Configurator
-      url: /configurator/
+      name: Mini Radar
+      url: /radar/
       weight: 30  
     - identifier: projects
       name: Projects
