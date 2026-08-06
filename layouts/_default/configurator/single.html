@@ -95,9 +95,10 @@
         /* --- Swap Button --- */
         .swap-container {
             display: flex;
-            justify-content: center; /* Keeps it dead center */
-            margin-top: -12px;
-            margin-bottom: -12px;
+            justify-content: flex-start; /* Keeps it dead center */
+            padding-left: 24px;
+            margin-top: 24px;
+            margin-bottom: 24px;
             position: relative;
             z-index: 2;
         }
@@ -406,22 +407,7 @@
             Faceplate Color <span id="faceplate-display-name" style="text-transform: none; color: var(--text-color); font-weight: normal; margin-left: 6px;">- Matte Black</span>
         </div>
         <div class="swatch-grid" id="faceplate-swatches">
-            <!-- Black (Default) -->
-            <div class="color-swatch active" style="background-color: #2C2D2A;" data-name="Matte Black" data-target="0.000000_0.000000_1.000000_0.000000_0.000000" data-color="#2C2D2A"></div>
-            <!-- White -->
-            <div class="color-swatch" style="background-color: #DAD8CC;" data-name="Off White" data-target="0.000000_0.000000_1.000000_0.000000_0.000000" data-color="#DAD8CC"></div>
-            <!-- Navy -->
-            <div class="color-swatch" style="background-color: #2c4571;" data-name="Navy" data-target="0.000000_0.000000_1.000000_0.000000_0.000000" data-color="#2c4571"></div>
-            <!-- Lilac -->
-            <div class="color-swatch" style="background-color: #C9B6EA;" data-name="Lilac" data-target="0.000000_0.000000_1.000000_0.000000_0.000000" data-color="#C9B6EA"></div>
-            <!-- Green -->
-            <div class="color-swatch" style="background-color: #BFB959;" data-name="Moss Green" data-target="0.000000_0.000000_1.000000_0.000000_0.000000" data-color="#BFB959"></div>
-            <!-- Yellow -->
-            <div class="color-swatch" style="background-color: #FFD866;" data-name="Summer Yellow" data-target="0.000000_0.000000_1.000000_0.000000_0.000000" data-color="#FFD866"></div>
-            <!-- Red -->
-            <div class="color-swatch" style="background-color: #CE4D4D;" data-name="American Flag Red" data-target="0.000000_0.000000_1.000000_0.000000_0.000000" data-color="#CE4D4D"></div>
-            <!-- Orange -->
-            <div class="color-swatch" style="background-color: #FC8E4F;" data-name="Matte Orange" data-target="0.000000_0.000000_1.000000_0.000000_0.000000" data-color="#FC8E4F"></div>
+            <!-- JS will inject swatches here -->
         </div>
 
         <!-- SWAP BUTTON HERE -->
@@ -442,22 +428,7 @@
             Housing Color <span id="housing-display-name" style="text-transform: none; color: var(--text-color); font-weight: normal; margin-left: 6px;">- Matte Black</span>
         </div>
         <div class="swatch-grid" id="housing-swatches">
-            <!-- Black (Default) -->
-            <div class="color-swatch active" style="background-color: #2C2D2A;" data-name="Matte Black" data-target="1.000000_1.000000_0.000000_0.000000_0.000000" data-color="#2C2D2A"></div>
-            <!-- White -->
-            <div class="color-swatch" style="background-color: #DAD8CC;" data-name="Off White" data-target="1.000000_1.000000_0.000000_0.000000_0.000000" data-color="#DAD8CC"></div>
-            <!-- Navy -->
-            <div class="color-swatch" style="background-color: #2c4571;" data-name="Navy" data-target="1.000000_1.000000_0.000000_0.000000_0.000000" data-color="#2c4571"></div>
-            <!-- Lilac -->
-            <div class="color-swatch" style="background-color: #C9B6EA;" data-name="Lilac" data-target="1.000000_1.000000_0.000000_0.000000_0.000000" data-color="#C9B6EA"></div>
-            <!-- Green -->
-            <div class="color-swatch" style="background-color: #BFB959;" data-name="Moss Green" data-target="1.000000_1.000000_0.000000_0.000000_0.000000" data-color="#BFB959"></div>
-            <!-- Yellow -->
-            <div class="color-swatch" style="background-color: #FFD866;" data-name="Summer Yellow" data-target="1.000000_1.000000_0.000000_0.000000_0.000000" data-color="#FFD866"></div>
-            <!-- Red -->
-            <div class="color-swatch" style="background-color: #CE4D4D;" data-name="American Flag Red" data-target="1.000000_1.000000_0.000000_0.000000_0.000000" data-color="#CE4D4D"></div>
-            <!-- Orange -->
-            <div class="color-swatch" style="background-color: #FC8E4F;" data-name="Matte Orange" data-target="1.000000_1.000000_0.000000_0.000000_0.000000" data-color="#FC8E4F"></div>
+            <!-- JS will inject swatches here -->
         </div>
 
         <!-- Themes -->
@@ -587,6 +558,51 @@
         
         return [r, g, b, 1];
     }
+
+    // --- 2.5 DYNAMIC COLOR SWATCH GENERATOR ---
+    const availableColors = [
+        {name: "Matte Black"      , hex: "#2C2D2A"},
+        {name: "Off White"        , hex: "#DAD8CC"},
+        {name: "Navy"             , hex: "#2c4571"},
+        {name: "Lilac"            , hex: "#C9B6EA"},
+        {name: "Moss Green"       , hex: "#BFB959"},
+        {name: "Summer Yellow"    , hex: "#FFD866"},
+        {name: "American Flag Red", hex: "#CE4D4D"},
+        {name: "Matte Orange"     , hex: "#FC8E4F"},
+        {name: "Sky Blue    "     , hex: "#B7DEFD"},
+        {name: "Forest Green    "     , hex: "#606a31"},
+    ];
+
+    function injectSwatches() {
+        const faceplateContainer = document.getElementById('faceplate-swatches');
+        const housingContainer = document.getElementById('housing-swatches');
+        
+        if (!faceplateContainer || !housingContainer) return;
+
+        // Internal 3D material names from Onshape
+        const faceplateMaterial = "0.000000_0.000000_1.000000_0.000000_0.000000";
+        const housingMaterial = "1.000000_1.000000_0.000000_0.000000_0.000000";
+
+        // Helper function to build the HTML string
+        const buildHTML = (targetMaterial) => availableColors.map((color, index) => {
+            const isActive = index === 0 ? "active" : ""; // Make the first color active by default
+            return `
+                <div class="color-swatch ${isActive}" 
+                     style="background-color: ${color.hex};" 
+                     data-name="${color.name}" 
+                     data-target="${targetMaterial}" 
+                     data-color="${color.hex}">
+                </div>
+            `;
+        }).join('');
+
+        // Inject the HTML into the page
+        faceplateContainer.innerHTML = buildHTML(faceplateMaterial);
+        housingContainer.innerHTML = buildHTML(housingMaterial);
+    }
+
+    // Run the injection BEFORE the click listeners are attached below
+    injectSwatches();
 
 
     // --- 3. BUTTON CLICK LOGIC (Color Swatches) ---
