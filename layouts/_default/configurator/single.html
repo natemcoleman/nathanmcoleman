@@ -17,6 +17,10 @@
             --btn-text: #FFFFFF;
         }
 
+        * {
+            box-sizing: border-box;
+        }
+
         /* Dark Theme Overrides */
         [data-theme="dark"] {
             --bg-color: #1E1E1E; /* Deep matte grey, not pure black */
@@ -136,6 +140,19 @@
         .theme-icon-btn:hover {
             opacity: 1;
             transform: scale(1.05); /* Very slight growth on hover */
+        }
+
+        /* Base style for your theme thumbnails */
+        .theme-btn {
+            border: 2px solid transparent; /* Prevents layout shifting */
+            transition: border-color 0.2s ease;
+            cursor: pointer;
+            border-radius: 4px; /* Optional: rounds the corners slightly */
+        }
+
+        /* The active state border */
+        .theme-btn.active {
+            border-color: var(--text-color); /* Uses your existing dark/light mode variable */
         }
 
         .theme-icon {
@@ -325,7 +342,7 @@
 <div class="configurator-wrapper">
     <!-- 3D Viewer Half -->
     <div class="viewer-section">
-        <model-viewer id="radar-viewer" src="/radar/radar_v7.glb" touch-action="pan-y" environment-image="neutral" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1"></model-viewer>
+        <model-viewer id="radar-viewer" src="/radar/radar_v7.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2"></model-viewer>
     </div>
     <!-- Controls Half -->
     <div class="controls-section">
@@ -377,195 +394,65 @@
             </label>
         </div>
         <!-- Sticky Checkout Bar -->
-<div class="checkout-container">
-    <!-- Dynamic Summary Panel -->
-    <div class="build-summary">
-        <h4 class="summary-title">Your Configuration</h4>
-        <ul class="summary-list">
-            <li>Housing: <span id="summary-housing">Matte Black</span></li>
-            <li>Faceplate: <span id="summary-faceplate">White</span></li>
-        </ul>
-        <p class="summary-note">Please select these exact options from the dropdown menus on Etsy.</p>
-    </div>
+        <div class="checkout-container">
+            <!-- Dynamic Summary Panel -->
+            <div class="build-summary">
+                <h4 class="summary-title">Your Configuration</h4>
+                <ul class="summary-list">
+                    <li>Housing: <span id="summary-housing">Matte Black</span></li>
+                    <li>Faceplate: <span id="summary-faceplate">White</span></li>
+                </ul>
+                <p class="summary-note">Please select these options from the dropdown menus on Etsy.</p>
+            </div>
 
-    <!-- Existing Etsy Button -->
-    <a href="https://www.etsy.com/listing/4541612698/mini-desktop-radar?show_sold_out_detail=1&ref=nla_listing_details" target="_blank" class="btn-primary checkout-btn">Complete on Etsy</a>
-</div>
+            <!-- Existing Etsy Button -->
+            <a href="https://www.etsy.com/listing/4541612698/mini-desktop-radar?show_sold_out_detail=1&ref=nla_listing_details" target="_blank" class="btn-primary checkout-btn">Complete on Etsy</a>
+        </div>
     </div>
 </div>
 
 <!-- Logic -->
 <script>
-    const modelViewer = document.querySelector('#radar-viewer');
+    const modelViewer = document.querySelector('model-viewer');
 
-    // --- SETUP SEQUENCE ON LOAD ---
+    // --- 1. SETUP SEQUENCE ON LOAD ---
+    // We merged the two load events into one clean sequence to stop them from fighting
     modelViewer.addEventListener('load', () => {
         const materials = modelViewer.model.materials;
         
-        // 1. DUMP NAMES TO CONSOLE (So you can see what Onshape named them)
-        console.log("--- 3D MODEL MATERIALS ---");
-        materials.forEach(mat => console.log(mat.name));
-        console.log("--------------------------");
-
-        // 2. ASSIGN CONSTANTS (Replace 'YOUR_SCREEN_NAME' with the actual console name)
-        const screenMat = materials.find(mat => mat.name === '1.000000_0.000000_0.000000_0.000000_0.000000');
-        if (screenMat) {
-            screenMat.pbrMetallicRoughness.setBaseColorFactor([0.05, 0.05, 0.05, 1]); // Pitch Black
-            screenMat.pbrMetallicRoughness.setRoughnessFactor(0.1); // Highly Reflective (Shiny)
-            screenMat.pbrMetallicRoughness.setMetallicFactor(0.8); // Gives it a glass/screen look
-        }
-
+        // A. Setup physical plastics first
         const plugMat = materials.find(mat => mat.name === '0.000000_1.000000_0.000000_0.000000_0.000000');
         if (plugMat) {
-            plugMat.pbrMetallicRoughness.setBaseColorFactor(hexToRgba('#2c2c2c')); // Darkest black
-            plugMat.pbrMetallicRoughness.setRoughnessFactor(0.9); // Very matte
-            plugMat.pbrMetallicRoughness.setMetallicFactor(0); // Removes default CAD shine
+            plugMat.pbrMetallicRoughness.setBaseColorFactor(hexToRgba('#2c2c2c'));
+            plugMat.pbrMetallicRoughness.setRoughnessFactor(0.9);
+            plugMat.pbrMetallicRoughness.setMetallicFactor(0);
         }
 
-        // 3. SET DEFAULT STARTING COLORS
         const faceplateMat = materials.find(mat => mat.name === '0.000000_0.000000_1.000000_0.000000_0.000000');
         if (faceplateMat) {
             faceplateMat.pbrMetallicRoughness.setBaseColorFactor(hexToRgba('#2c2c2c'));
-            faceplateMat.pbrMetallicRoughness.setRoughnessFactor(0.5); // Very matte
-            faceplateMat.pbrMetallicRoughness.setMetallicFactor(0); // Removes default CAD shine
+            faceplateMat.pbrMetallicRoughness.setRoughnessFactor(0.5); 
+            faceplateMat.pbrMetallicRoughness.setMetallicFactor(0); 
         }
 
         const bodyMat = materials.find(mat => mat.name === '1.000000_1.000000_0.000000_0.000000_0.000000');
         if (bodyMat) {
             bodyMat.pbrMetallicRoughness.setBaseColorFactor(hexToRgba('#2c2c2c'));
-            bodyMat.pbrMetallicRoughness.setRoughnessFactor(0.5); // Very matte
-            bodyMat.pbrMetallicRoughness.setMetallicFactor(0); // Removes default CAD shine
+            bodyMat.pbrMetallicRoughness.setRoughnessFactor(0.5); 
+            bodyMat.pbrMetallicRoughness.setMetallicFactor(0); 
         }
-    });
 
-    // --- BUTTON CLICK LOGIC (Color Swatches) ---
-    document.querySelectorAll('.color-swatch').forEach(swatch => {
-        swatch.addEventListener('click', (e) => {
-            const siblings = e.target.parentElement.querySelectorAll('.color-swatch');
-            siblings.forEach(s => s.classList.remove('active'));
-            e.target.classList.add('active');
-
-            if (!modelViewer.model) return;
-            const targetMaterial = e.target.getAttribute('data-target');
-            const hexColor = e.target.getAttribute('data-color');
-            const material = modelViewer.model.materials.find(mat => mat.name === targetMaterial);
-            
-            if (material) {
-                // Apply the color
-                material.pbrMetallicRoughness.setBaseColorFactor(hexToRgba(hexColor));
-                material.pbrMetallicRoughness.setRoughnessFactor(0.9); 
-                material.pbrMetallicRoughness.setMetallicFactor(0);     
-            }
-        });
-        updateCheckoutSummary();
-    });
-
-    // --- BUTTON CLICK LOGIC (Theme Textures) ---
-    document.querySelectorAll('.theme-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
-
-            if (!modelViewer.model) return;
-            const texturePath = e.target.getAttribute('data-texture');
-            const texture = await modelViewer.createTexture(texturePath);
-            // const material = modelViewer.model.materials.find(mat => mat.name === "1.000000_0.000000_0.000000_0.000000_0.000000"); // Update this too!
-            
-            // if (material) {
-            //     material.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
-            //     // When showing a texture, we remove the base color so the image shows perfectly
-            //     material.pbrMetallicRoughness.setBaseColorFactor([1, 1, 1, 1]); 
-            //     material.setEmissiveFactor([1, 1, 1]);
-            // }
-            // TARGETING THE RED MATERIAL (Screen)
-            const material = modelViewer.model.materials.find(mat => mat.name === "1.000000_0.000000_0.000000_0.000000_0.000000"); 
-            
-            if (material) {
-                // Keep the base color texture applied
-                material.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
-                
-                // Add the EMISSIVE properties to make it glow brightly from within
-                material.emissiveTexture.setTexture(texture);
-                material.setEmissiveFactor([1, 1, 1]); // Set glow color/intensity to pure white
+        // B. Wait exactly one frame for the plastics to render, THEN load the screen theme
+        requestAnimationFrame(() => {
+            const defaultThemeBtn = document.querySelector('.theme-btn[data-texture*="classic2_large.jpg"]');
+            if (defaultThemeBtn) {
+                defaultThemeBtn.click();
             }
         });
     });
 
-    // --- BUTTON CLICK LOGIC (Screen Power Toggle) ---
-    const powerToggle = document.getElementById('power-toggle');
-    if (powerToggle) {
-        powerToggle.addEventListener('change', (e) => {
-            if (!modelViewer.model) return;
-            
-            // Target the Screen material (using the Red string from Onshape)
-            const material = modelViewer.model.materials.find(mat => mat.name === "1.000000_0.000000_0.000000_0.000000_0.000000"); 
-            
-            if (e.target.checked) {
-                // Turn On: Programmatically click the active theme to restore texture and glow
-                const activeTheme = document.querySelector('.theme-btn.active');
-                if (activeTheme) activeTheme.click();
-            } else {
-                // Turn Off: Remove textures and kill the emissive light
-                material.pbrMetallicRoughness.baseColorTexture.setTexture(null);
-                material.emissiveTexture.setTexture(null);
-                
-                // Set color to pitch black and turn off the glow
-                material.pbrMetallicRoughness.setBaseColorFactor([0.05, 0.05, 0.05, 1]);
-                material.setEmissiveFactor([0, 0, 0]); 
-            }
-        });
-    }
 
-    const themeToggleBtn = document.getElementById('theme-toggle');
-    const iconSun = document.getElementById('icon-sun');
-    const iconMoon = document.getElementById('icon-moon');
-
-    // 1. Detect OS Preference
-    const prefersDarkOS = window.matchMedia('(prefers-color-scheme: dark)');
-
-    // 2. Determine initial theme (Local storage wins, then OS preference, defaults to light)
-    const currentTheme = localStorage.getItem('theme');
-    let activeTheme = 'light';
-
-    if (currentTheme === 'dark' || (!currentTheme && prefersDarkOS.matches)) {
-        activeTheme = 'dark';
-    }
-
-    // 3. Helper function to apply the theme and swap the SVG icons
-    const applyTheme = (theme) => {
-        document.documentElement.setAttribute('data-theme', theme);
-        if (theme === 'dark') {
-            iconSun.style.display = 'block'; // Show sun to toggle back to light
-            iconMoon.style.display = 'none';
-        } else {
-            iconSun.style.display = 'none';
-            iconMoon.style.display = 'block'; // Show moon to toggle to dark
-        }
-    };
-
-    // 4. Initialize the page
-    applyTheme(activeTheme);
-
-    // 5. Listen for user clicks
-    if (themeToggleBtn) {
-        themeToggleBtn.addEventListener('click', () => {
-            let theme = document.documentElement.getAttribute('data-theme');
-            let newTheme = theme === 'dark' ? 'light' : 'dark';
-            
-            applyTheme(newTheme);
-            localStorage.setItem('theme', newTheme);
-        });
-    }
-
-    // 6. Bonus: Listen for OS changes in real-time
-    prefersDarkOS.addEventListener('change', (e) => {
-        // Only auto-switch if the user hasn't manually overridden it yet
-        if (!localStorage.getItem('theme')) {
-            applyTheme(e.matches ? 'dark' : 'light');
-        }
-    });
-
-    // --- HELPER FUNCTION ---
+    // --- 2. HELPER FUNCTION (WITH SATURATION OVERDRIVE) ---
     function hexToRgba(hex) {
         let r = 0, g = 0, b = 0;
         if (hex.length === 4) {
@@ -578,29 +465,139 @@
             b = parseInt(hex.substring(5, 7), 16) / 255;
         }
         
-        // Convert sRGB to Linear color space for accurate 3D rendering
-        r = Math.pow(r, 2.2);
-        g = Math.pow(g, 2.2);
-        b = Math.pow(b, 2.2);
+        // OVERDRIVE THE SATURATION HERE!
+        // Increase this number (e.g., 2.0 or 2.5) if you want the orange/blue to be insanely vibrant
+        const saturationBoost = 0.2; 
+        
+        r = Math.pow(r, 2.2) * saturationBoost;
+        g = Math.pow(g, 2.2) * saturationBoost;
+        b = Math.pow(b, 2.2) * saturationBoost;
         
         return [r, g, b, 1];
     }
 
-    // Function to update the text in the summary box
-    function updateCheckoutSummary() {
-        // 1. Find whichever buttons currently have the 'active' class
-        // (Adjust these class selectors if your buttons are named differently)
-        const activeHousing = document.querySelector('.housing-btn.active');
-        const activeFaceplate = document.querySelector('.faceplate-btn.active');
 
-        // 2. Grab the name of the selection (using a data-name attribute or the button's inner text)
-        // Example: <button class="theme-btn active" data-name="Modern">...</button>
-        if (activeHousing) {
-            document.getElementById('summary-housing').textContent = activeHousing.getAttribute('data-name') || activeHousing.textContent.trim();
+    // --- 3. BUTTON CLICK LOGIC (Color Swatches) ---
+    document.querySelectorAll('.color-swatch').forEach(swatch => {
+        swatch.addEventListener('click', (e) => {
+            const siblings = e.target.parentElement.querySelectorAll('.color-swatch');
+            siblings.forEach(s => s.classList.remove('active'));
+            e.target.classList.add('active');
+
+            if (!modelViewer.model) return;
+            const targetMaterial = e.target.getAttribute('data-target');
+            const hexColor = e.target.getAttribute('data-color');
+            const material = modelViewer.model.materials.find(mat => mat.name === targetMaterial);
+            
+            if (material) {
+                material.pbrMetallicRoughness.setBaseColorFactor(hexToRgba(hexColor));
+                material.pbrMetallicRoughness.setRoughnessFactor(0.9); 
+                material.pbrMetallicRoughness.setMetallicFactor(0);     
+            }
+            updateCheckoutSummary();
+        });
+    });
+
+
+    // --- 4. BUTTON CLICK LOGIC (Theme Textures) ---
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+
+            const powerToggle = document.getElementById('power-toggle'); 
+            if (powerToggle && !powerToggle.checked) {
+                powerToggle.checked = true; 
+            }
+
+            if (!modelViewer.model) return;
+            
+            const texturePath = e.currentTarget.getAttribute('data-texture');
+            const texture = await modelViewer.createTexture(texturePath);
+            const material = modelViewer.model.materials.find(mat => mat.name === "1.000000_0.000000_0.000000_0.000000_0.000000"); 
+
+            if (material) {
+                material.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
+                material.emissiveTexture.setTexture(texture);
+                material.setEmissiveFactor([2.5, 2.5, 2.5]); 
+            }
+        });
+    });
+
+
+    // --- 5. BUTTON CLICK LOGIC (Screen Power Toggle) ---
+    const powerToggle = document.getElementById('power-toggle');
+    if (powerToggle) {
+        powerToggle.addEventListener('change', (e) => {
+            if (!modelViewer.model) return;
+            const material = modelViewer.model.materials.find(mat => mat.name === "1.000000_0.000000_0.000000_0.000000_0.000000"); 
+            
+            if (e.target.checked) {
+                const activeTheme = document.querySelector('.theme-btn.active');
+                if (activeTheme) activeTheme.click();
+            } else {
+                material.pbrMetallicRoughness.baseColorTexture.setTexture(null);
+                material.emissiveTexture.setTexture(null);
+                material.pbrMetallicRoughness.setBaseColorFactor([0.05, 0.05, 0.05, 1]);
+                material.setEmissiveFactor([0, 0, 0]); 
+            }
+        });
+    }
+
+
+    // --- 6. DARK/LIGHT MODE TOGGLE ---
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    const iconSun = document.getElementById('icon-sun');
+    const iconMoon = document.getElementById('icon-moon');
+    const prefersDarkOS = window.matchMedia('(prefers-color-scheme: dark)');
+    const currentTheme = localStorage.getItem('theme');
+    let activeTheme = 'light';
+
+    if (currentTheme === 'dark' || (!currentTheme && prefersDarkOS.matches)) {
+        activeTheme = 'dark';
+    }
+
+    const applyTheme = (theme) => {
+        document.documentElement.setAttribute('data-theme', theme);
+        if (theme === 'dark') {
+            iconSun.style.display = 'block';
+            iconMoon.style.display = 'none';
+        } else {
+            iconSun.style.display = 'none';
+            iconMoon.style.display = 'block';
         }
-        
+    };
+
+    applyTheme(activeTheme);
+
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', () => {
+            let theme = document.documentElement.getAttribute('data-theme');
+            let newTheme = theme === 'dark' ? 'light' : 'dark';
+            applyTheme(newTheme);
+            localStorage.setItem('theme', newTheme);
+        });
+    }
+
+    prefersDarkOS.addEventListener('change', (e) => {
+        if (!localStorage.getItem('theme')) applyTheme(e.matches ? 'dark' : 'light');
+    });
+
+
+    // --- 7. ETSY CHECKOUT SUMMARY UPDATE ---
+    function updateCheckoutSummary() {
+        // Fixed the selectors to match your HTML structure!
+        const activeHousing = document.querySelector('#housing-swatches .color-swatch.active');
+        const activeFaceplate = document.querySelector('#faceplate-swatches .color-swatch.active');
+
+        // To make the names display perfectly, you should add a data-name attribute 
+        // to your HTML swatches (e.g., data-name="Orange"). 
+        // If it isn't there, this falls back to just showing the hex code so it doesn't break.
+        if (activeHousing) {
+            document.getElementById('summary-housing').textContent = activeHousing.getAttribute('data-name') || activeHousing.getAttribute('data-color');
+        }
         if (activeFaceplate) {
-            document.getElementById('summary-faceplate').textContent = activeFaceplate.getAttribute('data-name') || activeFaceplate.textContent.trim();
+            document.getElementById('summary-faceplate').textContent = activeFaceplate.getAttribute('data-name') || activeFaceplate.getAttribute('data-color');
         }
     }
 </script>
