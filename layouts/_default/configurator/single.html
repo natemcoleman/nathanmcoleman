@@ -352,6 +352,18 @@
             z-index: 100;
         }
 
+        .manufacturing-disclaimer {
+            font-size: 12px;
+            font-style: italic;
+            color: var(--text-color);
+            opacity: 0.65;
+            margin-top: 12px;
+            margin-bottom: 0;
+            line-height: 1.4;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-color); /* Adds a nice visual separator */
+        }
+
         @media (min-width: 768px) {
             .checkout-bar { width: 40%; } /* Match the controls-section width roughly */
         }
@@ -462,10 +474,13 @@
             <div class="build-summary">
                 <h4 class="summary-title">Your Configuration</h4>
                 <ul class="summary-list">
-                    <li>Housing: <span id="summary-housing">Matte Black</span></li>
                     <li>Faceplate: <span id="summary-faceplate">Matte Black</span></li>
+                    <li>Housing: <span id="summary-housing">Matte Black</span></li>
                 </ul>
                 <p class="summary-note">Please select these options from the dropdown menus on Etsy.</p>
+                <p class="manufacturing-disclaimer">
+                    *Note: 3D renders are for visualization. The final delivered product will be custom 3D printed and may contain minor surface variations standard to the manufacturing process.
+                </p>
             </div>
         
             <!-- NEW SHARE BUTTON -->
