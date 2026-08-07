@@ -2,7 +2,7 @@
 title: '3D Printed Snap On Hanger'
 description: 'For 1" metal shelving units'
 # date: January 2025
-draft: false
+draft: true
 weight: 900
 tags: ["3D printing", "compliant mechanisms"]
 cover:

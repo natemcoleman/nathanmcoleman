@@ -50,7 +50,7 @@ params:
   profileMode:
     enabled: true
     title: "Nathan Coleman"
-    subtitle: Advanced Weapons Engineer
+    subtitle: Systems Engineer
     imageUrl: "home/headshot.jpg"
     imageWidth: 220
     imageHeight: 220
@@ -67,14 +67,14 @@ params:
     hiddenInSingle: false # hide on single page
 
   socialIcons:
-    - name: "email"
-      url: "mailto:natecolemancv@gmail.com"
+    # - name: "email"
+      # url: "mailto:natecolemancv@gmail.com"
     - name: github
       url:  https://github.com/natemcoleman
     - name: linkedin
       url:  https://www.linkedin.com/in/natemcoleman/
-    - name: instagram
-      url:  https://www.instagram.com/nate_theaverage/
+    # - name: instagram
+    #   url:  https://www.instagram.com/nate_theaverage/
 
   # text search
   fuseOpts:
