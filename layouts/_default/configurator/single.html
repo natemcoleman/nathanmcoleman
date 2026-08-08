@@ -59,7 +59,7 @@
             gap: 1rem;
             margin-top: 2rem;
             padding-top: 1.5rem;
-            border-top: 1px solid var(--border-color);
+            /* border-top: 1px solid var(--border-color); */
             /* position: sticky;
             bottom: 0;
             background-color: var(--bg-color); /* Matches your dark/light mode background */
@@ -171,9 +171,13 @@
             min-height: 45vh;
         }
 
-        Creates a soft spotlight behind the model in dark mode
+        /* Solid very light gray background for the model in dark mode */
         [data-theme="dark"] .viewer-section {
-            background: radial-gradient(circle at center, #9e9ea8 0%, #2a2a2a 45%, var(--bg-color) 80%);
+            background: #2A2A2A; 
+        }
+        
+        [data-theme="dark"] model-viewer {
+            background-color: #2A2A2A; /* Ensures the viewer itself matches */
         }
 
         .top-nav {
@@ -470,13 +474,13 @@
         <!-- Themes -->
         <!-- Screen Themes -->
         <div class="section-title">
-            Screen Theme <span style="text-transform: none; color: var(--text-color); opacity: 0.7; font-size: 0.85em; font-weight: normal; margin-left: 8px;">- All themes included with every purchase</span>
+            Screen Theme <span style="text-transform: none; color: var(--text-color); opacity: 0.7; font-size: 0.85em; font-weight: normal; margin-left: 8px;">- Both themes included with every purchase</span>
         </div>
         <div class="theme-grid">
             <button class="theme-btn active" style="background-image: url('/radar/classic2.jpg');" data-texture="/radar/classic_large2.jpg">Classic</button>
             <button class="theme-btn" style="background-image: url('/radar/modern.jpg');" data-texture="/radar/modern_large2.jpg">Modern</button>
-            <button class="theme-btn" style="background-image: url('/radar/party.jpg');" data-texture="/radar/party_large2.jpg">Party</button>
-            <button class="theme-btn" style="background-image: url('/radar/callsign.jpg');" data-texture="/radar/callsign_large.jpg">Callsigns</button>
+            <!-- <button class="theme-btn" style="background-image: url('/radar/party.jpg');" data-texture="/radar/party_large2.jpg">Party</button>
+            <button class="theme-btn" style="background-image: url('/radar/callsign.jpg');" data-texture="/radar/callsign_large.jpg">Callsigns</button> -->
         </div>
 
         <!-- Power Options -->
