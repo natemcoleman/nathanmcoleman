@@ -431,7 +431,7 @@
 <div class="configurator-wrapper">
     <!-- 3D Viewer Half -->
     <div class="viewer-section">
-        <model-viewer id="radar-viewer" src="/radar/radar_v7.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2"></model-viewer>
+        <model-viewer id="radar-viewer" src="/radar/radar_v8.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2"></model-viewer>
     </div>
     <!-- Controls Half -->
     <div class="controls-section">
@@ -523,7 +523,7 @@
         const plugMat = materials.find(mat => mat.name === '0.000000_1.000000_0.000000_0.000000_0.000000');
         if (plugMat) {
             plugMat.pbrMetallicRoughness.setBaseColorFactor(hexToRgba('#2c2c2c'));
-            plugMat.pbrMetallicRoughness.setRoughnessFactor(0.9);
+            plugMat.pbrMetallicRoughness.setRoughnessFactor(0.5);
             plugMat.pbrMetallicRoughness.setMetallicFactor(0);
         }
 
