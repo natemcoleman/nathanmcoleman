@@ -95,12 +95,19 @@
         /* --- Swap Button --- */
         .swap-container {
             display: flex;
-            justify-content: flex-start; /* Keeps it dead center */
-            padding-left: 24px;
-            margin-top: 24px;
-            margin-bottom: 24px;
+            align-items: center; 
+            justify-content: flex-start; 
+            gap: 24px; /* <--- INCREASE THIS NUMBER TO ADD MORE SPACE */
+            margin-top: 16px;
+            margin-bottom: 16px; 
             position: relative;
             z-index: 2;
+        }
+
+        .swap-text {
+            font-size: 16px; /* Adjust if your section-titles are a different size */
+            font-weight: 600;
+            color: var(--text-color);
         }
         
         .swap-btn {
@@ -383,6 +390,18 @@
         }
         
         .btn-primary:hover { background-color: #005bb5; }
+
+        /* --- Mobile Layout Adjustments --- */
+        @media (max-width: 768px) {
+            .viewer-section {
+                height: 35dvh !important; /* Reduces the 3D model area to 35% of the screen */
+                min-height: 280px; /* Prevents it from getting too small on very short screens */
+            }
+            
+            .controls-section {
+                height: 65dvh !important; /* Gives the remaining space to your menus */
+            }
+        }
     </style>
 </head>
 <body>
@@ -429,8 +448,8 @@
 
         <!-- SWAP BUTTON HERE -->
         <div class="swap-container">
+            <div class="swap-text">Swap Colors</div>
             <button id="swap-colors-btn" class="swap-btn" aria-label="Swap Colors">
-                <!-- Up and Down Arrow SVG -->
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="11 17 7 21 3 17"></polyline>
                     <line x1="7" y1="21" x2="7" y2="9"></line>
