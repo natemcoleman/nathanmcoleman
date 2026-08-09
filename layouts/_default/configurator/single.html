@@ -379,6 +379,37 @@
             .checkout-bar { width: 40%; } /* Match the controls-section width roughly */
         }
 
+        /* --- Brand Watermark --- */
+        .brand-watermark {
+            position: absolute;
+            top: 1.5rem; /* Matches the top padding of your theme toggle icon */
+            left: 2rem;  /* Gives it breathing room from the left edge */
+            z-index: 100;
+            pointer-events: none; /* Crucial: lets clicks pass through to the 3D model */
+            color: var(--text-color);
+            font-weight: 600;
+            font-size: 18px;
+            line-height: 1.4;
+        }
+        
+        .brand-subtext {
+            font-size: 14px;
+            font-weight: 400;
+            opacity: 0.7; /* Dims the secondary text slightly for visual hierarchy */
+        }
+
+        /* Shrink it slightly on mobile devices so it doesn't take up too much space */
+        @media (max-width: 768px) {
+            .brand-watermark {
+                top: 1rem;
+                left: 1rem;
+                font-size: 16px;
+            }
+            .brand-subtext {
+                font-size: 12px;
+            }
+        }
+
         .btn-primary {
             background-color: var(--btn-primary);
             color: var(--btn-text);
@@ -435,11 +466,15 @@
 <div class="configurator-wrapper">
     <!-- 3D Viewer Half -->
     <div class="viewer-section">
+        <div class="brand-watermark">
+            Mini Desktop Radar<br>
+            <span class="brand-subtext">by Dragonfly Development</span>
+        </div>
         <model-viewer id="radar-viewer" src="/radar/radar_v8.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2"></model-viewer>
     </div>
     <!-- Controls Half -->
     <div class="controls-section">
-        <h2>Configure your Radar</h2>
+        <h2>Mini Radar Configuration</h2>
         <div class="price">$65 (Free Shipping)</div>
 
        <!-- Faceplate Colors -->
