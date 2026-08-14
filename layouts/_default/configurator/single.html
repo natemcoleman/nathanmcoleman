@@ -482,7 +482,7 @@
             Mini Desktop Radar<br>
             <span class="brand-subtext">by Dragonfly Development</span>
         </div>
-        <model-viewer id="radar-viewer" src="/radar/radar_v8.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2"></model-viewer>
+        <model-viewer id="radar-viewer" src="/radar/radar_v9.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2"></model-viewer>
     </div>
     <!-- Controls Half -->
     <div class="controls-section">
@@ -737,7 +737,7 @@
             
             if (material) {
                 material.pbrMetallicRoughness.setBaseColorFactor(hexToRgba(hexColor));
-                material.pbrMetallicRoughness.setRoughnessFactor(0.9); 
+                material.pbrMetallicRoughness.setRoughnessFactor(0.5); 
                 material.pbrMetallicRoughness.setMetallicFactor(0);     
             }
             updateCheckoutSummary();
