@@ -978,7 +978,7 @@ modelViewer.addEventListener('ar-status', async (event) => {
 
     if (event.detail.status === 'session-started') {
         // Entering AR: Swap to the static fallback image for iPhone compatibility
-        const staticTexture = await modelViewer.createTexture('/radar/classic_large3.jpg');
+        const staticTexture = await modelViewer.createTexture('/radar/classic_large2.jpg');
         material.pbrMetallicRoughness.baseColorTexture.setTexture(staticTexture);
         material.emissiveTexture.setTexture(staticTexture);
         
