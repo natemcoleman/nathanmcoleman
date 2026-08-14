@@ -522,25 +522,26 @@
         <!-- Themes -->
         <!-- Screen Themes -->
         <div class="section-title">
-            Screen Theme <span style="text-transform: none; color: var(--text-color); opacity: 0.7; font-size: 0.85em; font-weight: normal; margin-left: 8px;">- Both themes included with every purchase</span>
+            Screen Theme <span style="text-transform: none; color: var(--text-color); opacity: 0.7; font-size: 0.85em; font-weight: normal; margin-left: 8px;">- Both themes included with every radar</span>
         </div>
         <div class="theme-grid">
             <!-- <button class="theme-btn active" style="background-image: url('/radar/classic2.jpg');" data-texture="/radar/classic_large2.jpg">Classic</button> -->
             <button class="theme-btn active" style="background-image: url('/radar/classic2.jpg');" data-texture="/radar/classic_radar6.mp4">Classic</button>
             <button class="theme-btn" style="background-image: url('/radar/modern.jpg');" data-texture="/radar/modern_large3.jpg">Modern</button>
+            <button class="theme-btn" style="background-color: #111;" data-texture="off">Screen Off</button>
             <!-- <button class="theme-btn" style="background-image: url('/radar/party.jpg');" data-texture="/radar/party_large2.jpg">Party</button>
             <button class="theme-btn" style="background-image: url('/radar/callsign.jpg');" data-texture="/radar/callsign_large.jpg">Callsigns</button> -->
         </div>
 
         <!-- Power Options -->
         <!-- <div class="section-title">Power Options</div> -->
-        <div class="toggle-row">
+        <!-- <div class="toggle-row">
             <span>Screen Display</span>
             <label class="toggle-switch">
                 <input type="checkbox" id="power-toggle" checked>
                 <span class="slider"></span>
             </label>
-        </div>
+        </div> -->
         <!-- Sticky Checkout Bar -->
         <div class="checkout-container">
             <div class="build-summary">
@@ -761,25 +762,50 @@
 
             if (!modelViewer.model) return;
             
-            //const texturePath = e.currentTarget.getAttribute('data-texture');
-            //const texture = await modelViewer.createTexture(texturePath);
+            // //const texturePath = e.currentTarget.getAttribute('data-texture');
+            // //const texture = await modelViewer.createTexture(texturePath);
+            // const texturePath = e.currentTarget.getAttribute('data-texture');
+            
+            // // NEW: Smart check for video vs static images!
+            // let texture;
+            // if (texturePath.endsWith('.mp4')) {
+            //     // Instantly creates a muted, looping, autoplaying video texture
+            //     texture = modelViewer.createVideoTexture(texturePath);
+            // } else {
+            //     texture = await modelViewer.createTexture(texturePath);
+            // }
+            
             const texturePath = e.currentTarget.getAttribute('data-texture');
-            
-            // NEW: Smart check for video vs static images!
-            let texture;
-            if (texturePath.endsWith('.mp4')) {
-                // Instantly creates a muted, looping, autoplaying video texture
-                texture = modelViewer.createVideoTexture(texturePath);
-            } else {
-                texture = await modelViewer.createTexture(texturePath);
-            }
-            
             const material = modelViewer.model.materials.find(mat => mat.name === "1.000000_0.000000_0.000000_0.000000_0.000000"); 
 
             if (material) {
-                material.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
-                material.emissiveTexture.setTexture(texture);
-                material.setEmissiveFactor([1, 1, 1]); 
+                if (texturePath === "off") {
+                    // 1. POWER OFF STATE
+                    // Remove textures and make the screen pitch black with 0 glow
+                    material.pbrMetallicRoughness.baseColorTexture.setTexture(null);
+                    material.emissiveTexture.setTexture(null);
+                    material.pbrMetallicRoughness.setBaseColorFactor([0, 0, 0, 1]); // Very dark gray/black
+                    material.setEmissiveFactor([0, 0, 0]); 
+                    // 2. Make it a shiny, reflective glass surface
+                    material.pbrMetallicRoughness.setRoughnessFactor(0.05); // 0 = perfect mirror, 1 = chalky matte
+                    material.pbrMetallicRoughness.setMetallicFactor(0.8);
+
+                } else if (texturePath.endsWith('.mp4')) {
+                    // 2. VIDEO ANIMATION STATE
+                    const texture = modelViewer.createVideoTexture(texturePath);
+                    material.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
+                    material.emissiveTexture.setTexture(texture);
+                    material.pbrMetallicRoughness.setBaseColorFactor([1.0, 1.0, 1.0, 1.0]); // Reset color to white
+                    material.setEmissiveFactor([1.0, 1.0, 1.0]); 
+
+                } else {
+                    // 3. STATIC IMAGE STATE
+                    const texture = await modelViewer.createTexture(texturePath);
+                    material.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
+                    material.emissiveTexture.setTexture(texture);
+                    material.pbrMetallicRoughness.setBaseColorFactor([1.0, 1.0, 1.0, 1.0]); // Reset color to white
+                    material.setEmissiveFactor([1.5, 1.5, 1.5]); 
+                }
             }
 
             updateURLParameters();
