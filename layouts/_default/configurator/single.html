@@ -482,7 +482,7 @@
             Mini Desktop Radar<br>
             <span class="brand-subtext">by Dragonfly Development</span>
         </div>
-        <model-viewer id="radar-viewer" src="/radar/radar_v9.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2"></model-viewer>
+        <model-viewer id="radar-viewer" src="/radar/radar_v10.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2"></model-viewer>
     </div>
     <!-- Controls Half -->
     <div class="controls-section">
@@ -525,8 +525,8 @@
         </div>
         <div class="theme-grid">
             <!-- <button class="theme-btn active" style="background-image: url('/radar/classic2.jpg');" data-texture="/radar/classic_large2.jpg">Classic</button> -->
-            <button class="theme-btn active" style="background-image: url('/radar/classic2.jpg');" data-texture="/radar/classic_radar_flipped.mp4">Classic</button>
-            <button class="theme-btn" style="background-image: url('/radar/modern.jpg');" data-texture="/radar/modern_large2.jpg">Modern</button>
+            <button class="theme-btn active" style="background-image: url('/radar/classic2.jpg');" data-texture="/radar/classic_radar6.mp4">Classic</button>
+            <button class="theme-btn" style="background-image: url('/radar/modern.jpg');" data-texture="/radar/modern_large3.jpg">Modern</button>
             <!-- <button class="theme-btn" style="background-image: url('/radar/party.jpg');" data-texture="/radar/party_large2.jpg">Party</button>
             <button class="theme-btn" style="background-image: url('/radar/callsign.jpg');" data-texture="/radar/callsign_large.jpg">Callsigns</button> -->
         </div>
@@ -778,7 +778,7 @@
             if (material) {
                 material.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
                 material.emissiveTexture.setTexture(texture);
-                material.setEmissiveFactor([1.25, 1.25, 1.25]); 
+                material.setEmissiveFactor([1, 1, 1]); 
             }
 
             updateURLParameters();
