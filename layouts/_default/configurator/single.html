@@ -482,7 +482,8 @@
             Mini Desktop Radar<br>
             <span class="brand-subtext">by Dragonfly Development</span>
         </div>
-        <model-viewer id="radar-viewer" ar ar-modes="webxr scene-viewer quick-look" src="/radar/radar_v10.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2"></model-viewer>
+        <!-- <model-viewer id="radar-viewer" ar ar-modes="webxr scene-viewer quick-look" src="/radar/radar_v10.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2"></model-viewer> -->
+        <model-viewer id="radar-viewer" scene-viewer quick-look" src="/radar/radar_v10.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2"></model-viewer>
     </div>
     <!-- Controls Half -->
     <div class="controls-section">
@@ -969,6 +970,16 @@
             swapBtn.setAttribute('data-rotation', currentRotation);
         });
     }
+
+    // const modelViewer = document.querySelector('#radar-viewer');
+
+    // When the 3D model finishes loading, automatically click the active theme button
+    modelViewer.addEventListener('load', () => {
+        const activeBtn = document.querySelector('.theme-btn.active');
+        if (activeBtn) {
+            activeBtn.click();
+        }
+    });
 
     //const modelViewer = document.querySelector('#radar-viewer');
     // Listen for the user entering or exiting AR
