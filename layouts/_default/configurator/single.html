@@ -975,7 +975,7 @@
     if (event.detail.status === 'session-started') {
         // The user just opened AR! 
         // Swap the screen back to a static image so it doesn't break on iPhones
-        const staticTexture = await modelViewer.createTexture('/radar/classic_large3.jpg');
+        const staticTexture = await modelViewer.createTexture('/radar/classic_large2.jpg');
         const material = modelViewer.model.materials.find(mat => mat.name === "1.000000_0.000000_0.000000_0.000000_0.000000");
         
         if (material) {
