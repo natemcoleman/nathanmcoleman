@@ -565,7 +565,7 @@
         <h3 style="margin-top: 0;">Restock Notification</h3>
         <p style="color: #aaa; font-size: 14px;">Out of stock on Etsy? Enter your email here to get notified when they're back in stock.</p>
         
-        <form action="https://formspree.io/f/xljrvnwo" method="POST" style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
+        <form id="restock-form"action="https://formspree.io/f/xljrvnwo" method="POST" style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
             <input type="email" name="email" placeholder="your@email.com" required 
                 style="width: 250px; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #222; color: #fff;">
             <button type="submit" 
@@ -1022,34 +1022,69 @@
 
     //const modelViewer = document.querySelector('#radar-viewer');
     // Listen for the user entering or exiting AR
-modelViewer.addEventListener('ar-status', async (event) => {
-    const material = modelViewer.model.materials.find(mat => mat.name === "1.000000_0.000000_0.000000_0.000000_0.000000");
-    if (!material) return;
+    modelViewer.addEventListener('ar-status', async (event) => {
+        const material = modelViewer.model.materials.find(mat => mat.name === "1.000000_0.000000_0.000000_0.000000_0.000000");
+        if (!material) return;
 
-    if (event.detail.status === 'session-started') {
-        // Entering AR: Swap to the static fallback image for iPhone compatibility
-        const staticTexture = await modelViewer.createTexture('/radar/classic_large2.jpg');
-        material.pbrMetallicRoughness.baseColorTexture.setTexture(staticTexture);
-        material.emissiveTexture.setTexture(staticTexture);
-        
-    } else if (event.detail.status === 'not-presenting') {
-        // Exiting AR: Find out which theme was selected, and restore the animation!
-        const activeThemeBtn = document.querySelector('.theme-btn.active');
-        const texturePath = activeThemeBtn ? activeThemeBtn.getAttribute('data-texture') : '/radar/classic_radar_loop.mp4';
-        
-        let restoreTexture;
-        if (texturePath.endsWith('.mp4')) {
-            restoreTexture = modelViewer.createVideoTexture(texturePath);
-            material.setEmissiveFactor([1.0, 1.0, 1.0]); // Keep blacks pure
-        } else {
-            restoreTexture = await modelViewer.createTexture(texturePath);
-            material.setEmissiveFactor([1.5, 1.5, 1.5]); // Boost static images
+        if (event.detail.status === 'session-started') {
+            // Entering AR: Swap to the static fallback image for iPhone compatibility
+            const staticTexture = await modelViewer.createTexture('/radar/classic_large2.jpg');
+            material.pbrMetallicRoughness.baseColorTexture.setTexture(staticTexture);
+            material.emissiveTexture.setTexture(staticTexture);
+            
+        } else if (event.detail.status === 'not-presenting') {
+            // Exiting AR: Find out which theme was selected, and restore the animation!
+            const activeThemeBtn = document.querySelector('.theme-btn.active');
+            const texturePath = activeThemeBtn ? activeThemeBtn.getAttribute('data-texture') : '/radar/classic_radar_loop.mp4';
+            
+            let restoreTexture;
+            if (texturePath.endsWith('.mp4')) {
+                restoreTexture = modelViewer.createVideoTexture(texturePath);
+                material.setEmissiveFactor([1.0, 1.0, 1.0]); // Keep blacks pure
+            } else {
+                restoreTexture = await modelViewer.createTexture(texturePath);
+                material.setEmissiveFactor([1.5, 1.5, 1.5]); // Boost static images
+            }
+            
+            material.pbrMetallicRoughness.baseColorTexture.setTexture(restoreTexture);
+            material.emissiveTexture.setTexture(restoreTexture);
         }
+    });
+
+    document.getElementById('restock-form').addEventListener('submit', function(event) {
+        event.preventDefault(); // Stop the browser from redirecting to Formspree
         
-        material.pbrMetallicRoughness.baseColorTexture.setTexture(restoreTexture);
-        material.emissiveTexture.setTexture(restoreTexture);
-    }
-});
+        const form = event.target;
+        
+        // 1. Send the event to Google Analytics (GA4)
+        if (typeof gtag === 'function') {
+            gtag('event', 'generate_lead', {
+                'event_category': 'Waitlist',
+                'event_label': 'Mini Desktop Radar',
+                'value': 1
+            });
+        }
+
+        // 2. Submit the email quietly in the background
+        const formData = new FormData(form);
+        
+        fetch(form.action, {
+            method: form.method,
+            body: formData,
+            headers: {
+                'Accept': 'application/json'
+            }
+        }).then(response => {
+            if (response.ok) {
+                // 3. Swap the form out for a success message
+                form.innerHTML = "<p style='color: #28a745; font-weight: bold; margin: 0; padding: 10px;'>✅ Success! We'll notify you when we restock.</p>";
+            } else {
+                alert("Oops! There was a problem submitting your email. Please try again.");
+            }
+        }).catch(error => {
+            alert("Network error. Please check your connection and try again.");
+        });
+    });
     
 </script>
 
