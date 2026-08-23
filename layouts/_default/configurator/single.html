@@ -605,7 +605,7 @@
         </div>
         <div class="theme-grid">
             <!-- <button class="theme-btn active" style="background-image: url('/radar/classic2.jpg');" data-texture="/radar/classic_large2.jpg">Classic</button> -->
-            <button class="theme-btn active" style="background-image: url('/radar/classic2.jpg');" data-texture="/radar/classic_radar6.mp4">Classic</button>
+            <button class="theme-btn active" style="background-image: url('/radar/classic2.jpg');" data-texture="/radar/classic_radar_v9.webm">Classic</button>
             <button class="theme-btn" style="background-image: url('/radar/modern.jpg');" data-texture="/radar/modern_large3.jpg">Modern</button>
             <button class="theme-btn" style="background-color: #111;" data-texture="off">Screen Off</button>
             <!-- <button class="theme-btn" style="background-image: url('/radar/party.jpg');" data-texture="/radar/party_large2.jpg">Party</button>
@@ -636,20 +636,17 @@
             </div>
         
             <!-- NEW SHARE BUTTON -->
-            <button id="share-btn" class="btn-secondary">Copy Configuration Link</button>
+            <!-- <button id="share-btn" class="btn-secondary">Copy Configuration Link</button> -->
             
-            <a href="https://www.etsy.com/listing/4541612698/mini-desktop-radar?show_sold_out_detail=1&ref=nla_listing_details" target="_blank" class="btn-primary checkout-btn" id="etsy-checkout-btn">Complete on Etsy</a>
-        </div>
+<a href="https://www.etsy.com/listing/4541612698/mini-desktop-radar?show_sold_out_detail=1&ref=nla_listing_details" target="_blank" class="btn-primary checkout-btn" id="etsy-checkout-btn" style="display: flex; justify-content: center; align-items: center; text-align: center;">Complete on Etsy</a>        </div>
         <section class="notify-section">
-            <h3 style="margin-top: 0;">Restock Notification</h3>
-            <p class="notify-text">Out of stock on Etsy? Enter your email here to get notified when they're back in stock.</p>
-            
+            <h3 style="margin-top: 0;">Keep In Touch</h3>
+            <p class="notify-text">Out of stock on Etsy? Want to know when we release new colors or features? Subscribe to stay up to date.</p>
             <form id="restock-form" action="https://formspree.io/f/xljrvnwo" method="POST" class="notify-form">
                 <input type="email" name="email" class="notify-input" placeholder="your@email.com" required>
                 <button type="submit" class="notify-button">Notify Me</button>
             </form>            
         </section>
-        
     </div>
 </div>
 
@@ -684,6 +681,15 @@
             bodyMat.pbrMetallicRoughness.setMetallicFactor(0); 
         }
 
+        const screenMat = materials.find(mat => mat.name === '1.000000_0.000000_0.000000_0.000000_0.000000');
+        if (screenMat) {
+            // Make the physical screen pitch black so the transparent video has a dark background
+            screenMat.pbrMetallicRoughness.setBaseColorFactor([0, 0, 0, 1]);
+            // Make it a shiny, reflective glass surface
+            screenMat.pbrMetallicRoughness.setRoughnessFactor(0.05); 
+            screenMat.pbrMetallicRoughness.setMetallicFactor(0.8); 
+        }
+
        // B. Check URL Parameters to auto-load configuration
         requestAnimationFrame(() => {
             const params = new URLSearchParams(window.location.search);
@@ -696,7 +702,7 @@
             // If parameters exist, simulate clicks on the specific swatches
             if (urlH || urlF || urlT) {
                 if (urlH) {
-                    document.querySelector(`#housing-swatches .color-swatch[data-color="#${urlH}"]`)?.click();
+                    document.querySelector(`#housing-swatches .color-swatch[data-color="#${urlH}" i]`)?.click();
                     customLoad = true;
                 }
                 if (urlF) {
@@ -718,7 +724,7 @@
             
             // If no parameters were found in the URL, load the default theme
             if (!customLoad) {
-                const defaultThemeBtn = document.querySelector('.theme-btn[data-texture*="classic2_large.jpg"]');
+                const defaultThemeBtn = document.querySelector('.theme-btn.active');
                 if (defaultThemeBtn) {
                     defaultThemeBtn.click();
                 }
@@ -851,19 +857,6 @@
 
             if (!modelViewer.model) return;
             
-            // //const texturePath = e.currentTarget.getAttribute('data-texture');
-            // //const texture = await modelViewer.createTexture(texturePath);
-            // const texturePath = e.currentTarget.getAttribute('data-texture');
-            
-            // // NEW: Smart check for video vs static images!
-            // let texture;
-            // if (texturePath.endsWith('.mp4')) {
-            //     // Instantly creates a muted, looping, autoplaying video texture
-            //     texture = modelViewer.createVideoTexture(texturePath);
-            // } else {
-            //     texture = await modelViewer.createTexture(texturePath);
-            // }
-            
             const texturePath = e.currentTarget.getAttribute('data-texture');
             const material = modelViewer.model.materials.find(mat => mat.name === "1.000000_0.000000_0.000000_0.000000_0.000000"); 
 
@@ -879,13 +872,25 @@
                     material.pbrMetallicRoughness.setRoughnessFactor(0.05); // 0 = perfect mirror, 1 = chalky matte
                     material.pbrMetallicRoughness.setMetallicFactor(0.8);
 
-                } else if (texturePath.endsWith('.mp4')) {
+                } else if (texturePath.endsWith('.mp4') || texturePath.endsWith('.webm')) {
+                    // // 2. VIDEO ANIMATION STATE
+                    // const texture = modelViewer.createVideoTexture(texturePath);
+                    // material.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
+                    // material.emissiveTexture.setTexture(texture);
+                    // material.pbrMetallicRoughness.setBaseColorFactor([1.0, 1.0, 1.0, 1.0]); // Reset color to white
+                    // material.setEmissiveFactor([1.0, 1.0, 1.0]); 
                     // 2. VIDEO ANIMATION STATE
                     const texture = modelViewer.createVideoTexture(texturePath);
                     material.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
                     material.emissiveTexture.setTexture(texture);
-                    material.pbrMetallicRoughness.setBaseColorFactor([1.0, 1.0, 1.0, 1.0]); // Reset color to white
+                    
+                    // Keep the physical screen pitch black for the transparent background!
+                    material.pbrMetallicRoughness.setBaseColorFactor([0, 0, 0, 1]); 
                     material.setEmissiveFactor([1.0, 1.0, 1.0]); 
+                    
+                    // Maintain the glossy reflection
+                    material.pbrMetallicRoughness.setRoughnessFactor(0.05);
+                    material.pbrMetallicRoughness.setMetallicFactor(0.8);
 
                 } else {
                     // 3. STATIC IMAGE STATE
@@ -1086,16 +1091,6 @@
         });
     }
 
-    // const modelViewer = document.querySelector('#radar-viewer');
-
-    // When the 3D model finishes loading, automatically click the active theme button
-    modelViewer.addEventListener('load', () => {
-        const activeBtn = document.querySelector('.theme-btn.active');
-        if (activeBtn) {
-            activeBtn.click();
-        }
-    });
-
     //const modelViewer = document.querySelector('#radar-viewer');
     // Listen for the user entering or exiting AR
     modelViewer.addEventListener('ar-status', async (event) => {
@@ -1111,10 +1106,10 @@
         } else if (event.detail.status === 'not-presenting') {
             // Exiting AR: Find out which theme was selected, and restore the animation!
             const activeThemeBtn = document.querySelector('.theme-btn.active');
-            const texturePath = activeThemeBtn ? activeThemeBtn.getAttribute('data-texture') : '/radar/classic_radar_loop.mp4';
+            const texturePath = activeThemeBtn ? activeThemeBtn.getAttribute('data-texture') : '/radar/classic_radar_v9.webm';
             
             let restoreTexture;
-            if (texturePath.endsWith('.mp4')) {
+            if (texturePath.endsWith('.mp4') || texturePath.endsWith('.webm')) {
                 restoreTexture = modelViewer.createVideoTexture(texturePath);
                 material.setEmissiveFactor([1.0, 1.0, 1.0]); // Keep blacks pure
             } else {
@@ -1153,7 +1148,7 @@
         }).then(response => {
             if (response.ok) {
                 // 3. Swap the form out for a success message
-                form.innerHTML = "<p style='color: #28a745; font-weight: bold; margin: 0; padding: 10px;'>✅ Success! We'll notify you when we restock.</p>";
+                form.innerHTML = "<p style='color: #28a745; font-weight: bold; margin: 0; padding: 10px;'>We'll notify you when we have an update!</p>";
             } else {
                 alert("Oops! There was a problem submitting your email. Please try again.");
             }
