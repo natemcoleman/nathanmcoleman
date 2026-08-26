@@ -505,6 +505,33 @@
             text-decoration: none;
         }
 
+        /* --- APP PROMO SECTION (MINIMAL) --- */
+        .promo-minimal {
+            margin-top: 32px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-color);
+            opacity: 0.6; /* Dims the text to make it inconspicuous */
+            transition: opacity 0.2s;
+        }
+
+        .promo-minimal:hover {
+            opacity: 1; /* Lights up slightly when they look at it */
+        }
+
+        .promo-minimal a {
+            color: var(--text-color);
+            font-weight: 600;
+            text-decoration: underline;
+            text-decoration-color: rgba(128, 128, 128, 0.4);
+            text-underline-offset: 3px;
+            transition: color 0.2s;
+        }
+
+        .promo-minimal a:hover {
+            color: #0A84FF; /* A tiny pop of iOS blue when hovered */
+        }
+        
         /* --- 2. LIGHT THEME OVERRIDES --- */
         /* This targets common light mode classes. We can adjust this if yours is different! */
         body.light-theme .notify-section,
@@ -637,8 +664,7 @@
         
             <!-- NEW SHARE BUTTON -->
             <!-- <button id="share-btn" class="btn-secondary">Copy Configuration Link</button> -->
-            
-<a href="https://www.etsy.com/listing/4541612698/mini-desktop-radar?show_sold_out_detail=1&ref=nla_listing_details" target="_blank" class="btn-primary checkout-btn" id="etsy-checkout-btn" style="display: flex; justify-content: center; align-items: center; text-align: center;">Complete on Etsy</a>        </div>
+        <a href="https://www.etsy.com/listing/4541612698/mini-desktop-radar?show_sold_out_detail=1&ref=nla_listing_details" target="_blank" class="btn-primary checkout-btn" id="etsy-checkout-btn" style="display: flex; justify-content: center; align-items: center; text-align: center;">Complete on Etsy</a>        </div>
         <section class="notify-section">
             <h3 style="margin-top: 0;">Keep In Touch</h3>
             <p class="notify-text">Out of stock on Etsy? Want to know when we release new colors or features? Subscribe to stay up to date.</p>
@@ -647,6 +673,11 @@
                 <button type="submit" class="notify-button">Notify Me</button>
             </form>            
         </section>
+
+        <!-- App Promo Section -->
+        <div class="promo-minimal">
+            Like outer space and have an iPhone? <a href="https://apps.apple.com/us/app/earthphase/id6759940394" target="_blank">Check out my free iOS app, EarthPhase!</a>
+        </div>
     </div>
 </div>
 
