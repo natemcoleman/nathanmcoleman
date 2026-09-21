@@ -266,6 +266,36 @@
             .controls-section { flex: 1; border-radius: 0; border-left: 1px solid var(--border-color); box-shadow: none; height: 100vh; }
         }
 
+        /* --- Screen Shape Toggle --- */
+        .toggle-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        .screen-toggle {
+            flex: 1;
+            padding: 12px;
+            background-color: transparent;
+            border: 2px solid var(--border-color);
+            color: var(--text-color);
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .screen-toggle:hover {
+            border-color: #888;
+        }
+
+        .screen-toggle.active {
+            border-color: #0A84FF;
+            background-color: rgba(10, 132, 255, 0.1);
+            color: #0A84FF;
+        }
+
         /* --- Typography & Sections --- */
         h2 { font-size: 24px; margin: 0 0 8px 0; font-weight: 600; }
         .price { font-size: 18px; color: var(--text-secondary); margin-bottom: 24px; }
@@ -589,13 +619,19 @@
             <span class="brand-subtext">by Dragonfly Development</span>
         </div>
         <!-- <model-viewer id="radar-viewer" ar ar-modes="webxr scene-viewer quick-look" src="/radar/radar_v10.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2"></model-viewer> -->
-        <!-- <model-viewer id="radar-viewer" src="/radar/radar_v10.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2"></model-viewer> -->
-        <model-viewer id="radar-viewer" src="/radar/radar_v13_I80.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2"></model-viewer>
+        <model-viewer id="radar-viewer" src="/radar/radar_v10.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2"></model-viewer>
+        <!-- <model-viewer id="radar-viewer" src="/radar/radar_v14_I80.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2"></model-viewer> -->
     </div>
     <!-- Controls Half -->
     <div class="controls-section">
         <h2>Mini Radar Configuration</h2>
         <div class="price">$65 (Free Shipping)</div>
+
+        <div class="section-title" style="margin-top: 0;">Screen Shape</div>
+        <div class="toggle-container">
+            <button class="screen-toggle active" data-screen-type="rounded" data-src="/radar//radar_v10.glb">Domed Glass</button>
+            <button class="screen-toggle" data-screen-type="flat" data-src="/radar/radar_v14_I80.glb">Flat Glass</button>
+        </div>
 
        <!-- Faceplate Colors -->
         <div class="section-title">
@@ -685,6 +721,44 @@
 <!-- Logic -->
 <script>
     const modelViewer = document.querySelector('model-viewer');
+
+    // --- 0. SCREEN SHAPE TOGGLE ---
+    const screenToggles = document.querySelectorAll('.screen-toggle');
+    
+    // Check URL on page load for a saved screen shape
+    const initialUrlParams = new URLSearchParams(window.location.search);
+    const initialScreen = initialUrlParams.get('screen');
+    
+    if (initialScreen) {
+        screenToggles.forEach(btn => {
+            if (btn.getAttribute('data-screen-type') === initialScreen) {
+                btn.classList.add('active');
+                modelViewer.src = btn.getAttribute('data-src'); 
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+    
+    // Handle toggle clicks
+    screenToggles.forEach(toggle => {
+        toggle.addEventListener('click', (e) => {
+            if (e.target.classList.contains('active')) return;
+    
+            // Update UI buttons
+            screenToggles.forEach(btn => btn.classList.remove('active'));
+            e.target.classList.add('active');
+    
+            // Update URL silently BEFORE swapping the model so the reload catches it
+            const screenType = e.target.getAttribute('data-screen-type');
+            const currentUrlParams = new URLSearchParams(window.location.search);
+            currentUrlParams.set('screen', screenType);
+            window.history.replaceState({}, '', `${window.location.pathname}?${currentUrlParams.toString()}`);
+            
+            // Swap 3D Model (This will automatically trigger the 'load' event below and reapply colors!)
+            modelViewer.src = e.target.getAttribute('data-src');
+        });
+    });
 
     // --- 1. SETUP SEQUENCE ON LOAD ---
     // We merged the two load events into one clean sequence to stop them from fighting
