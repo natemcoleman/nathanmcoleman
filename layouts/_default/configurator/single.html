@@ -18,6 +18,10 @@
     </script>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.1.1/model-viewer.min.js"></script>
     
+    <!-- PRELOAD GLB FILES FOR INSTANT SWAPPING -->
+    <link rel="preload" href="/radar/radar_v15_SPI.glb" as="fetch" crossorigin="anonymous">
+    <link rel="preload" href="/radar/radar_v15_I80.glb" as="fetch" crossorigin="anonymous">
+    
     <style>
         /* Default Light Theme */
         :root {
@@ -245,6 +249,8 @@
             width: 100%;
             height: 100%;
             --poster-color: transparent;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
         }
 
         .controls-section {
@@ -749,93 +755,91 @@
             screenToggles.forEach(btn => btn.classList.remove('active'));
             e.target.classList.add('active');
     
-            // Update URL silently BEFORE swapping the model so the reload catches it
+            // Update URL silently
             const screenType = e.target.getAttribute('data-screen-type');
             const currentUrlParams = new URLSearchParams(window.location.search);
             currentUrlParams.set('screen', screenType);
             window.history.replaceState({}, '', `${window.location.pathname}?${currentUrlParams.toString()}`);
             
-            // Swap 3D Model (This will automatically trigger the 'load' event below and reapply colors!)
-            modelViewer.src = e.target.getAttribute('data-src');
+            // 1. FADE OUT
+            modelViewer.style.opacity = '0'; 
+            
+            // 2. WAIT FOR FADE, THEN SWAP
+            setTimeout(() => {
+                modelViewer.src = e.target.getAttribute('data-src');
+                // The 'load' event will automatically fade it back in when the new model is ready!
+            }, 300); // 300ms matches the CSS transition time
         });
     });
 
     // --- 1. SETUP SEQUENCE ON LOAD ---
-    // We merged the two load events into one clean sequence to stop them from fighting
-    modelViewer.addEventListener('load', () => {
+    modelViewer.addEventListener('load', async () => { 
         const materials = modelViewer.model.materials;
         
-        // A. Setup physical plastics first
-        const plugMat = materials.find(mat => mat.name === '0.000000_1.000000_0.000000_0.000000_0.000000');
-        if (plugMat) {
-            plugMat.pbrMetallicRoughness.setBaseColorFactor(hexToRgba('#2c2c2c'));
-            plugMat.pbrMetallicRoughness.setRoughnessFactor(0.5);
-            plugMat.pbrMetallicRoughness.setMetallicFactor(0);
-        }
-
-        const faceplateMat = materials.find(mat => mat.name === '0.000000_0.000000_1.000000_0.000000_0.000000');
-        if (faceplateMat) {
-            faceplateMat.pbrMetallicRoughness.setBaseColorFactor(hexToRgba('#2c2c2c'));
-            faceplateMat.pbrMetallicRoughness.setRoughnessFactor(0.5); 
-            faceplateMat.pbrMetallicRoughness.setMetallicFactor(0); 
-        }
-
-        const bodyMat = materials.find(mat => mat.name === '1.000000_1.000000_0.000000_0.000000_0.000000');
-        if (bodyMat) {
-            bodyMat.pbrMetallicRoughness.setBaseColorFactor(hexToRgba('#2c2c2c'));
-            bodyMat.pbrMetallicRoughness.setRoughnessFactor(0.5); 
-            bodyMat.pbrMetallicRoughness.setMetallicFactor(0); 
-        }
-
+        // 1. Grab the user's currently selected UI options
+        const activeFaceplate = document.querySelector('#faceplate-swatches .color-swatch.active');
+        const activeHousing = document.querySelector('#housing-swatches .color-swatch.active');
+        const activeTheme = document.querySelector('.theme-btn.active');
+        
+        // 2. Setup the Screen Material & Re-apply the active theme instantly
         const screenMat = materials.find(mat => mat.name === '1.000000_0.000000_0.000000_0.000000_0.000000');
         if (screenMat) {
-            // Make the physical screen pitch black so the transparent video has a dark background
             screenMat.pbrMetallicRoughness.setBaseColorFactor([0, 0, 0, 1]);
-            // Make it a shiny, reflective glass surface
             screenMat.pbrMetallicRoughness.setRoughnessFactor(0.05); 
             screenMat.pbrMetallicRoughness.setMetallicFactor(0.8); 
+            
+            if (activeTheme) {
+                const texturePath = activeTheme.getAttribute('data-texture');
+                if (texturePath === "off") {
+                    screenMat.pbrMetallicRoughness.baseColorTexture.setTexture(null);
+                    screenMat.emissiveTexture.setTexture(null);
+                    screenMat.setEmissiveFactor([0, 0, 0]); 
+                } else if (texturePath.endsWith('.mp4') || texturePath.endsWith('.webm')) {
+                    const texture = modelViewer.createVideoTexture(texturePath);
+                    screenMat.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
+                    screenMat.emissiveTexture.setTexture(texture);
+                    screenMat.setEmissiveFactor([1.0, 1.0, 1.0]); 
+                } else {
+                    const texture = await modelViewer.createTexture(texturePath);
+                    screenMat.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
+                    screenMat.emissiveTexture.setTexture(texture);
+                    screenMat.pbrMetallicRoughness.setBaseColorFactor([1.0, 1.0, 1.0, 1.0]);
+                    screenMat.setEmissiveFactor([1.5, 1.5, 1.5]); 
+                }
+            }
         }
 
-       // B. Check URL Parameters to auto-load configuration
-        requestAnimationFrame(() => {
+        // 3. Setup Plastics helper function
+        const applyPlastic = (matName, colorHex) => {
+            const mat = materials.find(m => m.name === matName);
+            if (mat) {
+                mat.pbrMetallicRoughness.setBaseColorFactor(hexToRgba(colorHex));
+                mat.pbrMetallicRoughness.setRoughnessFactor(0.5);
+                mat.pbrMetallicRoughness.setMetallicFactor(0);
+            }
+        };
+
+        // Apply Plugs (Always dark grey)
+        applyPlastic('0.000000_1.000000_0.000000_0.000000_0.000000', '#2c2c2c'); 
+        
+        // Re-apply active colors (or default to Matte Black if none selected yet)
+        const faceplateHex = activeFaceplate ? activeFaceplate.getAttribute('data-color') : '#111b20';
+        const housingHex = activeHousing ? activeHousing.getAttribute('data-color') : '#111b20';
+        
+        applyPlastic('0.000000_0.000000_1.000000_0.000000_0.000000', faceplateHex);
+        applyPlastic('1.000000_1.000000_0.000000_0.000000_0.000000', housingHex);
+
+        // 4. Initial URL param load (Runs strictly once on first page load)
+        if (!window.initialUrlParsed) {
+            window.initialUrlParsed = true;
             const params = new URLSearchParams(window.location.search);
-            const urlH = params.get('h');
-            const urlF = params.get('f');
-            const urlT = params.get('t');
-
-            let customLoad = false;
-
-            // If parameters exist, simulate clicks on the specific swatches
-            if (urlH || urlF || urlT) {
-                if (urlH) {
-                    document.querySelector(`#housing-swatches .color-swatch[data-color="#${urlH}" i]`)?.click();
-                    customLoad = true;
-                }
-                if (urlF) {
-                    document.querySelector(`#faceplate-swatches .color-swatch[data-color="#${urlF}"]`)?.click();
-                    customLoad = true;
-                }
-                if (urlT) {
-                    document.querySelector(`.theme-btn[data-texture*="${urlT}"]`)?.click();
-                    customLoad = true;
-                }
-                if (typeof gtag === 'function') {
-                    gtag('event', 'loaded_shared_configuration', {
-                        'housing_color': urlH || 'none',
-                        'faceplate_color': urlF || 'none',
-                        'theme': urlT || 'none'
-                    });
-                }
+            if (params.get('h') || params.get('f') || params.get('t')) {
+                if (params.get('h')) document.querySelector(`#housing-swatches .color-swatch[data-color="#${params.get('h')}" i]`)?.click();
+                if (params.get('f')) document.querySelector(`#faceplate-swatches .color-swatch[data-color="#${params.get('f')}"]`)?.click();
+                if (params.get('t')) document.querySelector(`.theme-btn[data-texture*="${params.get('t')}"]`)?.click();
             }
-            
-            // If no parameters were found in the URL, load the default theme
-            if (!customLoad) {
-                const defaultThemeBtn = document.querySelector('.theme-btn.active');
-                if (defaultThemeBtn) {
-                    defaultThemeBtn.click();
-                }
-            }
-        });
+        }
+        modelViewer.style.opacity = '1';
     });
 
     // --- 10. TRACK ETSY CHECKOUT CLICKS ---
