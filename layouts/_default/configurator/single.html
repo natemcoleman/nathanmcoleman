@@ -245,6 +245,44 @@
             width: 100%;
             height: 100%;
             --poster-color: transparent;
+            /* Hidden until the colors/textures are applied, then faded in (see revealViewer) */
+            opacity: 0;
+            transition: opacity 0.6s ease;
+        }
+
+        .viewer-section.model-ready model-viewer {
+            opacity: 1;
+        }
+
+        /* Small spinner while the model loads */
+        .viewer-section::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 32px;
+            height: 32px;
+            margin: -16px 0 0 -16px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--text-color);
+            border-radius: 50%;
+            animation: viewer-spin 0.8s linear infinite;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .viewer-section.model-ready::after {
+            opacity: 0;
+            animation: none;
+        }
+
+        @keyframes viewer-spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            model-viewer { transition: none; }
+            .viewer-section::after { animation-duration: 2s; }
         }
 
         .controls-section {
@@ -756,6 +794,27 @@
 
     // --- 1. SETUP SEQUENCE ON LOAD ---
     // We merged the two load events into one clean sequence to stop them from fighting
+    // --- FADE-IN: keep the model hidden until our colors/textures are applied ---
+    const viewerSection = modelViewer.closest('.viewer-section');
+    let viewerRevealed = false;
+
+    function revealViewer(ready = Promise.resolve()) {
+        if (viewerRevealed) return;
+        // Never keep the model hidden for more than 2.5s, even if a texture is slow
+        const timeout = new Promise(resolve => setTimeout(resolve, 2500));
+        Promise.race([ready, timeout]).catch(() => {}).finally(() => {
+            if (viewerRevealed) return;
+            viewerRevealed = true;
+            // Wait two frames so the new colors have actually been drawn before fading in
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                viewerSection?.classList.add('model-ready');
+            }));
+        });
+    }
+
+    // If the model fails to load, stop the spinner instead of leaving it forever
+    modelViewer.addEventListener('error', () => revealViewer());
+
     modelViewer.addEventListener('load', () => {
         const materials = modelViewer.model.materials;
         
@@ -818,6 +877,9 @@
                     });
                 }
             }
+
+            // Everything is configured; fade in once the screen texture is on
+            revealViewer(applyScreenTheme());
         });
     });
 
