@@ -628,8 +628,8 @@
         <!-- NEW: Screen Shape Toggle -->
         <div class="section-title" style="margin-top: 0;">Screen Shape</div>
         <div class="toggle-container">
-            <button class="screen-toggle active" data-screen-type="flat">Flat Glass</button>
-            <button class="screen-toggle" data-screen-type="rounded">Domed Glass</button>
+            <button type="button" class="screen-toggle active" data-screen-type="domed" aria-pressed="true">Domed Glass</button>
+            <button type="button" class="screen-toggle" data-screen-type="flat" aria-pressed="false">Flat Glass</button>
         </div>
 
        <!-- Faceplate Colors -->
@@ -691,6 +691,7 @@
                 <ul class="summary-list">
                     <li>Faceplate: <span id="summary-faceplate">Matte Black</span></li>
                     <li>Housing: <span id="summary-housing">Matte Black</span></li>
+                    <li>Screen: <span id="summary-screen">Domed Glass</span></li>
                 </ul>
                 <p class="summary-note">Please select these options from the dropdown menus on Etsy.</p>
                 <p class="manufacturing-disclaimer">
@@ -754,8 +755,8 @@
         //     screenMat.pbrMetallicRoughness.setRoughnessFactor(0.05); 
         //     screenMat.pbrMetallicRoughness.setMetallicFactor(0.8); 
         // }
-        modelViewer.model.materials.forEach(mat => console.log("Material Name:", mat.name));
-        renderScreenState();
+        setupScreenMaterials();
+        applyScreenTheme();
 
        // B. Check URL Parameters to auto-load configuration
         requestAnimationFrame(() => {
@@ -765,40 +766,24 @@
             const urlT = params.get('t');
             const urlS = params.get('screen');
 
-            let customLoad = false;
-
-            // If parameters exist, simulate clicks on the specific swatches
+            // Screen shape was already applied from the URL before the model loaded.
             if (urlH || urlF || urlT || urlS) {
-                if (urlS) {
-                    document.querySelector(`.screen-toggle[data-screen-type="${urlS}"]`)?.click();
-                    customLoad = true;
-                }
                 if (urlH) {
                     document.querySelector(`#housing-swatches .color-swatch[data-color="#${urlH}" i]`)?.click();
-                    customLoad = true;
                 }
                 if (urlF) {
-                    document.querySelector(`#faceplate-swatches .color-swatch[data-color="#${urlF}"]`)?.click();
-                    customLoad = true;
+                    document.querySelector(`#faceplate-swatches .color-swatch[data-color="#${urlF}" i]`)?.click();
                 }
                 if (urlT) {
                     document.querySelector(`.theme-btn[data-texture*="${urlT}"]`)?.click();
-                    customLoad = true;
                 }
                 if (typeof gtag === 'function') {
                     gtag('event', 'loaded_shared_configuration', {
                         'housing_color': urlH || 'none',
                         'faceplate_color': urlF || 'none',
-                        'theme': urlT || 'none'
+                        'theme': urlT || 'none',
+                        'screen': getActiveShape()
                     });
-                }
-            }
-            
-            // If no parameters were found in the URL, load the default theme
-            if (!customLoad) {
-                const defaultThemeBtn = document.querySelector('.theme-btn.active');
-                if (defaultThemeBtn) {
-                    defaultThemeBtn.click();
                 }
             }
         });
@@ -817,7 +802,8 @@
                 gtag('event', 'click_etsy_checkout', {
                     'selected_housing': activeHousing,
                     'selected_faceplate': activeFaceplate,
-                    'selected_theme': activeTheme
+                    'selected_theme': activeTheme,
+                    'selected_screen': getActiveShape()
                 });
             }
         });
@@ -916,81 +902,147 @@
     });
 
 
-    // --- 4 & 5. MASTER SCREEN RENDERER & TOGGLES ---
+    // --- 4 & 5. SCREEN SHAPE + THEME ---
+    // Mobile performance notes:
+    //  * Every texture (especially the video) is created ONCE and cached. Previously each toggle
+    //    called createVideoTexture() again, so phones ended up decoding several copies of the video.
+    //  * Textures are never removed from the screens (removing/adding a texture forces a shader
+    //    recompile). The active screen is OPAQUE, which ignores the video's alpha channel; the hidden
+    //    screen is MASK with alpha 0, so it's discarded. One of each exists from the first frame, so
+    //    three.js compiles both shader variants up front and later toggles reuse them from its cache.
     const screenToggles = document.querySelectorAll('.screen-toggle');
     const themeBtns = document.querySelectorAll('.theme-btn');
+    const DEFAULT_SCREEN = 'domed';
+    const AR_FALLBACK_TEXTURE = '/radar/classic_large2.jpg';
+    const textureCache = new Map();   // path -> Promise<Texture>
+    let screenMats = null;            // { flat: Material, domed: Material }
+    let appliedTexturePath = 'off';   // what is actually on the screen right now
+    let themeRequestId = 0;
+    const alphaModes = new Map();     // material -> current alpha mode, to skip redundant updates
 
-    async function renderScreenState() {
-        if (!modelViewer.model) return;
-        
-        const activeShapeBtn = document.querySelector('.screen-toggle.active');
-        const activeShape = activeShapeBtn ? activeShapeBtn.getAttribute('data-screen-type') : 'flat';
-        const activeThemeBtn = document.querySelector('.theme-btn.active');
-        const texturePath = activeThemeBtn ? activeThemeBtn.getAttribute('data-texture') : 'off';
-        
-        // Grab the new renamed materials from Blender
-        const matFlat = modelViewer.model.materials.find(mat => mat.name === "screen_flat");
-        const matDomed = modelViewer.model.materials.find(mat => mat.name === "screen_domed");
-        
-        if (!matFlat || !matDomed) return;
+    const isVideoPath = (path) => /\.(mp4|webm)$/i.test(path);
 
-        const activeMat = activeShape === 'flat' ? matFlat : matDomed;
-        const hiddenMat = activeShape === 'flat' ? matDomed : matFlat;
+    function normalizeShape(value) {
+        if (value === 'rounded') return 'domed'; // keep old shared links working
+        return value === 'flat' || value === 'domed' ? value : DEFAULT_SCREEN;
+    }
 
-        // --- HIDE THE INACTIVE SCREEN ---
-        hiddenMat.pbrMetallicRoughness.baseColorTexture.setTexture(null);
-        hiddenMat.emissiveTexture.setTexture(null);
-        
-        // Use MASK mode: This tells the browser to completely discard invisible pixels
-        hiddenMat.setAlphaMode('MASK'); 
-        hiddenMat.setAlphaCutoff(0.5);
-        
-        // Alpha is 0 (which is less than the 0.5 cutoff), so it vanishes instantly
-        hiddenMat.pbrMetallicRoughness.setBaseColorFactor([0, 0, 0, 0]); 
-        hiddenMat.setEmissiveFactor([0, 0, 0]);
+    function getActiveShape() {
+        return normalizeShape(document.querySelector('.screen-toggle.active')?.dataset.screenType);
+    }
 
-        // --- RENDER THE ACTIVE SCREEN ---
-        // Force the active screen to be OPAQUE. This instantly fixes the floating hologram bug!
-        activeMat.setAlphaMode('OPAQUE'); 
+    function getActiveTexturePath() {
+        return document.querySelector('.theme-btn.active')?.dataset.texture || 'off';
+    }
 
-        if (texturePath === "off") {
-            activeMat.pbrMetallicRoughness.baseColorTexture.setTexture(null);
-            activeMat.emissiveTexture.setTexture(null);
-            activeMat.pbrMetallicRoughness.setBaseColorFactor([0, 0, 0, 1]); 
-            activeMat.setEmissiveFactor([0, 0, 0]); 
-            activeMat.pbrMetallicRoughness.setRoughnessFactor(0.05); 
-            activeMat.pbrMetallicRoughness.setMetallicFactor(0.8);
-        } else if (texturePath.endsWith('.mp4') || texturePath.endsWith('.webm')) {
-            const texture = modelViewer.createVideoTexture(texturePath);
-            activeMat.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
-            activeMat.emissiveTexture.setTexture(texture);
-            activeMat.pbrMetallicRoughness.setBaseColorFactor([0, 0, 0, 1]); 
-            activeMat.setEmissiveFactor([1.0, 1.0, 1.0]); 
-            activeMat.pbrMetallicRoughness.setRoughnessFactor(0.05);
-            activeMat.pbrMetallicRoughness.setMetallicFactor(0.8);
-        } else {
-            const texture = await modelViewer.createTexture(texturePath);
-            activeMat.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
-            activeMat.emissiveTexture.setTexture(texture);
-            activeMat.pbrMetallicRoughness.setBaseColorFactor([1.0, 1.0, 1.0, 1.0]);
-            activeMat.setEmissiveFactor([1.5, 1.5, 1.5]); 
-            activeMat.pbrMetallicRoughness.setRoughnessFactor(0.05);
-            activeMat.pbrMetallicRoughness.setMetallicFactor(0.8);
+    function setActiveShapeButton(shape) {
+        screenToggles.forEach(btn => {
+            const isActive = btn.dataset.screenType === shape;
+            btn.classList.toggle('active', isActive);
+            btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
+    }
+
+    function getTexture(path) {
+        if (!textureCache.has(path)) {
+            const promise = isVideoPath(path)
+                ? Promise.resolve(modelViewer.createVideoTexture(path))
+                : modelViewer.createTexture(path);
+            // Don't cache failures, so a later click can retry
+            promise.catch(() => textureCache.delete(path));
+            textureCache.set(path, promise);
         }
+        return textureCache.get(path);
+    }
+
+    function setupScreenMaterials() {
+        const mats = modelViewer.model.materials;
+        const flat = mats.find(mat => mat.name === 'screen_flat');
+        const domed = mats.find(mat => mat.name === 'screen_domed');
+        if (!flat || !domed) {
+            console.warn('Screen materials "screen_flat" / "screen_domed" not found in the model.');
+            return;
+        }
+        screenMats = { flat, domed };
+
+        [flat, domed].forEach(mat => {
+            mat.setAlphaCutoff(0.5);
+            mat.pbrMetallicRoughness.setRoughnessFactor(0.05);
+            mat.pbrMetallicRoughness.setMetallicFactor(0.8);
+        });
+
+        // Hide the inactive screen immediately, before any texture has loaded
+        applyScreenState();
+    }
+
+    // Cheap: only changes color factors, so it can run on every toggle without hitching.
+    function applyScreenState() {
+        if (!screenMats) return;
+        const shape = getActiveShape();
+        const path = appliedTexturePath;
+
+        let rgb, emissive;
+        if (path === 'off') {
+            rgb = [0, 0, 0];          emissive = [0, 0, 0];        // glossy black glass
+        } else if (isVideoPath(path)) {
+            rgb = [0, 0, 0];          emissive = [1.0, 1.0, 1.0];  // keep blacks pure
+        } else {
+            rgb = [1.0, 1.0, 1.0];    emissive = [1.5, 1.5, 1.5];  // boost static images
+        }
+
+        for (const [name, mat] of Object.entries(screenMats)) {
+            const visible = name === shape;
+            // Active: OPAQUE ignores any transparency in the video/texture.
+            // Hidden: MASK + alpha 0 (below the 0.5 cutoff) discards every pixel.
+            const mode = visible ? 'OPAQUE' : 'MASK';
+            if (alphaModes.get(mat) !== mode) {
+                mat.setAlphaMode(mode);
+                alphaModes.set(mat, mode);
+            }
+            mat.pbrMetallicRoughness.setBaseColorFactor([...rgb, visible ? 1 : 0]);
+            mat.setEmissiveFactor(visible ? emissive : [0, 0, 0]);
+        }
+    }
+
+    // Puts the texture on BOTH screens, so switching shape never needs to touch textures.
+    function setScreenTexture(texture) {
+        for (const mat of Object.values(screenMats)) {
+            mat.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
+            mat.emissiveTexture.setTexture(texture);
+        }
+    }
+
+    async function applyScreenTheme() {
+        if (!screenMats) return;
+        const path = getActiveTexturePath();
+        const requestId = ++themeRequestId;
+
+        if (path !== 'off') {
+            let texture;
+            try {
+                texture = await getTexture(path);
+            } catch (err) {
+                console.error('Failed to load screen texture:', path, err);
+                return;
+            }
+            // A newer click happened while this texture was loading; let that one win
+            if (requestId !== themeRequestId) return;
+            setScreenTexture(texture);
+        }
+        // For "off" the previous texture stays attached; the zeroed factors make it black.
+        // That avoids a shader recompile when switching between off and on.
+        appliedTexturePath = path;
+        applyScreenState();
     }
 
     screenToggles.forEach(toggle => {
         toggle.addEventListener('click', (e) => {
-            if (e.target.classList.contains('active')) return;
-            screenToggles.forEach(btn => btn.classList.remove('active'));
-            e.target.classList.add('active');
-            
-            // Push to URL instantly
-            const currentUrlParams = new URLSearchParams(window.location.search);
-            currentUrlParams.set('screen', e.target.getAttribute('data-screen-type'));
-            window.history.replaceState({}, '', `${window.location.pathname}?${currentUrlParams.toString()}`);
-            
-            renderScreenState();
+            const btn = e.currentTarget;
+            if (btn.classList.contains('active')) return;
+            setActiveShapeButton(normalizeShape(btn.dataset.screenType));
+            updateURLParameters();
+            updateCheckoutSummary();
+            applyScreenState();
         });
     });
 
@@ -1001,9 +1053,13 @@
             e.currentTarget.classList.add('active');
             
             updateURLParameters();
-            renderScreenState();
+            applyScreenTheme();
         });
     });
+
+    // Apply the screen shape from the URL right away (before the model loads), else default to domed
+    setActiveShapeButton(normalizeShape(new URLSearchParams(window.location.search).get('screen')));
+    updateCheckoutSummary();
 
     // --- 8. URL PARAMETER MANAGEMENT & SHARING ---
 
@@ -1025,6 +1081,8 @@
             const simpleName = texPath.split('/').pop().split('_')[0];
             params.set('t', simpleName);
         }
+
+        params.set('screen', getActiveShape());
     
         // Replace the current URL silently
         const newURL = `${window.location.pathname}?${params.toString()}`;
@@ -1105,6 +1163,10 @@
 
     // --- 7. ETSY CHECKOUT SUMMARY & TITLE UPDATE ---
     function updateCheckoutSummary() {
+        const screenSummary = document.getElementById('summary-screen');
+        const activeShapeBtn = document.querySelector('.screen-toggle.active');
+        if (screenSummary && activeShapeBtn) screenSummary.textContent = activeShapeBtn.textContent.trim();
+
         const activeHousing = document.querySelector('#housing-swatches .color-swatch.active');
         const activeFaceplate = document.querySelector('#faceplate-swatches .color-swatch.active');
 
@@ -1162,38 +1224,24 @@
         });
     }
 
-    //const modelViewer = document.querySelector('#radar-viewer');
     // Listen for the user entering or exiting AR
     modelViewer.addEventListener('ar-status', async (event) => {
-        const activeShapeBtn = document.querySelector('.screen-toggle.active');
-        const activeShape = activeShapeBtn ? activeShapeBtn.getAttribute('data-screen-type') : 'flat';
-        const targetMatName = activeShape === 'flat' ? "screen_flat" : "screen_domed";
-        
-        const material = modelViewer.model.materials.find(mat => mat.name === targetMatName);
-        if (!material) return;
+        if (!screenMats) return;
 
         if (event.detail.status === 'session-started') {
-            // Entering AR: Swap to the static fallback image for iPhone compatibility
-            const staticTexture = await modelViewer.createTexture('/radar/classic_large2.jpg');
-            material.pbrMetallicRoughness.baseColorTexture.setTexture(staticTexture);
-            material.emissiveTexture.setTexture(staticTexture);
-            
-        } else if (event.detail.status === 'not-presenting') {
-            // Exiting AR: Find out which theme was selected, and restore the animation!
-            const activeThemeBtn = document.querySelector('.theme-btn.active');
-            const texturePath = activeThemeBtn ? activeThemeBtn.getAttribute('data-texture') : '/radar/classic_radar_v9.webm';
-            
-            let restoreTexture;
-            if (texturePath.endsWith('.mp4') || texturePath.endsWith('.webm')) {
-                restoreTexture = modelViewer.createVideoTexture(texturePath);
-                material.setEmissiveFactor([1.0, 1.0, 1.0]); // Keep blacks pure
-            } else {
-                restoreTexture = await modelViewer.createTexture(texturePath);
-                material.setEmissiveFactor([1.5, 1.5, 1.5]); // Boost static images
+            // Entering AR: swap a playing video for the static fallback image
+            if (!isVideoPath(appliedTexturePath)) return;
+            themeRequestId++; // cancel any theme load still in flight
+            try {
+                setScreenTexture(await getTexture(AR_FALLBACK_TEXTURE));
+                appliedTexturePath = AR_FALLBACK_TEXTURE;
+                applyScreenState();
+            } catch (err) {
+                console.error('Failed to load AR fallback texture:', err);
             }
-            
-            material.pbrMetallicRoughness.baseColorTexture.setTexture(restoreTexture);
-            material.emissiveTexture.setTexture(restoreTexture);
+        } else if (event.detail.status === 'not-presenting') {
+            // Exiting AR: restore whatever theme is selected (cached, so no reload)
+            applyScreenTheme();
         }
     });
 
