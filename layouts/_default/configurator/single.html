@@ -577,6 +577,28 @@
     }
 
     .screen-toggle:hover { border-color: #888; }
+
+    /* --- Custom AR Button --- */
+    .ar-btn {
+        position: absolute;
+        right: 16px;
+        bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        background-color: var(--panel-bg);
+        color: var(--text-color);
+        border: 1px solid var(--border-color);
+        border-radius: 999px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        transition: opacity 0.2s;
+    }
+    .ar-btn:hover { background-color: var(--border-color); }
+    .ar-btn[aria-busy="true"] { opacity: 0.6; pointer-events: none; }
     .screen-toggle.active {
         border-color: #0A84FF;
         background-color: rgba(10, 132, 255, 0.1);
@@ -618,7 +640,17 @@
         <!-- <model-viewer id="radar-viewer" ar ar-modes="webxr scene-viewer quick-look" src="/radar/radar_v10.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2"></model-viewer> -->
         <!-- <model-viewer id="radar-viewer" src="/radar/radar_v10.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2"></model-viewer> -->
         <!-- <model-viewer id="radar-viewer" src="/radar/radar_v15_SPI.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2"></model-viewer> -->
-        <model-viewer id="radar-viewer" ar ar-modes="webxr scene-viewer quick-look" src="/radar/radar_v15_both.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2"></model-viewer>
+        <model-viewer id="radar-viewer" ar ar-modes="webxr scene-viewer quick-look" src="/radar/radar_v15_both.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2">
+            <!-- Custom AR button: swaps in the Modern texture before AR launches (video textures can't be exported to AR) -->
+            <button slot="ar-button" id="ar-button" class="ar-btn" type="button" aria-label="View in your space (AR)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                </svg>
+                <span>View in AR</span>
+            </button>
+        </model-viewer>
     </div>
     <!-- Controls Half -->
     <div class="controls-section">
@@ -913,11 +945,13 @@
     const screenToggles = document.querySelectorAll('.screen-toggle');
     const themeBtns = document.querySelectorAll('.theme-btn');
     const DEFAULT_SCREEN = 'domed';
-    const AR_FALLBACK_TEXTURE = '/radar/classic_large2.jpg';
+    const AR_TEXTURE = '/radar/modern_large3.jpg';   // always shown in AR, whatever theme is selected
     const textureCache = new Map();   // path -> Promise<Texture>
     let screenMats = null;            // { flat: Material, domed: Material }
     let appliedTexturePath = 'off';   // what is actually on the screen right now
     let themeRequestId = 0;
+    let arTextureActive = false;      // true while the AR texture is temporarily swapped in
+    let webxrActive = false;          // true during an in-browser (WebXR) AR session
     const alphaModes = new Map();     // material -> current alpha mode, to skip redundant updates
 
     const isVideoPath = (path) => /\.(mp4|webm)$/i.test(path);
@@ -973,6 +1007,9 @@
 
         // Hide the inactive screen immediately, before any texture has loaded
         applyScreenState();
+
+        // Preload the AR texture so pressing the AR button doesn't have to wait on a download
+        getTexture(AR_TEXTURE).catch(err => console.error('Failed to preload AR texture:', err));
     }
 
     // Cheap: only changes color factors, so it can run on every toggle without hitching.
@@ -1016,6 +1053,7 @@
         if (!screenMats) return;
         const path = getActiveTexturePath();
         const requestId = ++themeRequestId;
+        arTextureActive = false;
 
         if (path !== 'off') {
             let texture;
@@ -1224,25 +1262,66 @@
         });
     }
 
-    // Listen for the user entering or exiting AR
-    modelViewer.addEventListener('ar-status', async (event) => {
-        if (!screenMats) return;
+    // --- 11. AR: ALWAYS SHOW THE MODERN TEXTURE ---
+    // model-viewer builds the AR file (USDZ for iPhone Quick Look, GLB for Android Scene Viewer)
+    // from the current scene. A video texture can't be exported, so the export failed and
+    // model-viewer hid the AR button. We swap in the static Modern texture first, then launch AR.
+    const arButton = document.getElementById('ar-button');
 
-        if (event.detail.status === 'session-started') {
-            // Entering AR: swap a playing video for the static fallback image
-            if (!isVideoPath(appliedTexturePath)) return;
-            themeRequestId++; // cancel any theme load still in flight
+    async function showARTexture() {
+        themeRequestId++; // cancel any theme load still in flight
+        const texture = await getTexture(AR_TEXTURE);
+        setScreenTexture(texture);
+        appliedTexturePath = AR_TEXTURE;
+        arTextureActive = true;
+        applyScreenState();
+    }
+
+    function restoreSelectedTheme() {
+        if (!arTextureActive || webxrActive) return;
+        applyScreenTheme(); // cached textures, so this is instant
+    }
+
+    if (arButton) {
+        arButton.addEventListener('click', async (e) => {
+            // Stop model-viewer's own handler from launching AR before the texture swap
+            e.stopPropagation();
+            if (!screenMats || arButton.getAttribute('aria-busy') === 'true') return;
+            arButton.setAttribute('aria-busy', 'true');
+
             try {
-                setScreenTexture(await getTexture(AR_FALLBACK_TEXTURE));
-                appliedTexturePath = AR_FALLBACK_TEXTURE;
-                applyScreenState();
+                await showARTexture();
+                await modelViewer.activateAR();
+
+                if (typeof gtag === 'function') {
+                    gtag('event', 'open_ar', { 'screen': getActiveShape() });
+                }
+
+                // Quick Look / Scene Viewer copy the scene when they launch, so the page can go back
+                // to the selected theme shortly after. WebXR renders live, so it waits for exit instead.
+                setTimeout(restoreSelectedTheme, 1500);
             } catch (err) {
-                console.error('Failed to load AR fallback texture:', err);
+                console.error('Failed to start AR:', err);
+                restoreSelectedTheme();
+            } finally {
+                arButton.removeAttribute('aria-busy');
             }
-        } else if (event.detail.status === 'not-presenting') {
-            // Exiting AR: restore whatever theme is selected (cached, so no reload)
-            applyScreenTheme();
+        });
+    }
+
+    modelViewer.addEventListener('ar-status', (event) => {
+        const status = event.detail.status;
+        if (status === 'session-started') {
+            webxrActive = true;
+        } else if (status === 'not-presenting' || status === 'failed') {
+            webxrActive = false;
+            restoreSelectedTheme();
         }
+    });
+
+    // Safety net: if the user comes back from AR in another app, make sure the theme is restored
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') restoreSelectedTheme();
     });
 
     document.getElementById('restock-form').addEventListener('submit', function(event) {
