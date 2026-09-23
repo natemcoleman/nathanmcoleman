@@ -555,6 +555,33 @@
             border-color: #d2d2d7;
             color: #1d1d1f;
         }
+
+        /* --- Screen Shape Toggle --- */
+    .toggle-container {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 24px;
+    }
+
+    .screen-toggle {
+        flex: 1;
+        padding: 12px;
+        background-color: transparent;
+        border: 2px solid var(--border-color);
+        color: var(--text-color);
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.2s ease;
+    }
+
+    .screen-toggle:hover { border-color: #888; }
+    .screen-toggle.active {
+        border-color: #0A84FF;
+        background-color: rgba(10, 132, 255, 0.1);
+        color: #0A84FF;
+    }
     </style>
 </head>
 <body>
@@ -590,12 +617,20 @@
         </div>
         <!-- <model-viewer id="radar-viewer" ar ar-modes="webxr scene-viewer quick-look" src="/radar/radar_v10.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2"></model-viewer> -->
         <!-- <model-viewer id="radar-viewer" src="/radar/radar_v10.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2"></model-viewer> -->
-        <model-viewer id="radar-viewer" src="/radar/radar_v15_SPI.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2"></model-viewer>
+        <!-- <model-viewer id="radar-viewer" src="/radar/radar_v15_SPI.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2"></model-viewer> -->
+        <model-viewer id="radar-viewer" ar ar-modes="webxr scene-viewer quick-look" src="/radar/radar_v15_both.glb" touch-action="pan-y" tone-mapping="commerce" camera-controls auto-rotate rotation-per-second="10deg" shadow-intensity="1" exposure="1.2"></model-viewer>
     </div>
     <!-- Controls Half -->
     <div class="controls-section">
         <h2>Mini Radar Configuration</h2>
         <div class="price">$65 (Free Shipping)</div>
+
+        <!-- NEW: Screen Shape Toggle -->
+        <div class="section-title" style="margin-top: 0;">Screen Shape</div>
+        <div class="toggle-container">
+            <button class="screen-toggle active" data-screen-type="flat">Flat Glass</button>
+            <button class="screen-toggle" data-screen-type="rounded">Domed Glass</button>
+        </div>
 
        <!-- Faceplate Colors -->
         <div class="section-title">
@@ -713,14 +748,14 @@
             bodyMat.pbrMetallicRoughness.setMetallicFactor(0); 
         }
 
-        const screenMat = materials.find(mat => mat.name === '1.000000_0.000000_0.000000_0.000000_0.000000');
-        if (screenMat) {
-            // Make the physical screen pitch black so the transparent video has a dark background
-            screenMat.pbrMetallicRoughness.setBaseColorFactor([0, 0, 0, 1]);
-            // Make it a shiny, reflective glass surface
-            screenMat.pbrMetallicRoughness.setRoughnessFactor(0.05); 
-            screenMat.pbrMetallicRoughness.setMetallicFactor(0.8); 
-        }
+        // const screenMat = materials.find(mat => mat.name === '1.000000_0.000000_0.000000_0.000000_0.000000');
+        // if (screenMat) {
+        //     screenMat.pbrMetallicRoughness.setBaseColorFactor([0, 0, 0, 1]);
+        //     screenMat.pbrMetallicRoughness.setRoughnessFactor(0.05); 
+        //     screenMat.pbrMetallicRoughness.setMetallicFactor(0.8); 
+        // }
+        modelViewer.model.materials.forEach(mat => console.log("Material Name:", mat.name));
+        renderScreenState();
 
        // B. Check URL Parameters to auto-load configuration
         requestAnimationFrame(() => {
@@ -728,11 +763,16 @@
             const urlH = params.get('h');
             const urlF = params.get('f');
             const urlT = params.get('t');
+            const urlS = params.get('screen');
 
             let customLoad = false;
 
             // If parameters exist, simulate clicks on the specific swatches
-            if (urlH || urlF || urlT) {
+            if (urlH || urlF || urlT || urlS) {
+                if (urlS) {
+                    document.querySelector(`.screen-toggle[data-screen-type="${urlS}"]`)?.click();
+                    customLoad = true;
+                }
                 if (urlH) {
                     document.querySelector(`#housing-swatches .color-swatch[data-color="#${urlH}" i]`)?.click();
                     customLoad = true;
@@ -876,95 +916,94 @@
     });
 
 
-    // --- 4. BUTTON CLICK LOGIC (Theme Textures) ---
-    document.querySelectorAll('.theme-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
-            e.currentTarget.classList.add('active');
+    // --- 4 & 5. MASTER SCREEN RENDERER & TOGGLES ---
+    const screenToggles = document.querySelectorAll('.screen-toggle');
+    const themeBtns = document.querySelectorAll('.theme-btn');
 
-            const powerToggle = document.getElementById('power-toggle'); 
-            if (powerToggle && !powerToggle.checked) {
-                powerToggle.checked = true; 
-            }
+    async function renderScreenState() {
+        if (!modelViewer.model) return;
+        
+        const activeShapeBtn = document.querySelector('.screen-toggle.active');
+        const activeShape = activeShapeBtn ? activeShapeBtn.getAttribute('data-screen-type') : 'flat';
+        const activeThemeBtn = document.querySelector('.theme-btn.active');
+        const texturePath = activeThemeBtn ? activeThemeBtn.getAttribute('data-texture') : 'off';
+        
+        // Grab the new renamed materials from Blender
+        const matFlat = modelViewer.model.materials.find(mat => mat.name === "screen_flat");
+        const matDomed = modelViewer.model.materials.find(mat => mat.name === "screen_domed");
+        
+        if (!matFlat || !matDomed) return;
 
-            if (!modelViewer.model) return;
+        const activeMat = activeShape === 'flat' ? matFlat : matDomed;
+        const hiddenMat = activeShape === 'flat' ? matDomed : matFlat;
+
+        // --- HIDE THE INACTIVE SCREEN ---
+        hiddenMat.pbrMetallicRoughness.baseColorTexture.setTexture(null);
+        hiddenMat.emissiveTexture.setTexture(null);
+        
+        // Use MASK mode: This tells the browser to completely discard invisible pixels
+        hiddenMat.setAlphaMode('MASK'); 
+        hiddenMat.setAlphaCutoff(0.5);
+        
+        // Alpha is 0 (which is less than the 0.5 cutoff), so it vanishes instantly
+        hiddenMat.pbrMetallicRoughness.setBaseColorFactor([0, 0, 0, 0]); 
+        hiddenMat.setEmissiveFactor([0, 0, 0]);
+
+        // --- RENDER THE ACTIVE SCREEN ---
+        // Force the active screen to be OPAQUE. This instantly fixes the floating hologram bug!
+        activeMat.setAlphaMode('OPAQUE'); 
+
+        if (texturePath === "off") {
+            activeMat.pbrMetallicRoughness.baseColorTexture.setTexture(null);
+            activeMat.emissiveTexture.setTexture(null);
+            activeMat.pbrMetallicRoughness.setBaseColorFactor([0, 0, 0, 1]); 
+            activeMat.setEmissiveFactor([0, 0, 0]); 
+            activeMat.pbrMetallicRoughness.setRoughnessFactor(0.05); 
+            activeMat.pbrMetallicRoughness.setMetallicFactor(0.8);
+        } else if (texturePath.endsWith('.mp4') || texturePath.endsWith('.webm')) {
+            const texture = modelViewer.createVideoTexture(texturePath);
+            activeMat.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
+            activeMat.emissiveTexture.setTexture(texture);
+            activeMat.pbrMetallicRoughness.setBaseColorFactor([0, 0, 0, 1]); 
+            activeMat.setEmissiveFactor([1.0, 1.0, 1.0]); 
+            activeMat.pbrMetallicRoughness.setRoughnessFactor(0.05);
+            activeMat.pbrMetallicRoughness.setMetallicFactor(0.8);
+        } else {
+            const texture = await modelViewer.createTexture(texturePath);
+            activeMat.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
+            activeMat.emissiveTexture.setTexture(texture);
+            activeMat.pbrMetallicRoughness.setBaseColorFactor([1.0, 1.0, 1.0, 1.0]);
+            activeMat.setEmissiveFactor([1.5, 1.5, 1.5]); 
+            activeMat.pbrMetallicRoughness.setRoughnessFactor(0.05);
+            activeMat.pbrMetallicRoughness.setMetallicFactor(0.8);
+        }
+    }
+
+    screenToggles.forEach(toggle => {
+        toggle.addEventListener('click', (e) => {
+            if (e.target.classList.contains('active')) return;
+            screenToggles.forEach(btn => btn.classList.remove('active'));
+            e.target.classList.add('active');
             
-            const texturePath = e.currentTarget.getAttribute('data-texture');
-            const material = modelViewer.model.materials.find(mat => mat.name === "1.000000_0.000000_0.000000_0.000000_0.000000"); 
-
-            if (material) {
-                if (texturePath === "off") {
-                    // 1. POWER OFF STATE
-                    // Remove textures and make the screen pitch black with 0 glow
-                    material.pbrMetallicRoughness.baseColorTexture.setTexture(null);
-                    material.emissiveTexture.setTexture(null);
-                    material.pbrMetallicRoughness.setBaseColorFactor([0, 0, 0, 1]); // Very dark gray/black
-                    material.setEmissiveFactor([0, 0, 0]); 
-                    // 2. Make it a shiny, reflective glass surface
-                    material.pbrMetallicRoughness.setRoughnessFactor(0.05); // 0 = perfect mirror, 1 = chalky matte
-                    material.pbrMetallicRoughness.setMetallicFactor(0.8);
-
-                } else if (texturePath.endsWith('.mp4') || texturePath.endsWith('.webm')) {
-                    // // 2. VIDEO ANIMATION STATE
-                    // const texture = modelViewer.createVideoTexture(texturePath);
-                    // material.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
-                    // material.emissiveTexture.setTexture(texture);
-                    // material.pbrMetallicRoughness.setBaseColorFactor([1.0, 1.0, 1.0, 1.0]); // Reset color to white
-                    // material.setEmissiveFactor([1.0, 1.0, 1.0]); 
-                    // 2. VIDEO ANIMATION STATE
-                    const texture = modelViewer.createVideoTexture(texturePath);
-                    material.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
-                    material.emissiveTexture.setTexture(texture);
-                    
-                    // Keep the physical screen pitch black for the transparent background!
-                    material.pbrMetallicRoughness.setBaseColorFactor([0, 0, 0, 1]); 
-                    material.setEmissiveFactor([1.0, 1.0, 1.0]); 
-                    
-                    // Maintain the glossy reflection
-                    material.pbrMetallicRoughness.setRoughnessFactor(0.05);
-                    material.pbrMetallicRoughness.setMetallicFactor(0.8);
-
-                } else {
-                    // 3. STATIC IMAGE STATE
-                    const texture = await modelViewer.createTexture(texturePath);
-                    material.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
-                    material.emissiveTexture.setTexture(texture);
-                    material.pbrMetallicRoughness.setBaseColorFactor([1.0, 1.0, 1.0, 1.0]); // Reset color to white
-                    material.setEmissiveFactor([1.5, 1.5, 1.5]); 
-                }
-            }
-
-            updateURLParameters();
+            // Push to URL instantly
+            const currentUrlParams = new URLSearchParams(window.location.search);
+            currentUrlParams.set('screen', e.target.getAttribute('data-screen-type'));
+            window.history.replaceState({}, '', `${window.location.pathname}?${currentUrlParams.toString()}`);
+            
+            renderScreenState();
         });
     });
 
-
-    // --- 5. BUTTON CLICK LOGIC (Screen Power Toggle) ---
-    const powerToggle = document.getElementById('power-toggle');
-    if (powerToggle) {
-        powerToggle.addEventListener('change', (e) => {
-            if (!modelViewer.model) return;
-            const material = modelViewer.model.materials.find(mat => mat.name === "1.000000_0.000000_0.000000_0.000000_0.000000"); 
+    themeBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            if (e.currentTarget.classList.contains('active')) return;
+            themeBtns.forEach(b => b.classList.remove('active'));
+            e.currentTarget.classList.add('active');
             
-            if (e.target.checked) {
-                // Turn On: Programmatically click the active theme to restore texture and glow
-                const activeTheme = document.querySelector('.theme-btn.active');
-                if (activeTheme) activeTheme.click();
-            } else {
-                // Turn Off: Remove textures and kill the emissive light
-                material.pbrMetallicRoughness.baseColorTexture.setTexture(null);
-                material.emissiveTexture.setTexture(null);
-                
-                // 1. Set the physical color to pure pitch black
-                material.pbrMetallicRoughness.setBaseColorFactor([0, 0, 0, 1]);
-                material.setEmissiveFactor([0, 0, 0]); 
-                
-                // 2. Make it a shiny, reflective glass surface
-                material.pbrMetallicRoughness.setRoughnessFactor(0.05); // 0 = perfect mirror, 1 = chalky matte
-                material.pbrMetallicRoughness.setMetallicFactor(0.8);  // Cranks up environmental reflections
-            }
+            updateURLParameters();
+            renderScreenState();
         });
-    }
+    });
 
     // --- 8. URL PARAMETER MANAGEMENT & SHARING ---
 
@@ -1126,7 +1165,11 @@
     //const modelViewer = document.querySelector('#radar-viewer');
     // Listen for the user entering or exiting AR
     modelViewer.addEventListener('ar-status', async (event) => {
-        const material = modelViewer.model.materials.find(mat => mat.name === "1.000000_0.000000_0.000000_0.000000_0.000000");
+        const activeShapeBtn = document.querySelector('.screen-toggle.active');
+        const activeShape = activeShapeBtn ? activeShapeBtn.getAttribute('data-screen-type') : 'flat';
+        const targetMatName = activeShape === 'flat' ? "screen_flat" : "screen_domed";
+        
+        const material = modelViewer.model.materials.find(mat => mat.name === targetMatName);
         if (!material) return;
 
         if (event.detail.status === 'session-started') {
