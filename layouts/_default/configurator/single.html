@@ -616,6 +616,33 @@
 
     .screen-toggle:hover { border-color: #888; }
 
+    /* Sold-out screen option: can be previewed, but is clearly marked */
+    .screen-toggle[data-sold-out] { border-style: dashed; }
+    .toggle-badge {
+        display: block;
+        margin-top: 2px;
+        font-size: 11px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        opacity: 0.75;
+    }
+    /* Stronger note while the sold-out option is being previewed */
+    .toggle-note.is-previewing {
+        padding: 10px 12px;
+        border-radius: 8px;
+        background-color: rgba(255, 159, 10, 0.12);
+        border: 1px solid rgba(255, 159, 10, 0.45);
+        opacity: 1;
+    }
+    .toggle-container:has(+ .toggle-note:not([hidden])) { margin-bottom: 8px; }
+    .toggle-note {
+        margin: 0 0 24px;
+        font-size: 13px;
+        opacity: 0.8;
+    }
+    .toggle-note a { color: #0A84FF; }
+
     /* --- Custom AR Button --- */
     .ar-btn {
         position: absolute;
@@ -724,12 +751,16 @@
             <!-- JS will inject swatches here -->
         </div>
 
-        <!-- NEW: Screen Shape Toggle -->
+        <!-- Screen Shape Toggle
+             Sold out:  add data-sold-out to a button (it can still be previewed, but can't be ordered).
+             Restocked: remove data-sold-out.
+             Discontinued: delete this whole block; the page will always show the flat screen. -->
         <div class="section-title">Screen Shape</div>
         <div class="toggle-container">
-            <button type="button" class="screen-toggle active" data-screen-type="domed" aria-pressed="true">Domed Glass</button>
-            <button type="button" class="screen-toggle" data-screen-type="flat" aria-pressed="false">Flat Glass</button>
+            <button type="button" class="screen-toggle active" data-screen-type="flat" aria-pressed="true">Flat Glass</button>
+            <button type="button" class="screen-toggle" data-screen-type="domed" aria-pressed="false" data-sold-out>Domed Glass</button>
         </div>
+        <p class="toggle-note" id="screen-sold-out-note" hidden></p>
 
         <!-- Themes -->
         <!-- Screen Themes -->
@@ -761,7 +792,7 @@
                 <ul class="summary-list">
                     <li>Faceplate: <span id="summary-faceplate">Matte Black</span></li>
                     <li>Housing: <span id="summary-housing">Matte Black</span></li>
-                    <li>Screen: <span id="summary-screen">Domed Glass</span></li>
+                    <li>Screen: <span id="summary-screen">Flat Glass</span></li>
                 </ul>
                 <p class="summary-note">Please select these options from the dropdown menus on Etsy.</p>
                 <p class="manufacturing-disclaimer">
@@ -774,8 +805,10 @@
         <a href="https://www.etsy.com/listing/4541612698/mini-desktop-radar?show_sold_out_detail=1&ref=nla_listing_details" target="_blank" class="btn-primary checkout-btn" id="etsy-checkout-btn" style="display: flex; justify-content: center; align-items: center; text-align: center;">Complete on Etsy</a>        </div>
         <section class="notify-section">
             <h3 style="margin-top: 0;">Keep In Touch</h3>
-            <p class="notify-text">Out of stock on Etsy? Want to know when we release new colors or features? Subscribe to stay up to date.</p>
+            <p class="notify-text" id="notify-text">Out of stock on Etsy? Want to know when we release new colors or features? Subscribe to stay up to date.</p>
             <form id="restock-form" action="https://formspree.io/f/xljrvnwo" method="POST" class="notify-form">
+                <!-- Set by JS: "General updates", or e.g. "Domed Glass restock" when coming from a sold-out link -->
+                <input type="hidden" name="interest" id="notify-interest" value="General updates">
                 <input type="email" name="email" class="notify-input" placeholder="your@email.com" required>
                 <button type="submit" class="notify-button">Notify Me</button>
             </form>            
@@ -886,7 +919,17 @@
     // --- 10. TRACK ETSY CHECKOUT CLICKS ---
     const etsyBtn = document.getElementById('etsy-checkout-btn');
     if (etsyBtn) {
-        etsyBtn.addEventListener('click', () => {
+        etsyBtn.addEventListener('click', (e) => {
+            // Previewing a sold-out option: send them to the notify form instead of Etsy
+            if (isSoldOutShapeActive()) {
+                e.preventDefault();
+                scrollToNotifyForm(getSoldOutActiveName());
+                if (typeof gtag === 'function') {
+                    gtag('event', 'sold_out_notify_click', { 'item': getActiveShape(), 'source': 'checkout_button' });
+                }
+                return;
+            }
+
             // Grab the currently selected colors to see what people are buying!
             const activeHousing = document.querySelector('#housing-swatches .color-swatch.active')?.getAttribute('data-name') || 'Unknown';
             const activeFaceplate = document.querySelector('#faceplate-swatches .color-swatch.active')?.getAttribute('data-name') || 'Unknown';
@@ -1006,7 +1049,7 @@
     //    three.js compiles both shader variants up front and later toggles reuse them from its cache.
     const screenToggles = document.querySelectorAll('.screen-toggle');
     const themeBtns = document.querySelectorAll('.theme-btn');
-    const DEFAULT_SCREEN = 'domed';
+    const DEFAULT_SCREEN = 'flat';
     const AR_TEXTURE = '/radar/modern_large3.jpg';   // always shown in AR, whatever theme is selected
     const textureCache = new Map();   // path -> Promise<Texture>
     let screenMats = null;            // { flat: Material, domed: Material }
@@ -1018,9 +1061,100 @@
 
     const isVideoPath = (path) => /\.(mp4|webm)$/i.test(path);
 
+    // Shapes that can be previewed: any with a button (sold out or not). If the section is deleted, flat only.
+    const previewableShapes = [...screenToggles].map(btn => btn.dataset.screenType);
+    if (previewableShapes.length === 0) previewableShapes.push('flat');
+
     function normalizeShape(value) {
-        if (value === 'rounded') return 'domed'; // keep old shared links working
-        return value === 'flat' || value === 'domed' ? value : DEFAULT_SCREEN;
+        if (value === 'rounded') value = 'domed'; // keep old shared links working
+        if (previewableShapes.includes(value)) return value;
+        return previewableShapes.includes(DEFAULT_SCREEN) ? DEFAULT_SCREEN : previewableShapes[0];
+    }
+
+    function isSoldOutShapeActive() {
+        return !!document.querySelector('.screen-toggle.active[data-sold-out]');
+    }
+
+    // --- Notify form: remember what the person wants to be notified about ---
+    const notifyTextEl = document.getElementById('notify-text');
+    const defaultNotifyText = notifyTextEl?.textContent;
+
+    // itemName: e.g. "Domed Glass" for a restock sign-up, or null for general updates
+    function setNotifyInterest(itemName) {
+        const form = document.getElementById('restock-form');
+        const interestInput = document.getElementById('notify-interest');
+        if (interestInput) interestInput.value = itemName ? `${itemName} restock` : 'General updates';
+
+        // Custom email subject in your inbox for restock sign-ups only
+        let subjectInput = form?.querySelector('input[name="_subject"]');
+        if (itemName && form) {
+            if (!subjectInput) {
+                subjectInput = document.createElement('input');
+                subjectInput.type = 'hidden';
+                subjectInput.name = '_subject';
+                form.appendChild(subjectInput);
+            }
+            subjectInput.value = `${itemName} restock sign-up`;
+        } else {
+            subjectInput?.remove();
+        }
+
+        if (notifyTextEl) {
+            notifyTextEl.textContent = itemName
+                ? `Get an email when ${itemName} is back in stock. We'll also let you know about new colors and features.`
+                : defaultNotifyText;
+        }
+    }
+
+    function getSoldOutActiveName() {
+        const btn = document.querySelector('.screen-toggle.active[data-sold-out]');
+        return btn ? btn.firstChild.textContent.trim() : null;
+    }
+
+    function scrollToNotifyForm(itemName = null) {
+        setNotifyInterest(itemName);
+        const form = document.getElementById('restock-form');
+        form?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        form?.querySelector('input[type="email"]')?.focus({ preventScroll: true });
+    }
+
+    // Updates the note and the checkout button when a sold-out option is (or isn't) being previewed
+    const etsyCheckoutBtn = document.getElementById('etsy-checkout-btn');
+    const etsyCheckoutText = etsyCheckoutBtn?.textContent.trim();
+    function updateSoldOutState() {
+        const soldOutActive = isSoldOutShapeActive();
+        document.getElementById('screen-sold-out-note')?.classList.toggle('is-previewing', soldOutActive);
+        if (etsyCheckoutBtn) {
+            etsyCheckoutBtn.textContent = soldOutActive ? 'Sold Out – Notify Me' : etsyCheckoutText;
+        }
+        // Switched back to an in-stock option: the form goes back to general updates
+        if (!soldOutActive) setNotifyInterest(null);
+    }
+
+    // Grey out sold-out buttons and point people to the notify form
+    function setupSoldOutScreens() {
+        const soldOut = [...screenToggles].filter(btn => btn.hasAttribute('data-sold-out'));
+        const note = document.getElementById('screen-sold-out-note');
+
+        soldOut.forEach(btn => {
+            const badge = document.createElement('span');
+            badge.className = 'toggle-badge';
+            badge.textContent = 'Sold out';
+            btn.appendChild(badge);
+        });
+
+        if (!note || soldOut.length === 0) return;
+        const names = soldOut.map(btn => btn.firstChild.textContent.trim()).join(' and ');
+        note.innerHTML = `${names} is sold out. <a href="#restock-form">Get notified when it's back</a>`;
+        note.hidden = false;
+
+        note.querySelector('a').addEventListener('click', (e) => {
+            e.preventDefault();
+            scrollToNotifyForm(names);
+            if (typeof gtag === 'function') {
+                gtag('event', 'sold_out_notify_click', { 'item': names });
+            }
+        });
     }
 
     function getActiveShape() {
@@ -1142,6 +1276,7 @@
             setActiveShapeButton(normalizeShape(btn.dataset.screenType));
             updateURLParameters();
             updateCheckoutSummary();
+            updateSoldOutState();
             applyScreenState();
         });
     });
@@ -1158,7 +1293,9 @@
     });
 
     // Apply the screen shape from the URL right away (before the model loads), else default to domed
+    setupSoldOutScreens();
     setActiveShapeButton(normalizeShape(new URLSearchParams(window.location.search).get('screen')));
+    updateSoldOutState();
     updateCheckoutSummary();
 
     // --- 8. URL PARAMETER MANAGEMENT & SHARING ---
@@ -1265,7 +1402,10 @@
     function updateCheckoutSummary() {
         const screenSummary = document.getElementById('summary-screen');
         const activeShapeBtn = document.querySelector('.screen-toggle.active');
-        if (screenSummary && activeShapeBtn) screenSummary.textContent = activeShapeBtn.textContent.trim();
+        if (screenSummary && activeShapeBtn) {
+            const name = activeShapeBtn.firstChild.textContent.trim();
+            screenSummary.textContent = activeShapeBtn.hasAttribute('data-sold-out') ? `${name} (sold out)` : name;
+        }
 
         const activeHousing = document.querySelector('#housing-swatches .color-swatch.active');
         const activeFaceplate = document.querySelector('#faceplate-swatches .color-swatch.active');
@@ -1390,12 +1530,15 @@
         event.preventDefault(); // Stop the browser from redirecting to Formspree
         
         const form = event.target;
+        const interest = document.getElementById('notify-interest')?.value || 'General updates';
+        const isRestock = interest !== 'General updates';
         
         // 1. Send the event to Google Analytics (GA4)
         if (typeof gtag === 'function') {
             gtag('event', 'generate_lead', {
                 'event_category': 'Waitlist',
                 'event_label': 'Mini Desktop Radar',
+                'interest': interest,
                 'value': 1
             });
         }
@@ -1412,7 +1555,10 @@
         }).then(response => {
             if (response.ok) {
                 // 3. Swap the form out for a success message
-                form.innerHTML = "<p style='color: #28a745; font-weight: bold; margin: 0; padding: 10px;'>We'll notify you when we have an update!</p>";
+                const message = isRestock
+                    ? `You're on the list! We'll email you when ${interest.replace(/ restock$/, '')} is back in stock.`
+                    : "We'll notify you when we have an update!";
+                form.innerHTML = `<p style='color: #28a745; font-weight: bold; margin: 0; padding: 10px;'>${message}</p>`;
             } else {
                 alert("Oops! There was a problem submitting your email. Please try again.");
             }
