@@ -328,107 +328,120 @@
   // Animate circle c from s0 to s1 steps, then commit the whole-step result.
   function playTurn(c, s0, s1, duration, done) {
     busy = true;
-    board.turn = { c: c, s: s0 };
-    animate(duration, function (t) {
-      board.turn.s = s0 + (s1 - s0) * easeOut(t);
-      board.draw();
-    }, function () {
-      board.turn = null;
+    animateTurn(board, c, s0, s1, duration, function () {
       busy = false;
       if (done) done();
-      board.draw();
     });
   }
 
   // ---------- input ----------
-  var drag = null;
-  function pointerPos(e) {
-    var r = canvas.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
-  }
-  function nearCircles(sp) {
-    var w = board.toWorld(sp.x, sp.y);
-    var tolPx = Math.max(24, board.pointR * 1.8);
-    return puzzle.circles.map(function (c) {
-      return { c: c, d: Math.abs(Math.hypot(w.x - c.cx, w.y - c.cy) - c.r) * board.scale };
-    }).filter(function (x) { return x.d <= tolPx; }).map(function (x) { x.tol = tolPx; return x; });
-  }
-  function angleAround(c, sp) {
-    var w = board.toWorld(sp.x, sp.y);
-    return Math.atan2(w.y - c.cy, w.x - c.cx);
-  }
-
-  canvas.addEventListener('pointerdown', function (e) {
-    if (busy || game.solved || drag) return;
-    var sp = pointerPos(e);
-    var cands = nearCircles(sp);
-    if (!cands.length) return;
-    canvas.setPointerCapture(e.pointerId);
-    drag = { id: e.pointerId, start: sp, cands: cands, c: null };
-    // Only one candidate (or concentric ones, which share a center): pick the closest right away.
-    var centers = {};
-    cands.forEach(function (x) { centers[x.c.center] = true; });
-    if (Object.keys(centers).length === 1) lockCircle(cands.reduce(function (a, b) { return a.d <= b.d ? a : b; }).c);
-    e.preventDefault();
-  });
-
-  function lockCircle(c) {
-    drag.c = c.id;
-    drag.a0 = angleAround(c, drag.start);
-    drag.prevA = drag.a0;
-    drag.total = 0;
-    board.turn = { c: c.id, s: 0 };
-    canvas.classList.add('dragging');
-    startTimer();
-    board.draw();
-  }
-
-  canvas.addEventListener('pointermove', function (e) {
-    if (!drag || e.pointerId !== drag.id) return;
-    var sp = pointerPos(e);
-    if (drag.c === null) {
-      var dx = sp.x - drag.start.x, dy = sp.y - drag.start.y, dist = Math.hypot(dx, dy);
-      if (dist < 7) return;
-      // Pick the circle whose direction best matches the drag (screen coords: y down).
-      var best = null, bestScore = -Infinity;
-      drag.cands.forEach(function (x) {
-        var c = x.c, ctr = board.toScreen(c.cx, c.cy);
-        var rx = drag.start.x - ctr.x, ry = drag.start.y - ctr.y, rl = Math.hypot(rx, ry) || 1;
-        var tx = -ry / rl, ty = rx / rl;
-        var align = Math.abs((dx * tx + dy * ty) / dist);
-        var score = align - 0.8 * (x.d / x.tol);
-        if (score > bestScore) { bestScore = score; best = c; }
-      });
-      lockCircle(best);
+  // Lets the player drag circles on any Board. opts:
+  //   locked(): true while the board should ignore touches
+  //   onGrab(): a circle was picked up
+  //   onRelease(c, s, target): finger lifted after turning circle c by s steps (target = nearest whole step)
+  function attachDrag(b, opts) {
+    var cv = b.canvas, drag = null;
+    function pointerPos(e) {
+      var r = cv.getBoundingClientRect();
+      return { x: e.clientX - r.left, y: e.clientY - r.top };
     }
-    var c = puzzle.circles[drag.c];
-    var a = angleAround(c, sp);
-    var da = a - drag.prevA;
-    if (da > Math.PI) da -= Math.PI * 2;
-    if (da < -Math.PI) da += Math.PI * 2;
-    drag.total += da;
-    drag.prevA = a;
-    var m = c.slots.length;
-    var s = (drag.total * m) / (Math.PI * 2);
-    if (Math.round(s) !== Math.round(board.turn.s) && navigator.vibrate) { try { navigator.vibrate(6); } catch (err) {} }
-    board.turn.s = s;
-    board.draw();
-  });
+    function nearCircles(sp) {
+      var w = b.toWorld(sp.x, sp.y);
+      var tolPx = Math.max(24, b.pointR * 1.8);
+      return b.puzzle.circles.map(function (c) {
+        return { c: c, d: Math.abs(Math.hypot(w.x - c.cx, w.y - c.cy) - c.r) * b.scale };
+      }).filter(function (x) { return x.d <= tolPx; }).map(function (x) { x.tol = tolPx; return x; });
+    }
+    function angleAround(c, sp) {
+      var w = b.toWorld(sp.x, sp.y);
+      return Math.atan2(w.y - c.cy, w.x - c.cx);
+    }
+    function lockCircle(c) {
+      drag.c = c.id;
+      drag.prevA = angleAround(c, drag.start);
+      drag.total = 0;
+      b.turn = { c: c.id, s: 0 };
+      cv.classList.add('dragging');
+      if (opts.onGrab) opts.onGrab();
+      b.draw();
+    }
+    cv.addEventListener('pointerdown', function (e) {
+      if (opts.locked() || drag) return;
+      var sp = pointerPos(e);
+      var cands = nearCircles(sp);
+      if (!cands.length) return;
+      cv.setPointerCapture(e.pointerId);
+      drag = { id: e.pointerId, start: sp, cands: cands, c: null };
+      // Only one candidate (or concentric ones, which share a center): pick the closest right away.
+      var centers = {};
+      cands.forEach(function (x) { centers[x.c.center] = true; });
+      if (Object.keys(centers).length === 1) lockCircle(cands.reduce(function (a, z) { return a.d <= z.d ? a : z; }).c);
+      e.preventDefault();
+    });
+    cv.addEventListener('pointermove', function (e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      var sp = pointerPos(e);
+      if (drag.c === null) {
+        var dx = sp.x - drag.start.x, dy = sp.y - drag.start.y, dist = Math.hypot(dx, dy);
+        if (dist < 7) return;
+        // Pick the circle whose direction best matches the drag (screen coords: y down).
+        var best = null, bestScore = -Infinity;
+        drag.cands.forEach(function (x) {
+          var c = x.c, ctr = b.toScreen(c.cx, c.cy);
+          var rx = drag.start.x - ctr.x, ry = drag.start.y - ctr.y, rl = Math.hypot(rx, ry) || 1;
+          var tx = -ry / rl, ty = rx / rl;
+          var align = Math.abs((dx * tx + dy * ty) / dist);
+          var score = align - 0.8 * (x.d / x.tol);
+          if (score > bestScore) { bestScore = score; best = c; }
+        });
+        lockCircle(best);
+      }
+      var c = b.puzzle.circles[drag.c];
+      var a = angleAround(c, sp);
+      var da = a - drag.prevA;
+      if (da > Math.PI) da -= Math.PI * 2;
+      if (da < -Math.PI) da += Math.PI * 2;
+      drag.total += da;
+      drag.prevA = a;
+      var s = (drag.total * c.slots.length) / (Math.PI * 2);
+      if (Math.round(s) !== Math.round(b.turn.s) && navigator.vibrate) { try { navigator.vibrate(6); } catch (err) {} }
+      b.turn.s = s;
+      b.draw();
+    });
+    function endDrag(e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      var d = drag;
+      drag = null;
+      cv.classList.remove('dragging');
+      if (d.c === null) return;
+      var s = b.turn ? b.turn.s : 0;
+      opts.onRelease(d.c, s, Math.round(s));
+    }
+    cv.addEventListener('pointerup', endDrag);
+    cv.addEventListener('pointercancel', endDrag);
+  }
 
-  function endDrag(e) {
-    if (!drag || e.pointerId !== drag.id) return;
-    var d = drag;
-    drag = null;
-    canvas.classList.remove('dragging');
-    if (d.c === null) return;
-    var s = board.turn ? board.turn.s : 0;
-    var target = Math.round(s);
-    playTurn(d.c, s, target, 140 + Math.min(200, Math.abs(target - s) * 160), function () {
-      commitMove(d.c, target);
+  // Animate circle c on board b from s0 to s1 steps.
+  function animateTurn(b, c, s0, s1, duration, done) {
+    b.turn = { c: c, s: s0 };
+    animate(duration, function (t) {
+      b.turn.s = s0 + (s1 - s0) * easeOut(t);
+      b.draw();
+    }, function () {
+      b.turn = null;
+      if (done) done();
+      b.draw();
     });
   }
-  canvas.addEventListener('pointerup', endDrag);
-  canvas.addEventListener('pointercancel', endDrag);
+  function snapDuration(s, target) { return 140 + Math.min(200, Math.abs(target - s) * 160); }
+
+  attachDrag(board, {
+    locked: function () { return busy || game.solved; },
+    onGrab: startTimer,
+    onRelease: function (c, s, target) {
+      playTurn(c, s, target, snapDuration(s, target), function () { commitMove(c, target); });
+    }
+  });
 
   el.undo.addEventListener('click', function () {
     if (busy || game.solved || !game.stack.length) return;
@@ -446,22 +459,41 @@
     });
   });
 
+  var hintPending = false;
   el.hint.addEventListener('click', function () {
-    if (busy || game.solved) return;
-    var history = day.scramble.concat(game.stack);
-    var h = E.hint(puzzle, state, history, { nodeBudget: 150000, maxDepth: 3 });
-    if (!h) return;
-    startTimer();
-    game.hints += 1;
-    save();
-    board.hintMove = { c: h.c, k: h.k };
-    // nudge the circle in the right direction so it is easy to spot
-    var dir = h.k > 0 ? 1 : -1;
-    playTurn(h.c, 0, dir * 0.3, 180, function () {
-      playTurn(h.c, dir * 0.3, 0, 220);
+    if (busy || game.solved || hintPending) return;
+    hintPending = true;
+    getSolution(function (sol) {
+      hintPending = false;
+      if (busy || game.solved) return;
+      // Plans toward the shortest solution: exact when 4 or fewer moves remain,
+      // otherwise back along the player's own moves and onto the shortest route.
+      var h = E.hint(puzzle, state, {
+        stack: game.stack,
+        scramble: day.scramble,
+        solution: sol.optimal ? sol.moves : null
+      });
+      if (!h) return;
+      startTimer();
+      game.hints += 1;
+      save();
+      board.hintMove = { c: h.c, k: h.k };
+      if (h.exact) toast(h.remaining === 1 ? 'One move to go' : h.remaining + ' moves to go', 1200);
+      // nudge the circle in the right direction so it is easy to spot
+      var dir = h.k > 0 ? 1 : -1;
+      playTurn(h.c, 0, dir * 0.3, 180, function () {
+        playTurn(h.c, dir * 0.3, 0, 220);
+      });
+      board.draw();
     });
-    board.draw();
   });
+
+  // Warm up hint data while the player looks at the board.
+  setTimeout(function () {
+    if (game.solved) return;
+    getSolution(function () {});
+    try { E.solveShort(puzzle, puzzle.solvedState); } catch (e) {}
+  }, 1200);
 
   // ---------- winning ----------
   function win() {
@@ -629,10 +661,10 @@
     if (openId) closeModal();
     if (id === 'stats') renderStats();
     if (id === 'archive') renderArchive();
-    if (id === 'help') renderDemo();
     if (id === 'settings') syncSettings();
     document.getElementById(id).classList.add('open');
     openId = id;
+    if (id === 'help') startTutorial(1); // after opening, so the board can measure its space
   }
   function closeModal() {
     if (!openId) return;
@@ -649,12 +681,88 @@
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
 
-  function renderDemo() {
-    var c = document.getElementById('help-demo');
+  // ---------- interactive tutorial (in How To Play) ----------
+  // Round 1: one quarter turn, with an arrow showing what to do.
+  // Round 2 (optional): two turns, arrow only on request.
+  var tut = { round: 1, state: null, busy: false, solved: false, showArrow: true };
+  var tutPuzzle = E.buildPuzzle(E.LAYOUTS[2]);
+  function tutMsg(text) { document.getElementById('tut-msg').textContent = text; }
+  function tutActions(buttons) {
+    var box = document.getElementById('tut-actions');
+    box.innerHTML = '';
+    buttons.forEach(function (b) {
+      var el2 = document.createElement('button');
+      el2.className = 'btn' + (b.primary ? ' primary' : '');
+      el2.textContent = b.label;
+      el2.addEventListener('click', b.onClick);
+      box.appendChild(el2);
+    });
+  }
+  function tutArrow() {
+    var h = tut.showArrow ? E.hint(tutPuzzle, tut.state, { stack: tut.stack, scramble: tut.scramble }) : null;
+    demo.hintMove = h ? { c: h.c, k: h.k } : null;
+  }
+  function startTutorial(round) {
+    var canvasEl = document.getElementById('tut-board');
     if (!demo) {
-      demo = new Board(c, E.buildPuzzle(E.LAYOUTS[2]));
-      demo.resize(220, 200);
-    } else demo.draw();
+      demo = new Board(canvasEl, tutPuzzle);
+      attachDrag(demo, {
+        locked: function () { return tut.busy || tut.solved; },
+        onRelease: function (c, s, target) {
+          tut.busy = true;
+          animateTurn(demo, c, s, target, snapDuration(s, target), function () {
+            tut.busy = false;
+            if (E.shortest(tutPuzzle, c, target) === 0) return;
+            tut.state = E.applyMove(tutPuzzle, tut.state, c, target);
+            tut.stack.push({ c: c, k: E.shortest(tutPuzzle, c, target) });
+            demo.state = tut.state;
+            if (E.isSolved(tutPuzzle, tut.state)) return tutorialSolved();
+            tutArrow();
+            tutMsg(tut.showArrow ? 'Keep going: follow the arrow.' : 'Keep going!');
+          });
+        }
+      });
+    }
+    var w = Math.min(300, (canvasEl.parentElement.clientWidth || 280) - 16);
+    demo.resize(w, Math.round(w * 0.86));
+    tut.round = round;
+    tut.solved = false;
+    tut.busy = false;
+    tut.stack = [];
+    if (round === 1) {
+      // Outer circle of the bottom center, one quarter turn.
+      tut.scramble = [{ c: 1, k: 2 }];
+      tut.state = E.applyMoves(tutPuzzle, tutPuzzle.solvedState.slice(), tut.scramble);
+      tut.showArrow = true;
+      tutMsg('Try it: drag the highlighted circle the way the arrow points.');
+      tutActions([]);
+    } else {
+      var s2, n = 0;
+      do {
+        s2 = E.scramble(tutPuzzle, 2, 'tutorial:' + Date.now() + ':' + n++, 2);
+      } while (n < 20 && (E.solveShort(tutPuzzle, s2.state) || []).length !== 2);
+      tut.scramble = s2.moves;
+      tut.state = s2.state;
+      tut.showArrow = false;
+      tutMsg('Two turns this time. You\'ve got it.');
+      tutActions([{ label: 'Show me', onClick: function () { tut.showArrow = true; tutArrow(); demo.draw(); } }]);
+    }
+    demo.state = tut.state;
+    tutArrow();
+    demo.draw();
+  }
+  function tutorialSolved() {
+    tut.solved = true;
+    demo.hintMove = null;
+    tut.busy = true;
+    animate(900, function (t) { demo.pulse = t; demo.draw(); }, function () {
+      demo.pulse = 0; tut.busy = false; demo.draw();
+    });
+    tutMsg(tut.round === 1 ? 'Solved! Every cluster is one color.' : 'Nice! You\'re ready.');
+    var play = { label: game.solved ? 'Close' : 'Play today\'s puzzle', primary: true, onClick: closeModal };
+    tutActions(tut.round === 1
+      ? [{ label: 'Try a harder one', onClick: function () { startTutorial(2); } }, play]
+      : [{ label: 'Again', onClick: function () { startTutorial(2); } }, play]);
   }
 
   // ---------- stats ----------
@@ -681,8 +789,7 @@
     var byLevel = {};
     LEVELS.forEach(function (l) { byLevel[l] = []; });
     solvedDates.forEach(function (x) {
-      var wd = parseDate(x).getDay();
-      byLevel[E.SCHEDULE[wd].label].push(store.games[x].time);
+      byLevel[E.configFor(x).label].push(store.games[x].time);
     });
     function avg(a) { return a.length ? a.reduce(function (s, v) { return s + v; }, 0) / a.length : null; }
     return {
@@ -764,7 +871,7 @@
     for (var d = todayStr; puzzleNumber(d) >= 1; d = addDays(d, -1)) {
       var pd = parseDate(d), mk = MONTHS[pd.getMonth()] + ' ' + pd.getFullYear();
       if (mk !== month) { html += (month ? '</ul>' : '') + '<div class="archive-month">' + mk + '</div><ul class="archive-list">'; month = mk; }
-      var g = store.games[d], label = E.SCHEDULE[pd.getDay()].label;
+      var g = store.games[d], label = E.configFor(d).label;
       var status = g && g.solved ? '<span class="status done">✓ ' + fmtTime(g.time) + '</span>'
         : g && g.started ? '<span class="status">In progress</span>' : '<span class="status small">Play</span>';
       html += '<li><button data-date="' + d + '"><span><strong>#' + puzzleNumber(d) + '</strong> · ' + label +
@@ -848,5 +955,5 @@
   if (!store.settings.seenHelp) openModal('help');
 
   // exposed for debugging and automated checks
-  window.Venn = { puzzle: puzzle, day: day, game: game, board: board, getState: function () { return state; }, commitMove: commitMove };
+  window.Venn = { puzzle: puzzle, day: day, game: game, board: board, tutorialBoard: function () { return demo; }, getState: function () { return state; }, commitMove: commitMove };
 })();
