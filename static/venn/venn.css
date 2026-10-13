@@ -124,7 +124,7 @@ header h1 {
   color: var(--fg);
   justify-self: center;
 }
-.info .hints-count { justify-self: end; font-variant-numeric: tabular-nums; }
+.info .target { justify-self: end; font-variant-numeric: tabular-nums; }
 .archive-banner {
   text-align: center;
   font-size: 13px;
@@ -392,3 +392,7 @@ html.dark .modal { border: 1px solid #1a1a1b; }
 .privacy { margin-top: 14px; }
 .privacy-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
 .modal .privacy p { font-size: 12px; color: var(--muted); margin: 0 0 6px; line-height: 1.4; }
+
+.controls .btn { font-size: 14px; gap: 6px; padding: 0 6px; }
+.controls .btn svg { width: 18px; height: 18px; flex: none; }
+#reset-btn.armed { background: #e5484d; color: #fff; }

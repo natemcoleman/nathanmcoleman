@@ -30,6 +30,14 @@ test('accepts a real solve and scores moves plus 2 per hint', () => {
   assert.strictEqual(sub.moves, shortest.length + E.HINT_COST);
 });
 
+test('which-circle hints (peeks) count 1 each; older clients without peeks still work', () => {
+  const a = validateSubmission({ date: DATE, playerId: 'player-0001', stack: shortest, hints: 1, peeks: 2 }, NOW);
+  assert.strictEqual(a.moves, shortest.length + E.HINT_COST + 2 * E.PEEK_COST);
+  const b = validateSubmission({ date: DATE, playerId: 'player-0001', stack: shortest, hints: 0 }, NOW);
+  assert.strictEqual(b.moves, shortest.length);
+  assert.strictEqual(validateSubmission({ date: DATE, playerId: 'player-0001', stack: shortest, hints: 0, peeks: -1 }, NOW).ok, false);
+});
+
 test('rejects unsolved moves and junk', () => {
   const bad = [
     { date: DATE, playerId: 'player-0001', stack: shortest.slice(0, -1), hints: 0 },

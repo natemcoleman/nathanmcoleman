@@ -45,7 +45,8 @@ function fromKey(key) {
 function allMoves(puzzle) {
   const moves = [];
   puzzle.circles.forEach((c) => {
-    for (let k = 1; k < c.slots.length; k++) moves.push({ c: c.id, k: E.shortest(puzzle, c.id, k) });
+    // quarter turns only, matching what players can do
+    for (let k = puzzle.step; k < c.slots.length; k += puzzle.step) moves.push({ c: c.id, k: E.shortest(puzzle, c.id, k) });
   });
   return moves;
 }

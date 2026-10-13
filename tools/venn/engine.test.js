@@ -139,7 +139,7 @@ function existsWithin(p, state, depth, lastC) {
   if (depth === 0) return false;
   for (const c of p.circles) {
     if (c.id === lastC) continue;
-    for (let k = 1; k < c.slots.length; k++) {
+    for (let k = p.step; k < c.slots.length; k += p.step) { // quarter turns, as players can
       if (existsWithin(p, E.applyMove(p, state, c.id, k), depth - 1, c.id)) return true;
     }
   }
@@ -190,4 +190,29 @@ test('a new schedule only affects dates from its start', () => {
   } finally {
     E.SCHEDULES.pop();
   }
+});
+
+test('players and solutions only use quarter turns', () => {
+  const data = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '../../static/venn/solutions.json'), 'utf8'));
+  for (const [ds, entry] of Object.entries(data.puzzles)) {
+    const day = E.dailyPuzzle(ds);
+    entry.s.forEach(([c, k]) => assert.ok(Math.abs(k) % day.puzzle.step === 0, ds + ' uses a non-quarter turn'));
+    day.scramble.forEach((m) => assert.ok(Math.abs(m.k) % day.puzzle.step === 0));
+  }
+  const p = E.buildPuzzle(E.LAYOUTS[3]);
+  assert.strictEqual(p.step, 3);
+});
+
+test('puzzles before the easier schedule are unchanged', () => {
+  // 2026-10-13 (the preview day) was played under the first schedule; it must never change.
+  assert.strictEqual(E.hashString(E.dailyPuzzle('2026-10-13').start.join(',')), 179409699);
+  assert.strictEqual(E.configFor('2026-10-13').moves, 3);
+  assert.strictEqual(E.configFor('2026-10-14').label, 'Medium');
+});
+
+test('hint penalties: full hint 2, which-circle hint 1', () => {
+  assert.strictEqual(E.moveScore([1, 2, 3], 1, 0), 5);
+  assert.strictEqual(E.moveScore([1, 2, 3], 0, 1), 4);
+  assert.strictEqual(E.moveScore([1, 2, 3], 1, 1), 6);
+  assert.strictEqual(E.moveScore([1], 2), 5, 'older games without peeks still score the same');
 });
