@@ -37,6 +37,9 @@ html.dark {
 * { box-sizing: border-box; }
 
 html, body {
+  /* no double-tap zoom on fast taps (pinch zoom still works) */
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
   margin: 0;
   height: 100%;
   background: var(--bg);
@@ -156,6 +159,7 @@ header h1 {
   justify-content: center;
   padding: 8px 16px calc(16px + env(safe-area-inset-bottom));
 }
+.btn, .icon-btn, .link-btn { touch-action: manipulation; }
 .btn {
   flex: 1;
   max-width: 180px;

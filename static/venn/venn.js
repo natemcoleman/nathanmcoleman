@@ -371,6 +371,7 @@
     animateTurn(board, c, s0, s1, duration, function () {
       busy = false;
       if (done) done();
+      setTimeout(drainUndos, 0);
     });
   }
 
@@ -401,6 +402,7 @@
       drag.prevA = angleAround(c, drag.start);
       drag.total = 0;
       b.turn = { c: c.id, s: 0 };
+      b.dragging = true;
       cv.classList.add('dragging');
       if (opts.onGrab) opts.onGrab();
       b.draw();
@@ -452,8 +454,9 @@
       if (!drag || e.pointerId !== drag.id) return;
       var d = drag;
       drag = null;
+      b.dragging = false;
       cv.classList.remove('dragging');
-      if (d.c === null) return;
+      if (d.c === null) { if (opts.onCancel) opts.onCancel(); return; }
       var s = b.turn ? b.turn.s : 0;
       opts.onRelease(d.c, s, Math.round(s));
     }
@@ -476,15 +479,29 @@
   function snapDuration(s, target) { return 150 + Math.min(220, Math.abs(target - s) * 180); }
 
   attachDrag(board, {
-    locked: function () { return busy || game.solved; },
+    locked: function () { return busy || game.solved || pendingUndos > 0; },
+    onCancel: function () { setTimeout(drainUndos, 0); },
     onGrab: markStarted,
     onRelease: function (c, s, target) {
       playTurn(c, s, target, snapDuration(s, target), function () { commitMove(c, target); });
     }
   });
 
+  // Undo taps that arrive while something is animating (or a circle is being
+  // dragged) are queued and run in order, so quick repeated taps all count.
+  var pendingUndos = 0;
   el.undo.addEventListener('click', function () {
-    if (busy || game.solved || !game.stack.length) return;
+    if (game.solved || game.stack.length - pendingUndos <= 0) return;
+    pendingUndos++;
+    drainUndos();
+  });
+  function drainUndos() {
+    if (!pendingUndos || busy || board.dragging || game.solved) return;
+    if (!game.stack.length) { pendingUndos = 0; return; }
+    pendingUndos--;
+    doUndo();
+  }
+  function doUndo() {
     var last = game.stack[game.stack.length - 1];
     board.hintMove = null;
     // Draw the current position turning backwards, then show the undone state.
@@ -492,12 +509,13 @@
     state = E.applyMove(puzzle, state, last.c, -last.k);
     game.stack = game.stack.slice(0, -1);
     board.state = shown;
-    playTurn(last.c, 0, -last.k, 260, function () {
+    renderStatus();
+    playTurn(last.c, 0, -last.k, 180, function () {
       board.state = state;
       save();
       renderStatus();
     });
-  });
+  }
 
   var hintPending = false;
   el.hint.addEventListener('click', function () {
