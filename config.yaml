@@ -17,6 +17,10 @@ menu:
       name: Mini Radar
       url: /radar/
       weight: 30  
+    - identifier: venn
+      name: Venn
+      url: /venn/
+      weight: 35
     - identifier: projects
       name: Projects
       url: /projects
