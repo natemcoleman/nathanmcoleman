@@ -6,6 +6,7 @@
   var LAUNCH = '2026-10-14'; // Venn #1
   var STORE_KEY = 'venn-v1';
   var SITE_URL = location.origin + location.pathname.replace(/[^/]*$/, '');
+  var ASSET_BASE = (document.currentScript && document.currentScript.src || '').replace(/[^/]*$/, '');
 
   // Face colors, assigned clockwise from the top cluster, plus color-blind glyphs.
   var PALETTE = ['#e5484d', '#30a46c', '#f76b15', '#f5c400', '#8e4ec6', '#3e63dd'];
@@ -68,6 +69,12 @@
     var xs = puzzle.slots.map(function (s) { return s.x; });
     var ys = puzzle.slots.map(function (s) { return s.y; });
     this.bbox = { x0: Math.min.apply(null, xs), x1: Math.max.apply(null, xs), y0: Math.min.apply(null, ys), y1: Math.max.apply(null, ys) };
+    this.ringBox = {
+      x0: Math.min.apply(null, puzzle.circles.map(function (c) { return c.cx - c.r; })),
+      x1: Math.max.apply(null, puzzle.circles.map(function (c) { return c.cx + c.r; })),
+      y0: Math.min.apply(null, puzzle.circles.map(function (c) { return c.cy - c.r; })),
+      y1: Math.max.apply(null, puzzle.circles.map(function (c) { return c.cy + c.r; }))
+    };
     var minD = Infinity;
     for (var i = 0; i < puzzle.slots.length; i++) {
       for (var j = i + 1; j < puzzle.slots.length; j++) {
@@ -86,12 +93,17 @@
     this.canvas.width = Math.round(w * dpr);
     this.canvas.height = Math.round(h * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    var b = this.bbox, margin = 0.42;
-    var bw = b.x1 - b.x0 + margin * 2, bh = b.y1 - b.y0 + margin * 2;
-    this.scale = Math.min(w / bw, h / bh);
+    // Fit every circle fully on screen, leaving room for the points' radius and the stroke.
+    var b = this.ringBox;
+    var bw = b.x1 - b.x0, bh = b.y1 - b.y0;
+    var self = this;
+    function fit(padPx) { return Math.min((w - 2 * padPx) / bw, (h - 2 * padPx) / bh); }
+    function radiusFor(scale) { return Math.max(5, Math.min(self.minSlotDist * scale * 0.36, 16)); }
+    var pad = radiusFor(fit(4)) + 4;
+    this.scale = fit(pad);
+    this.pointR = radiusFor(this.scale);
     this.ox = w / 2 - ((b.x0 + b.x1) / 2) * this.scale;
     this.oy = h / 2 + ((b.y0 + b.y1) / 2) * this.scale;
-    this.pointR = Math.max(5, Math.min(this.minSlotDist * this.scale * 0.36, 18));
     this.draw();
   };
 
@@ -171,7 +183,8 @@
     var a0 = c.slotAngles[best];
     var span = (k * Math.PI * 2) / m;
     var ctr = this.toScreen(c.cx, c.cy);
-    var R = c.r * this.scale + this.pointR * 1.9;
+    // Drawn just inside the circle so it always stays on screen.
+    var R = c.r * this.scale - this.pointR * 1.9;
     // canvas y is flipped: math angle a -> screen angle -a
     var s0 = -a0, s1 = -(a0 + span);
     ctx.save();
@@ -271,8 +284,8 @@
     if (game.solved || runningSince) return;
     if (!game.started) {
       game.started = true;
-      game.daily = !isArchive;
-      game.startedOn = todayStr;
+      game.startedOn = today();
+      game.daily = !isArchive && game.startedOn === playDate;
     }
     runningSince = performance.now();
   }
@@ -451,11 +464,12 @@
 
   // ---------- winning ----------
   function win() {
+    if (!game.started) startTimer(); // records the game as played (normally done by the first drag)
     game.time = elapsed();
     game.elapsed = game.time;
     runningSince = null;
     game.solved = true;
-    game.solvedOn = todayStr;
+    game.solvedOn = today();
     save();
     renderStatus();
     var msg = winMessage();
@@ -477,18 +491,95 @@
     if (extra <= 10) return 'Splendid';
     return 'Great';
   }
+  var ICON_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z"/></svg>';
   function showSolvedControls() {
     el.controls.innerHTML = '';
-    var b = document.createElement('button');
-    b.className = 'btn primary';
-    b.textContent = 'See Stats';
-    b.addEventListener('click', function () { openModal('stats'); });
-    el.controls.appendChild(b);
-    var s = document.createElement('button');
-    s.className = 'btn';
-    s.textContent = 'Share';
-    s.addEventListener('click', share);
-    el.controls.appendChild(s);
+    function add(label, cls, onClick, id) {
+      var b = document.createElement('button');
+      b.className = 'btn' + (cls ? ' ' + cls : '');
+      b.innerHTML = label;
+      if (id) b.id = id;
+      b.addEventListener('click', onClick);
+      el.controls.appendChild(b);
+      return b;
+    }
+    add('Stats', 'primary', function () { openModal('stats'); });
+    add(ICON_PLAY + 'Solution', '', watchSolution, 'solution-btn');
+    add('Share', '', share);
+  }
+
+  // ---------- optimal solution replay ----------
+  var solutionCache = null;
+  // Calls back with { moves: [{c,k}], optimal: bool }. Uses the precomputed shortest
+  // solution when it matches this puzzle, otherwise unwinds the scramble.
+  function getSolution(cb) {
+    if (solutionCache) { cb(solutionCache); return; }
+    function fallback() {
+      var plan = E.reduceMoves(puzzle, day.scramble);
+      var moves = plan.slice().reverse().map(function (m) { return { c: m.c, k: E.shortest(puzzle, m.c, -m.k) }; });
+      solutionCache = { moves: moves, optimal: false };
+      cb(solutionCache);
+    }
+    if (!window.fetch) { fallback(); return; }
+    fetch(ASSET_BASE + 'solutions.json', { cache: 'no-cache' }).then(function (r) {
+      if (!r.ok) throw new Error('missing');
+      return r.json();
+    }).then(function (data) {
+      var entry = data && data.puzzles && data.puzzles[playDate];
+      if (!entry || entry.h !== E.hashString(day.start.join(','))) throw new Error('no match');
+      var moves = entry.s.map(function (m) { return { c: m[0], k: m[1] }; });
+      var valid = moves.every(function (m) { return m.c >= 0 && m.c < puzzle.circles.length; }) &&
+        E.isSolved(puzzle, E.applyMoves(puzzle, day.start.slice(), moves));
+      if (!valid) throw new Error('invalid');
+      solutionCache = { moves: moves, optimal: true };
+      cb(solutionCache);
+    }).catch(fallback);
+  }
+
+  var replaying = false;
+  function watchSolution() {
+    if (busy || replaying || !game.solved) return;
+    closeModal();
+    replaying = true;
+    var btn = document.getElementById('solution-btn');
+    if (btn) btn.disabled = true;
+    var bannerBefore = el.banner.innerHTML;
+    getSolution(function (sol) {
+      var moves = sol.moves, n = moves.length, name = sol.optimal ? 'Shortest solution' : 'Solution';
+      var shown = day.start.slice();
+      busy = true;
+      board.hintMove = null;
+      board.state = shown;
+      board.draw();
+      el.banner.textContent = name + ' · ready';
+      function step(i) {
+        if (i === n) {
+          el.banner.textContent = name + ': ' + n + (n === 1 ? ' move' : ' moves');
+          animate(900, function (t) { board.pulse = t; board.draw(); }, function () {
+            board.pulse = 0; board.draw();
+            busy = false;
+            replaying = false;
+            if (btn) btn.disabled = false;
+            setTimeout(function () { if (!replaying) el.banner.innerHTML = bannerBefore; }, 2500);
+          });
+          return;
+        }
+        var mv = moves[i];
+        el.banner.textContent = name + ' · move ' + (i + 1) + ' of ' + n;
+        board.hintMove = { c: mv.c, k: mv.k };
+        board.draw();
+        setTimeout(function () {
+          playTurn(mv.c, 0, mv.k, 450 + 90 * Math.abs(mv.k), function () {
+            busy = true; // keep the board locked between moves
+            shown = E.applyMove(puzzle, shown, mv.c, mv.k);
+            board.state = shown;
+            board.hintMove = null;
+            setTimeout(function () { step(i + 1); }, 350);
+          });
+        }, 550);
+      }
+      setTimeout(function () { step(0); }, 500);
+    });
   }
 
   // ---------- sharing ----------
@@ -565,13 +656,17 @@
 
   // ---------- stats ----------
   function computeStats() {
-    var dates = Object.keys(store.games).filter(function (d) { return store.games[d].daily && puzzleNumber(d) >= 1; }).sort();
+    var now = today();
+    var dates = Object.keys(store.games).filter(function (d) {
+      var g = store.games[d];
+      return g.daily && puzzleNumber(d) >= 1 && (g.solved || d < now);
+    }).sort();
     var played = dates.length;
     var solvedDates = dates.filter(function (d) { var g = store.games[d]; return g.solved && g.solvedOn === d; });
     var solvedSet = {};
     solvedDates.forEach(function (d) { solvedSet[d] = true; });
     // current streak: ends today (if solved) or yesterday
-    var cur = 0, d = solvedSet[todayStr] ? todayStr : addDays(todayStr, -1);
+    var cur = 0, d = solvedSet[now] ? now : addDays(now, -1);
     while (solvedSet[d]) { cur++; d = addDays(d, -1); }
     var max = 0, run = 0, prev = null;
     solvedDates.forEach(function (x) {
@@ -608,10 +703,11 @@
       statHtml(s.avg == null ? '–' : fmtTime(s.avg), 'Average Time') + statHtml(s.best == null ? '–' : fmtTime(s.best), 'Best Time');
     var maxAvg = Math.max.apply(null, s.byLevel.map(function (x) { return x.avg || 0; })) || 1;
     document.getElementById('stats-dist').innerHTML = s.byLevel.map(function (x) {
-      var pct = x.avg ? Math.max(8, Math.round((x.avg / maxAvg) * 100)) : 0;
+      var pct = x.avg ? Math.max(12, Math.round((x.avg / maxAvg) * 100)) : 0;
       var cls = 'bar' + (x.label === day.config.label && game.solved && !isArchive ? ' today' : '');
-      return '<div class="dist-row"><div class="day">' + x.label + '</div><div class="' + cls + '" style="width:' + (x.avg ? pct + '%' : 'auto') + '">' +
-        (x.avg ? fmtTime(x.avg) : '–') + '</div><div class="small">' + (x.count ? x.count + ' solved' : '') + '</div></div>';
+      return '<div class="dist-label">' + x.label + '</div>' +
+        '<div class="dist-track"><div class="' + cls + '"' + (x.avg ? ' style="width:' + pct + '%"' : '') + '>' + (x.avg ? fmtTime(x.avg) : '–') + '</div></div>' +
+        '<div class="dist-count">' + (x.count ? x.count + ' solved' : '') + '</div>';
     }).join('');
 
     var result = document.getElementById('stats-result');
@@ -619,12 +715,23 @@
     if (game.solved) {
       result.innerHTML = '<div class="result-box"><h3>Solved!</h3><div class="big">Venn ' + numberLabel(playDate) + ' · ' + day.config.label + '</div>' +
         '<p>' + fmtTime(game.time) + ' · ' + game.stack.length + ' moves · ' + game.hints + (game.hints === 1 ? ' hint' : ' hints') +
-        (isArchive ? '<br><span class="small">Past puzzles don\'t count toward your stats.</span>' : '') + '</p></div><hr>';
+        (isArchive ? '<br><span class="small">Past puzzles don\'t count toward your stats.</span>' : '') + '</p>' +
+        '<p class="small" id="optimal-line">&nbsp;</p>' +
+        '<button class="btn" id="watch-btn" style="max-width:260px;width:100%">' + ICON_PLAY + 'Watch Solution</button></div><hr>';
       shareBox.innerHTML = '<hr><div class="share-row">' +
         (isArchive ? '' : '<div class="countdown"><h2 style="margin:0 0 4px">Next Venn</h2><div class="num" id="countdown"></div></div><div class="divider"></div>') +
         '<button class="btn primary" id="share-btn" style="max-width:160px">Share ' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg></button></div>';
       document.getElementById('share-btn').addEventListener('click', share);
+      document.getElementById('watch-btn').addEventListener('click', watchSolution);
+      getSolution(function (sol) {
+        var line = document.getElementById('optimal-line');
+        if (!line) return;
+        line.textContent = sol.optimal
+          ? 'Fewest possible: ' + sol.moves.length + (sol.moves.length === 1 ? ' move' : ' moves') +
+            (game.stack.length <= sol.moves.length ? ' — you matched it!' : '')
+          : 'Solution available: ' + sol.moves.length + (sol.moves.length === 1 ? ' move' : ' moves');
+      });
       tickCountdown();
     } else {
       result.innerHTML = '';
@@ -672,6 +779,40 @@
       });
     });
   }
+
+  // ---------- feedback ----------
+  (function () {
+    var form = document.getElementById('feedback-form');
+    var status = document.getElementById('fb-status');
+    var submit = document.getElementById('fb-submit');
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var msg = document.getElementById('fb-message');
+      if (!msg.value.trim()) { status.className = 'fb-status error'; status.textContent = 'Please write a message first.'; msg.focus(); return; }
+      document.getElementById('fb-puzzle').value = 'Venn ' + numberLabel(playDate) + ' (' + playDate + ')' +
+        (game.solved ? ', solved' : game.started ? ', in progress' : '');
+      submit.disabled = true;
+      submit.textContent = 'Sending…';
+      status.className = 'fb-status';
+      status.textContent = '';
+      fetch('/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(new FormData(form)).toString()
+      }).then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        form.reset();
+        closeModal();
+        toast('Thanks for the feedback!', 2000);
+      }).catch(function () {
+        status.className = 'fb-status error';
+        status.textContent = 'Couldn\'t send right now. Please try again later.';
+      }).then(function () {
+        submit.disabled = false;
+        submit.textContent = 'Send';
+      });
+    });
+  })();
 
   // ---------- settings ----------
   function syncSettings() {

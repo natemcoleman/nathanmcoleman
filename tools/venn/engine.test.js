@@ -74,3 +74,54 @@ test('hints still work after the player wanders off', () => {
     assert.ok(++steps <= day.scramble.length + wander.length);
   }
 });
+
+// ---- precomputed shortest solutions (static/venn/solutions.json) ----
+const fs = require('fs');
+const path = require('path');
+const solFile = path.join(__dirname, '../../static/venn/solutions.json');
+
+// Plain depth-limited search, independent of the solver: is there a solution in <= depth moves?
+function existsWithin(p, state, depth, lastC) {
+  if (E.isSolved(p, state)) return true;
+  if (depth === 0) return false;
+  for (const c of p.circles) {
+    if (c.id === lastC) continue;
+    for (let k = 1; k < c.slots.length; k++) {
+      if (existsWithin(p, E.applyMove(p, state, c.id, k), depth - 1, c.id)) return true;
+    }
+  }
+  return false;
+}
+
+test('solutions file covers every day through the next year and every solution works', () => {
+  const data = JSON.parse(fs.readFileSync(solFile, 'utf8'));
+  const start = new Date(2026, 9, 14);
+  const end = new Date(); end.setDate(end.getDate() + 365);
+  let count = 0;
+  for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const ds = dateStr(d);
+    const entry = data.puzzles[ds];
+    assert.ok(entry, 'missing solution for ' + ds + ' (run node tools/venn/solve.js)');
+    const day = E.dailyPuzzle(ds);
+    assert.strictEqual(entry.h, E.hashString(day.start.join(',')), 'stale solution for ' + ds);
+    const moves = entry.s.map(([c, k]) => ({ c, k }));
+    assert.ok(E.isSolved(day.puzzle, E.applyMoves(day.puzzle, day.start.slice(), moves)), 'solution fails for ' + ds);
+    assert.ok(moves.length <= day.scramble.length);
+    count++;
+  }
+  assert.ok(count >= 365, "expected at least a year of solutions");
+});
+
+test('solutions are the shortest possible (independent brute force check)', () => {
+  const data = JSON.parse(fs.readFileSync(solFile, 'utf8'));
+  const start = new Date(2026, 9, 14);
+  for (let i = 0; i < 28; i++) {
+    const d = new Date(start); d.setDate(d.getDate() + i);
+    const ds = dateStr(d);
+    const day = E.dailyPuzzle(ds);
+    const len = data.puzzles[ds].s.length;
+    // 2-ring boards: check every shorter length; 3-ring boards: check up to 3 moves.
+    const limit = day.config.rings === 2 ? len - 1 : Math.min(len - 1, 3);
+    assert.ok(!existsWithin(day.puzzle, day.start, limit, -1), ds + ' has a solution shorter than ' + len);
+  }
+});

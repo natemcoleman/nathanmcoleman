@@ -110,6 +110,7 @@
       <h2>Average time by difficulty</h2>
       <div class="dist" id="stats-dist"></div>
       <div id="stats-share"></div>
+      <p class="feedback-row"><button class="link-btn" data-open="feedback">Send feedback</button></p>
     </div>
   </div>
 
@@ -139,7 +140,32 @@
         <div><div>Pause Timer When Away</div><div class="desc">Stops the clock while this tab is hidden</div></div>
         <label class="switch"><input type="checkbox" id="set-pause" checked><span></span></label>
       </div>
+      <div class="setting">
+        <div><div>Feedback</div><div class="desc">Ideas, bugs, puzzles you loved</div></div>
+        <button class="btn" data-open="feedback" style="flex:none;width:auto;height:36px;padding:0 14px;font-size:13px">Send</button>
+      </div>
       <p class="small" style="margin-top:16px">Progress and stats are saved in this browser only.</p>
+    </div>
+  </div>
+
+  <!-- Feedback (Netlify Forms: submissions appear under Forms in the Netlify dashboard) -->
+  <div class="overlay" id="feedback" role="dialog" aria-modal="true" aria-labelledby="feedback-title">
+    <div class="modal">
+      <button class="icon-btn close" data-close aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      <h2 id="feedback-title">Send Feedback</h2>
+      <form id="feedback-form" name="venn-feedback" method="POST" action="/venn/" data-netlify="true" netlify-honeypot="bot-field">
+        <input type="hidden" name="form-name" value="venn-feedback">
+        <input type="hidden" name="puzzle" id="fb-puzzle" value="">
+        <p hidden><label>Leave this empty: <input name="bot-field"></label></p>
+        <label class="field">What's on your mind?
+          <textarea name="message" id="fb-message" rows="5" maxlength="2000" required></textarea>
+        </label>
+        <label class="field">Email <span class="small">(optional, if you'd like a reply)</span>
+          <input type="email" name="email" id="fb-email" autocomplete="email">
+        </label>
+        <button class="btn primary" type="submit" id="fb-submit" style="width:100%;max-width:none">Send</button>
+        <p class="fb-status" id="fb-status" role="status"></p>
+      </form>
     </div>
   </div>
 

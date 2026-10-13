@@ -9,7 +9,9 @@ Daily rotating-circle puzzle at `/venn/`.
 | `static/venn/venn.css` | Styles (light and dark) |
 | `layouts/venn/single.html` | Page markup (full-screen, outside the PaperMod theme) |
 | `content/venn.md` | Hugo page that serves `/venn/` |
-| `tools/venn/engine.test.js` | Engine tests: `node --test tools/venn/engine.test.js` |
+| `static/venn/solutions.json` | Precomputed shortest solution for every daily puzzle (used by "Watch Solution") |
+| `tools/venn/solve.js` | Generates `solutions.json`: `node tools/venn/solve.js [first] [last]` (about 11 minutes for 2 years) |
+| `tools/venn/engine.test.js` | Tests: `node --test tools/venn/engine.test.js` |
 
 ## Making puzzles
 
@@ -39,6 +41,22 @@ quarter turn (= the number of rings). Changing the schedule, layouts or scramble
 code changes every puzzle, past ones included, so treat them as fixed once live.
 
 `LAUNCH` in venn.js is the date of Venn #1.
+
+## Shortest solutions
+
+`solutions.json` currently runs from 2026-10-14 to 2028-12-31. Re-run
+`tools/venn/solve.js` after changing layouts, the schedule or the scramble code,
+or to extend the range (for example `node tools/venn/solve.js 2026-10-14 2030-12-31`).
+The tests fail if the file stops covering the next 365 days or no longer
+matches the puzzles. If a day is missing, the game still offers a solution
+(it unwinds the scramble) but labels it "Solution" instead of "Shortest solution".
+
+## Feedback
+
+The feedback form uses Netlify Forms (form name `venn-feedback`). Form detection
+must be enabled for the site in Netlify (Site configuration → Forms). Submissions
+appear in the Netlify dashboard under Forms, and you can turn on email
+notifications there.
 
 ## Saved data
 
