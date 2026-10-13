@@ -16,7 +16,7 @@
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   var LEVELS = ['Easy', 'Medium', 'Hard', 'Expert'];
   var HINT_COST = E.HINT_COST; // each hint adds this many moves (shared with the score server)
-  var DRAG_SPEED = 0.75;       // how far the circle turns relative to the finger (1 = follows exactly)
+  var DRAG_SPEED = 0.9;        // how far the circle turns relative to the finger (1 = follows exactly)
   var SCORES_URL = '/api/venn'; // Vercel Function (api/venn.mjs)
 
   // Score: moves made (undo takes one back) plus a penalty per hint.
@@ -473,7 +473,7 @@
       b.draw();
     });
   }
-  function snapDuration(s, target) { return 180 + Math.min(240, Math.abs(target - s) * 200); }
+  function snapDuration(s, target) { return 150 + Math.min(220, Math.abs(target - s) * 180); }
 
   attachDrag(board, {
     locked: function () { return busy || game.solved; },
@@ -1085,8 +1085,36 @@
     });
   })();
 
+  // ---------- add to Home Screen ----------
+  var installPrompt = null;
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); installPrompt = e; syncInstall(); });
+  window.addEventListener('appinstalled', function () { installPrompt = null; syncInstall(); });
+  function isStandalone() {
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  }
+  function isIOS() {
+    return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }
+  function syncInstall() {
+    var btn = document.getElementById('install-btn'), help = document.getElementById('install-help');
+    if (!btn) return;
+    if (isStandalone()) { btn.disabled = true; btn.textContent = 'Added'; help.textContent = 'Venn is on your Home Screen.'; }
+  }
+  document.getElementById('install-btn').addEventListener('click', function () {
+    var help = document.getElementById('install-help');
+    if (installPrompt) {
+      installPrompt.prompt();
+      installPrompt.userChoice.then(function () { installPrompt = null; syncInstall(); }, function () {});
+    } else if (isIOS()) {
+      help.innerHTML = 'In Safari, tap the <strong>Share</strong> button, then <strong>Add to Home Screen</strong>.';
+    } else {
+      help.innerHTML = 'Open your browser\'s menu and choose <strong>Install</strong> or <strong>Add to Home Screen</strong>.';
+    }
+  });
+
   // ---------- settings ----------
   function syncSettings() {
+    syncInstall();
     document.getElementById('set-dark').checked = isDark();
     document.getElementById('set-cb').checked = !!store.settings.colorblind;
   }

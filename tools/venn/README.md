@@ -60,7 +60,7 @@ For example, to make Fridays a new layout starting 2026-12-04: add the layout to
 - There is no timer. Moves = turns made, minus undos, plus 2 per hint (`HINT_COST` in engine.js,
   shared with the server).
   Stats average moves by difficulty.
-- Drag sensitivity is `DRAG_SPEED` in venn.js (0.75 = the circle turns 75% as far as the finger).
+- Drag sensitivity is `DRAG_SPEED` in venn.js (0.9 = the circle turns 90% as far as the finger).
 - Practice modes, never saved or counted: `/venn/?free=Easy` (also Medium, Hard,
   Expert; add `&seed=anything` to repeat one) and `/venn/?replay=YYYY-MM-DD`.
   Both are linked from the Play (calendar) menu and the results screen.
@@ -83,7 +83,7 @@ matches the puzzles. If a day is missing, the game still offers a solution
 
 ## Share image and icons
 
-`og.png` (link preview), `apple-touch-icon.png` and `favicon-32.png` are drawn
+`og.png` (link preview), `apple-touch-icon.png`, `favicon-32.png` and the Home Screen icons (`icon-*.png`, used by `manifest.webmanifest`) are drawn
 from the real puzzle by `tools/venn/make-images.py` (needs Python Playwright).
 Re-run it if the colors or layouts change.
 

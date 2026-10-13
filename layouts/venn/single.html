@@ -26,6 +26,11 @@
   <link rel="icon" href="{{ "venn/favicon-32.png" | relURL }}" type="image/png" sizes="32x32">
   <link rel="apple-touch-icon" href="{{ "venn/apple-touch-icon.png" | absURL }}">
   <meta name="apple-mobile-web-app-title" content="Venn">
+  <!-- Add to Home Screen -->
+  <link rel="manifest" href="{{ "venn/manifest.webmanifest" | relURL }}">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <script>
     // Apply the saved theme before first paint (shares PaperMod's preference key).
     (function () {
@@ -109,7 +114,7 @@
       <ul class="help-list">
         <li>A new puzzle every day at midnight. Monday is easiest, Sunday is hardest.</li>
         <li>Hints are unlimited and show which circle to turn and how many spaces, but each one adds 2 to your moves.</li>
-        <li>After you solve, you can watch the shortest possible solution.</li>
+        <li>After you solve, you can watch the shortest possible solution and see how everyone else did (anonymously; see Settings → Privacy).</li>
       </ul>
     </div>
   </div>
@@ -153,7 +158,16 @@
         <div><div>Feedback</div><div class="desc">Ideas, bugs, puzzles you loved</div></div>
         <button class="btn" data-open="feedback" style="flex:none;width:auto;height:36px;padding:0 14px;font-size:13px">Send</button>
       </div>
-      <p class="small" style="margin-top:16px">Progress and stats are saved in this browser only. When you solve the daily puzzle, your move count is shared anonymously so you can compare with everyone else.</p>
+      <div class="setting">
+        <div><div>Add to Home Screen</div><div class="desc" id="install-help">Open Venn like an app, full screen</div></div>
+        <button class="btn" id="install-btn" style="flex:none;width:auto;height:36px;padding:0 14px;font-size:13px">Add</button>
+      </div>
+      <div class="privacy">
+        <div class="privacy-title">Privacy</div>
+        <p>Venn has no accounts. Your progress and stats are saved only in this browser.</p>
+        <p>When you solve the daily puzzle, your move count, hints and turns are sent with a random ID so everyone can compare results. No name or email is attached. To stop spam, your IP address is kept for up to an hour, then deleted.</p>
+        <p>Feedback is stored with the email address only if you give one, and it's only used to reply. This site uses Google Analytics to count visits.</p>
+      </div>
     </div>
   </div>
 
