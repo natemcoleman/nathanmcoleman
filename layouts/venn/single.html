@@ -74,8 +74,8 @@
   <div class="app">
     <div class="info">
       <div class="puzzle-label" id="puzzle-label"></div>
-      <div class="timer" id="timer" aria-label="Time">0:00</div>
-      <div class="moves" id="moves">0 moves</div>
+      <div class="moves" id="moves" aria-live="polite">0 moves</div>
+      <div class="hints-count" id="hints-count"></div>
     </div>
     <div class="archive-banner" id="archive-banner"></div>
     <div class="board-wrap" id="board-wrap">
@@ -150,14 +150,10 @@
         <label class="switch"><input type="checkbox" id="set-cb"><span></span></label>
       </div>
       <div class="setting">
-        <div><div>Pause Timer When Away</div><div class="desc">Stops the clock while this tab is hidden</div></div>
-        <label class="switch"><input type="checkbox" id="set-pause" checked><span></span></label>
-      </div>
-      <div class="setting">
         <div><div>Feedback</div><div class="desc">Ideas, bugs, puzzles you loved</div></div>
         <button class="btn" data-open="feedback" style="flex:none;width:auto;height:36px;padding:0 14px;font-size:13px">Send</button>
       </div>
-      <p class="small" style="margin-top:16px">Progress and stats are saved in this browser only.</p>
+      <p class="small" style="margin-top:16px">Progress and stats are saved in this browser only. When you solve the daily puzzle, your move count is shared anonymously so you can compare with everyone else.</p>
     </div>
   </div>
 

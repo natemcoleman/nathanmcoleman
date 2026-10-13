@@ -1,0 +1,11 @@
+{
+  "name": "nathanmcoleman-site",
+  "private": true,
+  "description": "Hugo site. Node packages here are only for Netlify Functions (Venn global results).",
+  "scripts": {
+    "test:venn": "node --import ./tools/venn/fakes/register.mjs --test tools/venn/engine.test.js tools/venn/scores.test.mjs"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^11.1.0"
+  }
+}

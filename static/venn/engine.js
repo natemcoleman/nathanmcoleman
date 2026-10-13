@@ -419,6 +419,16 @@
     return null;
   }
 
+  // ---------- scoring ----------
+
+  /** Each hint adds this many moves to the score. */
+  var HINT_COST = 2;
+
+  /** Score for a game: the turns that remain after undos, plus the hint penalty. */
+  function moveScore(stack, hints) {
+    return stack.length + HINT_COST * (hints || 0);
+  }
+
   // ---------- daily schedule ----------
 
   /**
@@ -523,6 +533,8 @@
     configFor: configFor,
     dailyPuzzle: dailyPuzzle,
     practicePuzzle: practicePuzzle,
+    HINT_COST: HINT_COST,
+    moveScore: moveScore,
     hashString: hashString,
     mulberry32: mulberry32,
     LAYOUTS: LAYOUTS,
