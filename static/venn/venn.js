@@ -5,7 +5,8 @@
   var E = window.VennEngine;
   var LAUNCH = '2026-10-14'; // Venn #1
   var STORE_KEY = 'venn-v1';
-  var SITE_URL = location.origin + location.pathname.replace(/[^/]*$/, '');
+  // Canonical page URL from Hugo (so shares from preview deploys still link to the live site).
+  var SITE_URL = document.body.getAttribute('data-url') || (location.origin + location.pathname.replace(/[^/]*$/, ''));
   var ASSET_BASE = (document.currentScript && document.currentScript.src || '').replace(/[^/]*$/, '');
 
   // Face colors, assigned clockwise from the top cluster, plus color-blind glyphs.
@@ -491,6 +492,7 @@
     if (extra <= 10) return 'Splendid';
     return 'Great';
   }
+  var ICON_SHARE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>';
   var ICON_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z"/></svg>';
   function showSolvedControls() {
     el.controls.innerHTML = '';
@@ -585,9 +587,10 @@
   // ---------- sharing ----------
   function shareText() {
     var dots = { Easy: '🟢', Medium: '🟡', Hard: '🟠', Expert: '🔴' }[day.config.label];
+    var n = game.stack.length;
     var lines = [
       'Venn ' + numberLabel(playDate) + ' ' + dots + ' ' + day.config.label,
-      '⏱️ ' + fmtTime(game.time) + '  🔄 ' + game.stack.length + ' moves  💡 ' + game.hints + (game.hints === 1 ? ' hint' : ' hints'),
+      '⏱️ ' + fmtTime(game.time) + ' · ' + n + (n === 1 ? ' move' : ' moves') + ' · ' + game.hints + (game.hints === 1 ? ' hint' : ' hints'),
       SITE_URL
     ];
     return lines.join('\n');
@@ -659,7 +662,7 @@
     var now = today();
     var dates = Object.keys(store.games).filter(function (d) {
       var g = store.games[d];
-      return g.daily && puzzleNumber(d) >= 1 && (g.solved || d < now);
+      return g.daily && (g.solved || d < now);
     }).sort();
     var played = dates.length;
     var solvedDates = dates.filter(function (d) { var g = store.games[d]; return g.solved && g.solvedOn === d; });
@@ -698,9 +701,8 @@
   function renderStats() {
     var s = computeStats();
     document.getElementById('stats-row').innerHTML =
-      statHtml(s.played, 'Played') + statHtml(s.solvedPct, 'Solved %') + statHtml(s.streak, 'Current Streak') + statHtml(s.maxStreak, 'Max Streak');
-    document.getElementById('stats-row2').innerHTML =
-      statHtml(s.avg == null ? '–' : fmtTime(s.avg), 'Average Time') + statHtml(s.best == null ? '–' : fmtTime(s.best), 'Best Time');
+      statHtml(s.played, 'Played') + statHtml(s.solvedPct, 'Solved %') + statHtml(s.streak, 'Streak') +
+      statHtml(s.maxStreak, 'Max Streak') + statHtml(s.best == null ? '–' : fmtTime(s.best), 'Best');
     var maxAvg = Math.max.apply(null, s.byLevel.map(function (x) { return x.avg || 0; })) || 1;
     document.getElementById('stats-dist').innerHTML = s.byLevel.map(function (x) {
       var pct = x.avg ? Math.max(12, Math.round((x.avg / maxAvg) * 100)) : 0;
@@ -711,31 +713,30 @@
     }).join('');
 
     var result = document.getElementById('stats-result');
-    var shareBox = document.getElementById('stats-share');
     if (game.solved) {
-      result.innerHTML = '<div class="result-box"><h3>Solved!</h3><div class="big">Venn ' + numberLabel(playDate) + ' · ' + day.config.label + '</div>' +
-        '<p>' + fmtTime(game.time) + ' · ' + game.stack.length + ' moves · ' + game.hints + (game.hints === 1 ? ' hint' : ' hints') +
-        (isArchive ? '<br><span class="small">Past puzzles don\'t count toward your stats.</span>' : '') + '</p>' +
-        '<p class="small" id="optimal-line">&nbsp;</p>' +
-        '<button class="btn" id="watch-btn" style="max-width:260px;width:100%">' + ICON_PLAY + 'Watch Solution</button></div><hr>';
-      shareBox.innerHTML = '<hr><div class="share-row">' +
-        (isArchive ? '' : '<div class="countdown"><h2 style="margin:0 0 4px">Next Venn</h2><div class="num" id="countdown"></div></div><div class="divider"></div>') +
-        '<button class="btn primary" id="share-btn" style="max-width:160px">Share ' +
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg></button></div>';
+      result.innerHTML = '<div class="result">' +
+        '<div class="result-title">Solved · Venn ' + numberLabel(playDate) + ' · ' + day.config.label + '</div>' +
+        '<div class="result-time">' + fmtTime(game.time) + '</div>' +
+        '<div class="result-meta">' + game.stack.length + (game.stack.length === 1 ? ' move' : ' moves') + ' · ' +
+          game.hints + (game.hints === 1 ? ' hint' : ' hints') + '<span id="optimal-line"></span></div>' +
+        (isArchive ? '<div class="result-note">Past puzzles don\'t count toward your stats.</div>' : '') +
+        '<div class="result-actions">' +
+          '<button class="btn" id="watch-btn">' + ICON_PLAY + 'Solution</button>' +
+          '<button class="btn primary" id="share-btn">Share ' + ICON_SHARE + '</button>' +
+        '</div>' +
+        (isArchive ? '' : '<div class="result-next">Next Venn in <span id="countdown"></span></div>') +
+        '</div>';
       document.getElementById('share-btn').addEventListener('click', share);
       document.getElementById('watch-btn').addEventListener('click', watchSolution);
       getSolution(function (sol) {
         var line = document.getElementById('optimal-line');
-        if (!line) return;
-        line.textContent = sol.optimal
-          ? 'Fewest possible: ' + sol.moves.length + (sol.moves.length === 1 ? ' move' : ' moves') +
-            (game.stack.length <= sol.moves.length ? ' — you matched it!' : '')
-          : 'Solution available: ' + sol.moves.length + (sol.moves.length === 1 ? ' move' : ' moves');
+        if (!line || !sol.optimal) return;
+        var n = sol.moves.length;
+        line.textContent = game.stack.length <= n ? ' · fewest possible!' : ' · fewest possible: ' + n;
       });
       tickCountdown();
     } else {
       result.innerHTML = '';
-      shareBox.innerHTML = '';
     }
   }
   function tickCountdown() {
