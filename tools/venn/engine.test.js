@@ -1,0 +1,127 @@
+// Run with: node --test tools/venn/engine.test.js
+const test = require('node:test');
+const assert = require('node:assert');
+const E = require('../../static/venn/engine.js');
+
+function dateStr(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+test('layouts produce cube-like counts', () => {
+  for (const [rings, def] of Object.entries(E.LAYOUTS)) {
+    const N = Number(rings);
+    const p = E.buildPuzzle(def);
+    assert.strictEqual(p.slots.length, 6 * N * N, 'slots for ' + N);
+    assert.strictEqual(p.faces.length, 6);
+    p.faces.forEach((f) => assert.strictEqual(f.slots.length, N * N));
+    p.circles.forEach((c) => assert.strictEqual(c.slots.length, 4 * N));
+    p.slots.forEach((s) => assert.strictEqual(s.circles.length, 2));
+    assert.ok(E.isSolved(p, p.solvedState));
+  }
+});
+
+test('a move and its inverse cancel; full turn is identity', () => {
+  const p = E.buildPuzzle(E.LAYOUTS[3]);
+  p.circles.forEach((c) => {
+    for (let k = 1; k < c.slots.length; k++) {
+      const s = E.applyMove(p, p.solvedState, c.id, k);
+      assert.deepStrictEqual(E.applyMove(p, s, c.id, -k), p.solvedState);
+    }
+    assert.deepStrictEqual(E.applyMove(p, p.solvedState, c.id, c.slots.length), p.solvedState);
+  });
+});
+
+test('move reduction merges across commuting moves', () => {
+  const p = E.buildPuzzle(E.LAYOUTS[2]);
+  // circles 0 and 1 share a center (concentric) so they commute
+  assert.ok(p.commute[0][1]);
+  const r = E.reduceMoves(p, [{ c: 0, k: 2 }, { c: 1, k: 1 }, { c: 0, k: -2 }]);
+  assert.deepStrictEqual(r, [{ c: 1, k: 1 }]);
+});
+
+test('daily puzzles are deterministic, scrambled, and solvable by following hints', () => {
+  const start = new Date(2026, 9, 14);
+  for (let i = 0; i < 28; i++) {
+    const d = new Date(start); d.setDate(d.getDate() + i);
+    const ds = dateStr(d);
+    const a = E.dailyPuzzle(ds), b = E.dailyPuzzle(ds);
+    assert.deepStrictEqual(a.start, b.start);
+    assert.strictEqual(a.scramble.length, a.config.moves);
+    assert.ok(!E.isSolved(a.puzzle, a.start), ds + ' should start scrambled');
+
+    let state = a.start, history = a.scramble.slice(), steps = 0;
+    while (!E.isSolved(a.puzzle, state)) {
+      const h = E.hint(a.puzzle, state, history, { nodeBudget: 50000 });
+      assert.ok(h, 'hint available');
+      state = E.applyMove(a.puzzle, state, h.c, h.k);
+      history.push({ c: h.c, k: h.k });
+      assert.ok(++steps <= a.config.moves, ds + ' solved within scramble length');
+    }
+  }
+});
+
+test('hints still work after the player wanders off', () => {
+  const day = E.dailyPuzzle('2026-10-18');
+  const p = day.puzzle;
+  let state = day.start, history = day.scramble.slice();
+  const wander = [{ c: 2, k: 1 }, { c: 5, k: -2 }, { c: 7, k: 3 }];
+  wander.forEach((m) => { state = E.applyMove(p, state, m.c, m.k); history.push(m); });
+  let steps = 0;
+  while (!E.isSolved(p, state)) {
+    const h = E.hint(p, state, history, { nodeBudget: 50000 });
+    state = E.applyMove(p, state, h.c, h.k);
+    history.push({ c: h.c, k: h.k });
+    assert.ok(++steps <= day.scramble.length + wander.length);
+  }
+});
+
+// ---- precomputed shortest solutions (static/venn/solutions.json) ----
+const fs = require('fs');
+const path = require('path');
+const solFile = path.join(__dirname, '../../static/venn/solutions.json');
+
+// Plain depth-limited search, independent of the solver: is there a solution in <= depth moves?
+function existsWithin(p, state, depth, lastC) {
+  if (E.isSolved(p, state)) return true;
+  if (depth === 0) return false;
+  for (const c of p.circles) {
+    if (c.id === lastC) continue;
+    for (let k = 1; k < c.slots.length; k++) {
+      if (existsWithin(p, E.applyMove(p, state, c.id, k), depth - 1, c.id)) return true;
+    }
+  }
+  return false;
+}
+
+test('solutions file covers every day through the next year and every solution works', () => {
+  const data = JSON.parse(fs.readFileSync(solFile, 'utf8'));
+  const start = new Date(2026, 9, 14);
+  const end = new Date(); end.setDate(end.getDate() + 365);
+  let count = 0;
+  for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const ds = dateStr(d);
+    const entry = data.puzzles[ds];
+    assert.ok(entry, 'missing solution for ' + ds + ' (run node tools/venn/solve.js)');
+    const day = E.dailyPuzzle(ds);
+    assert.strictEqual(entry.h, E.hashString(day.start.join(',')), 'stale solution for ' + ds);
+    const moves = entry.s.map(([c, k]) => ({ c, k }));
+    assert.ok(E.isSolved(day.puzzle, E.applyMoves(day.puzzle, day.start.slice(), moves)), 'solution fails for ' + ds);
+    assert.ok(moves.length <= day.scramble.length);
+    count++;
+  }
+  assert.ok(count >= 365, "expected at least a year of solutions");
+});
+
+test('solutions are the shortest possible (independent brute force check)', () => {
+  const data = JSON.parse(fs.readFileSync(solFile, 'utf8'));
+  const start = new Date(2026, 9, 14);
+  for (let i = 0; i < 28; i++) {
+    const d = new Date(start); d.setDate(d.getDate() + i);
+    const ds = dateStr(d);
+    const day = E.dailyPuzzle(ds);
+    const len = data.puzzles[ds].s.length;
+    // 2-ring boards: check every shorter length; 3-ring boards: check up to 3 moves.
+    const limit = day.config.rings === 2 ? len - 1 : Math.min(len - 1, 3);
+    assert.ok(!existsWithin(day.puzzle, day.start, limit, -1), ds + ' has a solution shorter than ' + len);
+  }
+});

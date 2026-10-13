@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <title>Venn — a daily rotating-circle puzzle</title>
+  <meta name="description" content="{{ .Description | default "A new circle-turning puzzle every day. Drag the circles until every cluster is one color." }}">
+  <meta property="og:title" content="Venn">
+  <meta property="og:description" content="A new circle-turning puzzle every day.">
+  <meta property="og:url" content="{{ .Permalink }}">
+  <meta property="og:site_name" content="{{ site.Title }}">
+  <link rel="icon" href="{{ "venn/icon.svg" | relURL }}" type="image/svg+xml">
+  <script>
+    // Apply the saved theme before first paint (shares PaperMod's preference key).
+    (function () {
+      var pref = null;
+      try { pref = localStorage.getItem('pref-theme'); } catch (e) {}
+      var dark = pref ? pref === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (dark) document.documentElement.classList.add('dark');
+    })();
+  </script>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-BXCF513NG6"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-BXCF513NG6');
+  </script>
+  <link rel="stylesheet" href="{{ "venn/venn.css" | relURL }}">
+</head>
+<body>
+  <div class="header-wrap">
+    <header>
+      <div class="header-side">
+        <a class="icon-btn" href="{{ "/" | relURL }}" aria-label="Back to {{ site.Title }}" title="{{ site.Title }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </a>
+        <button class="icon-btn" data-open="help" aria-label="How to play" title="How to play">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        </button>
+      </div>
+      <h1>Venn</h1>
+      <div class="header-side right">
+        <button class="icon-btn" data-open="archive" aria-label="Past puzzles" title="Past puzzles">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        </button>
+        <button class="icon-btn" data-open="stats" aria-label="Statistics" title="Statistics">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+        </button>
+        <button class="icon-btn" data-open="settings" aria-label="Settings" title="Settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+    </header>
+  </div>
+
+  <div class="app">
+    <div class="info">
+      <div class="puzzle-label" id="puzzle-label"></div>
+      <div class="timer" id="timer" aria-label="Time">0:00</div>
+      <div class="moves" id="moves">0 moves</div>
+    </div>
+    <div class="archive-banner" id="archive-banner"></div>
+    <div class="board-wrap" id="board-wrap">
+      <canvas id="board" aria-label="Puzzle board. Drag a circle to turn it."></canvas>
+    </div>
+    <div class="controls" id="controls">
+      <button class="btn" id="undo-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+        Undo
+      </button>
+      <button class="btn" id="hint-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg>
+        Hint
+      </button>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <!-- How to play -->
+  <div class="overlay" id="help" role="dialog" aria-modal="true" aria-labelledby="help-title">
+    <div class="modal">
+      <button class="icon-btn close" data-close aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      <h3 id="help-title">How To Play</h3>
+      <p><strong>Make every cluster a single color.</strong></p>
+      <ul>
+        <li>Drag any circle to turn it. Every point on that circle travels along it together.</li>
+        <li>Let go and the points snap to the nearest spots.</li>
+        <li>Points sit where circles cross, so turning one circle moves points onto other circles.</li>
+      </ul>
+      <p><strong>Solved looks like this:</strong></p>
+      <div class="help-demo"><canvas id="help-demo" width="220" height="200" aria-hidden="true"></canvas></div>
+      <hr>
+      <p>A new puzzle is released every day at midnight. Monday is easiest, and each day gets harder through Sunday.</p>
+      <p>Stuck? Hints are unlimited. Each one highlights a circle and shows which way to turn it, and your hint count appears in your result.</p>
+    </div>
+  </div>
+
+  <!-- Statistics -->
+  <div class="overlay" id="stats" role="dialog" aria-modal="true" aria-labelledby="stats-title">
+    <div class="modal">
+      <button class="icon-btn close" data-close aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      <div id="stats-result"></div>
+      <h2 id="stats-title">Statistics</h2>
+      <div class="stats-row" id="stats-row"></div>
+      <div class="stats-row" id="stats-row2"></div>
+      <h2>Average time by difficulty</h2>
+      <div class="dist" id="stats-dist"></div>
+      <div id="stats-share"></div>
+      <p class="feedback-row"><button class="link-btn" data-open="feedback">Send feedback</button></p>
+    </div>
+  </div>
+
+  <!-- Archive -->
+  <div class="overlay" id="archive" role="dialog" aria-modal="true" aria-labelledby="archive-title">
+    <div class="modal">
+      <button class="icon-btn close" data-close aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      <h2 id="archive-title">Past Puzzles</h2>
+      <div id="archive-body"></div>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div class="overlay" id="settings" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div class="modal">
+      <button class="icon-btn close" data-close aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      <h2 id="settings-title">Settings</h2>
+      <div class="setting">
+        <div><div>Dark Theme</div></div>
+        <label class="switch"><input type="checkbox" id="set-dark"><span></span></label>
+      </div>
+      <div class="setting">
+        <div><div>Color Blind Mode</div><div class="desc">Adds a shape to each point</div></div>
+        <label class="switch"><input type="checkbox" id="set-cb"><span></span></label>
+      </div>
+      <div class="setting">
+        <div><div>Pause Timer When Away</div><div class="desc">Stops the clock while this tab is hidden</div></div>
+        <label class="switch"><input type="checkbox" id="set-pause" checked><span></span></label>
+      </div>
+      <div class="setting">
+        <div><div>Feedback</div><div class="desc">Ideas, bugs, puzzles you loved</div></div>
+        <button class="btn" data-open="feedback" style="flex:none;width:auto;height:36px;padding:0 14px;font-size:13px">Send</button>
+      </div>
+      <p class="small" style="margin-top:16px">Progress and stats are saved in this browser only.</p>
+    </div>
+  </div>
+
+  <!-- Feedback (Netlify Forms: submissions appear under Forms in the Netlify dashboard) -->
+  <div class="overlay" id="feedback" role="dialog" aria-modal="true" aria-labelledby="feedback-title">
+    <div class="modal">
+      <button class="icon-btn close" data-close aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      <h2 id="feedback-title">Send Feedback</h2>
+      <form id="feedback-form" name="venn-feedback" method="POST" action="/venn/" data-netlify="true" netlify-honeypot="bot-field">
+        <input type="hidden" name="form-name" value="venn-feedback">
+        <input type="hidden" name="puzzle" id="fb-puzzle" value="">
+        <p hidden><label>Leave this empty: <input name="bot-field"></label></p>
+        <label class="field">What's on your mind?
+          <textarea name="message" id="fb-message" rows="5" maxlength="2000" required></textarea>
+        </label>
+        <label class="field">Email <span class="small">(optional, if you'd like a reply)</span>
+          <input type="email" name="email" id="fb-email" autocomplete="email">
+        </label>
+        <button class="btn primary" type="submit" id="fb-submit" style="width:100%;max-width:none">Send</button>
+        <p class="fb-status" id="fb-status" role="status"></p>
+      </form>
+    </div>
+  </div>
+
+  <script src="{{ "venn/engine.js" | relURL }}"></script>
+  <script src="{{ "venn/venn.js" | relURL }}"></script>
+</body>
+</html>
