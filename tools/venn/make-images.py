@@ -15,9 +15,11 @@ with sync_playwright() as p:
     page.goto(page_url + '?type=og')
     page.wait_for_function("document.title === 'ready'")
     page.locator('#og').screenshot(path=str(out / 'og.png'))
-    for size, name in [(180, 'apple-touch-icon.png'), (32, 'favicon-32.png')]:
+    for size, name, pad in [(180, 'apple-touch-icon.png', ''), (32, 'favicon-32.png', ''),
+                            (192, 'icon-192.png', ''), (512, 'icon-512.png', ''),
+                            (512, 'icon-maskable-512.png', '&pad=0.2')]:
         page.set_viewport_size({'width': size, 'height': size})
-        page.goto(page_url + '?size=%d' % size)
+        page.goto(page_url + '?size=%d%s' % (size, pad))
         page.wait_for_function("document.title === 'ready'")
         page.locator('#icon').screenshot(path=str(out / name))
     browser.close()

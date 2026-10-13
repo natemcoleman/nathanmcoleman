@@ -45,7 +45,7 @@
     var size = Number(q.get('size') || 180);
     var c = document.getElementById('icon'); c.style.display = 'block';
     // 1 ring per center reads best at icon sizes
-    drawBoard(c, size, 1, Math.max(1.5, size / 40), 0.25, size * 0.11);
+    drawBoard(c, size, 1, Math.max(1.5, size / 40), 0.25, size * Number(q.get('pad') || 0.11));
   }
   document.title = 'ready';
 </script>
