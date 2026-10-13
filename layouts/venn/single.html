@@ -157,15 +157,13 @@
     </div>
   </div>
 
-  <!-- Feedback (Netlify Forms: submissions appear under Forms in the Netlify dashboard) -->
+  <!-- Feedback: sent to /api/venn?op=feedback (api/venn.mjs), stored in Upstash Redis -->
   <div class="overlay" id="feedback" role="dialog" aria-modal="true" aria-labelledby="feedback-title">
     <div class="modal">
       <button class="icon-btn close" data-close aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
       <h2 id="feedback-title">Send Feedback</h2>
-      <form id="feedback-form" name="venn-feedback" method="POST" action="/venn/" data-netlify="true" netlify-honeypot="bot-field">
-        <input type="hidden" name="form-name" value="venn-feedback">
-        <input type="hidden" name="puzzle" id="fb-puzzle" value="">
-        <p hidden><label>Leave this empty: <input name="bot-field"></label></p>
+      <form id="feedback-form" novalidate>
+        <p hidden><label>Leave this empty: <input name="website" tabindex="-1" autocomplete="off"></label></p>
         <label class="field">What's on your mind?
           <textarea name="message" id="fb-message" rows="5" maxlength="2000" required></textarea>
         </label>

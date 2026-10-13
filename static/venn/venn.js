@@ -17,7 +17,7 @@
   var LEVELS = ['Easy', 'Medium', 'Hard', 'Expert'];
   var HINT_COST = E.HINT_COST; // each hint adds this many moves (shared with the score server)
   var DRAG_SPEED = 0.75;       // how far the circle turns relative to the finger (1 = follows exactly)
-  var SCORES_URL = '/.netlify/functions/venn-scores';
+  var SCORES_URL = '/api/venn'; // Vercel Function (api/venn.mjs)
 
   // Score: moves made (undo takes one back) plus a penalty per hint.
   function score(g) { return E.moveScore(g.stack, g.hints); }
@@ -1025,24 +1025,32 @@
       e.preventDefault();
       var msg = document.getElementById('fb-message');
       if (!msg.value.trim()) { status.className = 'fb-status error'; status.textContent = 'Please write a message first.'; msg.focus(); return; }
-      document.getElementById('fb-puzzle').value = 'Venn ' + numberLabel(playDate) + ' (' + playDate + ')' +
+      var puzzleInfo = (freeLevel ? 'Free play ' + freeLevel : 'Venn ' + numberLabel(playDate) + ' (' + playDate + ')') +
         (game.solved ? ', solved' : game.started ? ', in progress' : '');
       submit.disabled = true;
       submit.textContent = 'Sending…';
       status.className = 'fb-status';
       status.textContent = '';
-      fetch('/', {
+      fetch(SCORES_URL + '?op=feedback', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams(new FormData(form)).toString()
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: msg.value,
+          email: document.getElementById('fb-email').value,
+          puzzle: puzzleInfo,
+          website: form.elements.website.value // honeypot: real people leave it empty
+        })
       }).then(function (r) {
+        if (r.status === 429) throw new Error('rate');
         if (!r.ok) throw new Error('HTTP ' + r.status);
         form.reset();
         closeModal();
         toast('Thanks for the feedback!', 2000);
-      }).catch(function () {
+      }).catch(function (err) {
         status.className = 'fb-status error';
-        status.textContent = 'Couldn\'t send right now. Please try again later.';
+        status.textContent = err && err.message === 'rate'
+          ? 'You\'ve sent several messages already. Please try again later.'
+          : 'Couldn\'t send right now. Please try again later.';
       }).then(function () {
         submit.disabled = false;
         submit.textContent = 'Send';

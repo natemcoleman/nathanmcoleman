@@ -11,8 +11,9 @@ Daily rotating-circle puzzle at `/venn/`.
 | `content/venn.md` | Hugo page that serves `/venn/` |
 | `static/venn/solutions.json` | Precomputed shortest solution for every daily puzzle (used by "Watch Solution") |
 | `tools/venn/solve.js` | Generates `solutions.json`: `node tools/venn/solve.js [first] [last]` (about 11 minutes for 2 years) |
-| `netlify/functions/venn-scores.mjs` | Netlify Function for anonymous global results (thin wrapper) |
-| `netlify/venn/scores.mjs` | Global results logic: checks a solve by replaying it, one score per player per day, counts by moves |
+| `api/venn.mjs` | Vercel Function at `/api/venn`: global results and feedback (thin wrapper) |
+| `lib/venn/scores.mjs` | Server logic: checks a solve by replaying it, one score per player per day, counts by moves, feedback |
+| `lib/venn/redis.mjs` | Storage on Upstash Redis through its REST API (no npm packages) |
 | `tools/venn/engine.test.js`, `scores.test.mjs` | Tests: `npm run test:venn` (no install needed) |
 
 ## Making puzzles
@@ -88,10 +89,11 @@ Re-run it if the colors or layouts change.
 
 ## Feedback
 
-The feedback form uses Netlify Forms (form name `venn-feedback`). Form detection
-must be enabled for the site in Netlify (Site configuration → Forms). Submissions
-appear in the Netlify dashboard under Forms, and you can turn on email
-notifications there.
+The feedback form posts to `/api/venn?op=feedback`, which stores messages in
+Upstash Redis (newest first, last 2000 kept; 5 per hour per visitor). To read
+them, set a `VENN_ADMIN_KEY` environment variable in Vercel (any long random
+string) and open `/api/venn?op=feedback&key=<that string>`, or browse the
+`venn:feedback` key in the Upstash console.
 
 ## Saved data
 
@@ -100,15 +102,14 @@ theme uses PaperMod's `pref-theme` key, so it matches the rest of the site.
 
 ## Global results ("Everyone today")
 
-When a player solves today's puzzle on its own day, the page sends the date, a
-random anonymous player id, its list of turns and its hint count to
-`/.netlify/functions/venn-scores`. The function replays the turns to check the
+The site is hosted on Vercel. When a player solves today's puzzle on its own
+day, the page sends the date, a random anonymous player id, its list of turns
+and its hint count to `/api/venn`. The function replays the turns to check the
 puzzle really was solved, works out the move score itself, keeps only the first
 score per player per day, and returns how many players finished in each number
 of moves. Archive and practice games are never sent.
 
-Data lives in Netlify Blobs (stores `venn-players` and `venn-scores`), which needs
-the `@netlify/blobs` package (package.json) and Node 22 (netlify.toml). To see or
-delete stored scores, use the Netlify dashboard (Blobs) or the Netlify CLI
-(`netlify blobs:list venn-scores`). If the function is unavailable the game still
-works; the "Everyone today" section is just hidden.
+Storage is Upstash Redis, added from the Vercel Marketplace (it sets
+`KV_REST_API_URL` and `KV_REST_API_TOKEN`). Until it is connected the function
+answers 503 and the game simply hides the "Everyone today" section.
+Keys: `venn:c:<date>` (hash of moves -> players), `venn:p:<date>:<id>` (one per player, expires after 30 days).
