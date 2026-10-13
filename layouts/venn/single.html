@@ -80,7 +80,7 @@
     <div class="info">
       <div class="puzzle-label" id="puzzle-label"></div>
       <div class="moves" id="moves" aria-live="polite">0 moves</div>
-      <div class="hints-count" id="hints-count"></div>
+      <div class="target" id="target"></div>
     </div>
     <div class="archive-banner" id="archive-banner"></div>
     <div class="board-wrap" id="board-wrap">
@@ -91,9 +91,13 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
         Undo
       </button>
+      <button class="btn" id="reset-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 3v6h6"/></svg>
+        <span>Reset</span>
+      </button>
       <button class="btn" id="hint-btn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg>
-        Hint
+        <span id="hint-label">Hint</span>
       </button>
     </div>
   </div>
@@ -105,7 +109,7 @@
     <div class="modal">
       <button class="icon-btn close" data-close aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
       <h3 id="help-title">How To Play</h3>
-      <p class="help-goal"><strong>Make every cluster a single color.</strong> Drag a circle to turn it. Every point on it moves together, and they snap into place when you let go.</p>
+      <p class="help-goal"><strong>Make every cluster a single color.</strong> Drag a circle to turn it. Every point on it moves together, and it snaps to the nearest quarter turn when you let go. Finished clusters glow.</p>
       <div class="tutorial">
         <canvas id="tut-board" aria-label="Practice board"></canvas>
         <p class="tut-msg" id="tut-msg" aria-live="polite"></p>
@@ -113,7 +117,7 @@
       </div>
       <ul class="help-list">
         <li>A new puzzle every day at midnight. Monday is easiest, Sunday is hardest.</li>
-        <li>Hints are unlimited and show which circle to turn and how many spaces, but each one adds 2 to your moves.</li>
+        <li>The goal at the top is the fewest moves possible. Stuck? Tap Hint to see which circle to turn (+1 move), and again to see how far (+1 more). Reset goes back to the start.</li>
         <li>After you solve, you can watch the shortest possible solution and see how everyone else did (anonymously; see Settings → Privacy).</li>
       </ul>
     </div>

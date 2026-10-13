@@ -20,7 +20,13 @@
   var SCORES_URL = '/api/venn'; // Vercel Function (api/venn.mjs)
 
   // Score: moves made (undo takes one back) plus a penalty per hint.
-  function score(g) { return E.moveScore(g.stack, g.hints); }
+  function score(g) { return E.moveScore(g.stack, g.hints, g.peeks); }
+  function hintsUsed(g) { return (g.hints || 0) + (g.peeks || 0); }
+  function hintPenalty(g) { return score(g) - g.stack.length; }
+  function hintsText(g) {
+    var n = hintsUsed(g);
+    return n + (n === 1 ? ' hint' : ' hints') + (n ? ' (+' + hintPenalty(g) + ')' : '');
+  }
   function movesText(n) { return n + (n === 1 ? ' move' : ' moves'); }
 
   // ---------- dates ----------
@@ -138,11 +144,28 @@
       var hinted = self.hintMove && self.hintMove.c === c.id;
       ctx.beginPath();
       ctx.arc(ctr.x, ctr.y, c.r * self.scale, 0, Math.PI * 2);
-      ctx.lineWidth = active ? 3 : hinted ? 4 : 1.5;
+      ctx.lineWidth = active ? 3 : hinted ? 5 : 1.5;
       ctx.strokeStyle = active ? activeColor : hinted ? hintColor : ringColor;
       ctx.stroke();
     });
 
+
+    // progress: a soft glow behind every cluster that is already one color
+    var turningSlots = {};
+    if (this.turn && this.turn.s !== 0) p.circles[this.turn.c].slots.forEach(function (sid) { turningSlots[sid] = true; });
+    p.faces.forEach(function (f) {
+      var c0 = self.state[f.slots[0]];
+      var done = f.slots.every(function (sid) { return self.state[sid] === c0 && !turningSlots[sid]; });
+      if (!done) return;
+      ctx.save();
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = PALETTE[c0 % PALETTE.length];
+      f.slots.forEach(function (sid) {
+        var sl = p.slots[sid], sp = self.toScreen(sl.x, sl.y);
+        ctx.beginPath(); ctx.arc(sp.x, sp.y, self.pointR * 1.8, 0, Math.PI * 2); ctx.fill();
+      });
+      ctx.restore();
+    });
 
     // points
     var moving = {};
@@ -172,7 +195,7 @@
       if (store.settings.colorblind) drawGlyph(ctx, GLYPHS[color % GLYPHS.length], sp.x, sp.y, r * 0.55);
     });
     // hint on top of the points so the arrow and its number stay readable
-    if (this.hintMove) this.drawHintArrow(hintColor);
+    if (this.hintMove && this.hintMove.mode !== 'circle') this.drawHintArrow(hintColor);
   };
 
   // Hint: an arrow along the circle from one point to where it will land, a dot at
@@ -297,7 +320,7 @@
     ? E.practicePuzzle(freeLevel, params.get('seed') || String(Date.now()))
     : E.dailyPuzzle(playDate);
   var puzzle = day.puzzle;
-  var newGame = function () { return { stack: [], started: false, solved: false, hints: 0, daily: false }; };
+  var newGame = function () { return { stack: [], started: false, solved: false, hints: 0, peeks: 0, daily: false }; };
   var game;
   if (practice) game = newGame();
   else {
@@ -314,7 +337,9 @@
 
   var el = {
     label: document.getElementById('puzzle-label'),
-    hintsCount: document.getElementById('hints-count'),
+    target: document.getElementById('target'),
+    hintLabel: document.getElementById('hint-label'),
+    reset: document.getElementById('reset-btn'),
     moves: document.getElementById('moves'),
     banner: document.getElementById('archive-banner'),
     undo: document.getElementById('undo-btn'),
@@ -340,9 +365,10 @@
   }
   function renderStatus() {
     el.moves.textContent = movesText(score(game));
-    el.hintsCount.textContent = game.hints ? game.hints + (game.hints === 1 ? ' hint' : ' hints') : '';
     el.undo.disabled = game.solved || game.stack.length === 0;
+    el.reset.disabled = game.solved || game.stack.length === 0;
     el.hint.disabled = game.solved;
+    el.hintLabel.textContent = board.hintMove && board.hintMove.mode === 'circle' ? 'How far?' : 'Hint';
   }
 
   function layout() {
@@ -371,6 +397,10 @@
     animateTurn(board, c, s0, s1, duration, function () {
       busy = false;
       if (done) done();
+      setTimeout(function () {
+        drainUndos();
+        if (hintQueued && !busy && !pendingUndos) requestHint();
+      }, 0);
     });
   }
 
@@ -401,6 +431,7 @@
       drag.prevA = angleAround(c, drag.start);
       drag.total = 0;
       b.turn = { c: c.id, s: 0 };
+      b.dragging = true;
       cv.classList.add('dragging');
       if (opts.onGrab) opts.onGrab();
       b.draw();
@@ -444,7 +475,8 @@
       drag.total += da;
       drag.prevA = a;
       var s = (DRAG_SPEED * drag.total * c.slots.length) / (Math.PI * 2);
-      if (Math.round(s) !== Math.round(b.turn.s) && navigator.vibrate) { try { navigator.vibrate(6); } catch (err) {} }
+      var q = b.puzzle.step || 1; // quarter turn, in spaces
+      if (Math.round(s / q) !== Math.round(b.turn.s / q) && navigator.vibrate) { try { navigator.vibrate(6); } catch (err) {} }
       b.turn.s = s;
       b.draw();
     });
@@ -452,10 +484,12 @@
       if (!drag || e.pointerId !== drag.id) return;
       var d = drag;
       drag = null;
+      b.dragging = false;
       cv.classList.remove('dragging');
-      if (d.c === null) return;
+      if (d.c === null) { if (opts.onCancel) opts.onCancel(); return; }
       var s = b.turn ? b.turn.s : 0;
-      opts.onRelease(d.c, s, Math.round(s));
+      var q = b.puzzle.step || 1;
+      opts.onRelease(d.c, s, Math.round(s / q) * q); // snap to the nearest quarter turn
     }
     cv.addEventListener('pointerup', endDrag);
     cv.addEventListener('pointercancel', endDrag);
@@ -476,32 +510,52 @@
   function snapDuration(s, target) { return 150 + Math.min(220, Math.abs(target - s) * 180); }
 
   attachDrag(board, {
-    locked: function () { return busy || game.solved; },
+    locked: function () { return busy || game.solved || pendingUndos > 0; },
+    onCancel: function () { setTimeout(drainUndos, 0); },
     onGrab: markStarted,
     onRelease: function (c, s, target) {
       playTurn(c, s, target, snapDuration(s, target), function () { commitMove(c, target); });
     }
   });
 
+  // Undo taps that arrive while something is animating (or a circle is being
+  // dragged) are queued and run in order, so quick repeated taps all count.
+  var pendingUndos = 0;
   el.undo.addEventListener('click', function () {
-    if (busy || game.solved || !game.stack.length) return;
+    if (game.solved || game.stack.length - pendingUndos <= 0) return;
+    pendingUndos++;
+    drainUndos();
+  });
+  function drainUndos() {
+    if (!pendingUndos || busy || board.dragging || game.solved) return;
+    if (!game.stack.length) { pendingUndos = 0; return; }
+    pendingUndos--;
+    doUndo();
+  }
+  function doUndo() {
     var last = game.stack[game.stack.length - 1];
+    disarmReset();
     board.hintMove = null;
     // Draw the current position turning backwards, then show the undone state.
     var shown = state;
     state = E.applyMove(puzzle, state, last.c, -last.k);
     game.stack = game.stack.slice(0, -1);
     board.state = shown;
-    playTurn(last.c, 0, -last.k, 260, function () {
+    renderStatus();
+    playTurn(last.c, 0, -last.k, 180, function () {
       board.state = state;
       save();
       renderStatus();
     });
-  });
+  }
 
   var hintPending = false;
-  el.hint.addEventListener('click', function () {
-    if (busy || game.solved || hintPending) return;
+  var hintQueued = false;
+  el.hint.addEventListener('click', requestHint);
+  function requestHint() {
+    if (game.solved || hintPending) return;
+    if (busy || board.dragging || pendingUndos) { hintQueued = true; return; } // runs when the board is free
+    hintQueued = false;
     hintPending = true;
     getSolution(function (sol) {
       hintPending = false;
@@ -515,28 +569,71 @@
       });
       if (!h) return;
       markStarted();
-      game.hints += 1;
+      var upgrade = board.hintMove && board.hintMove.mode === 'circle' && board.hintMove.c === h.c && board.hintMove.k === h.k;
+      if (upgrade) {
+        // second tap: show which way and how far (+1 more, so a full hint costs 2)
+        game.peeks -= 1;
+        game.hints += 1;
+        board.hintMove = { c: h.c, k: h.k, mode: 'full' };
+        var spaces = Math.abs(h.k);
+        toast('Turn ' + spaces + (spaces === 1 ? ' space' : ' spaces') + ' · +' + (HINT_COST - E.PEEK_COST) + ' move' +
+          (h.exact ? ' · ' + (h.remaining === 1 ? 'last move' : h.remaining + ' moves to go') : ''), 1800);
+      } else {
+        // first tap: just which circle (+1)
+        game.peeks = (game.peeks || 0) + 1;
+        board.hintMove = { c: h.c, k: h.k, mode: 'circle' };
+        toast('Turn the highlighted circle · +' + E.PEEK_COST + ' move · tap again for how far', 2200);
+      }
       save();
       renderStatus();
-      board.hintMove = { c: h.c, k: h.k };
-      var spaces = Math.abs(h.k);
-      toast('Turn ' + spaces + (spaces === 1 ? ' space' : ' spaces') + ' · +' + HINT_COST + ' moves' +
-        (h.exact ? ' · ' + (h.remaining === 1 ? 'last move' : h.remaining + ' moves to go') : ''), 1800);
-      // nudge the circle in the right direction so it is easy to spot
+      // nudge the circle so it is easy to spot (its direction only once the full hint is shown)
       var dir = h.k > 0 ? 1 : -1;
-      playTurn(h.c, 0, dir * 0.3, 180, function () {
-        playTurn(h.c, dir * 0.3, 0, 220);
-      });
+      if (upgrade) {
+        playTurn(h.c, 0, dir * 0.3, 180, function () { playTurn(h.c, dir * 0.3, 0, 220); });
+      } else {
+        playTurn(h.c, 0, 0.15, 150, function () {
+          playTurn(h.c, 0.15, -0.15, 220, function () { playTurn(h.c, -0.15, 0, 150); });
+        });
+      }
       board.draw();
     });
-  });
+  }
 
-  // Warm up hint data while the player looks at the board.
+  // Show the target (fewest possible moves) and warm up hint data.
+  getSolution(function (sol) {
+    el.target.textContent = sol.optimal ? 'Goal: ' + movesText(sol.moves.length) : '';
+  });
   setTimeout(function () {
     if (game.solved) return;
-    getSolution(function () {});
     try { E.solveShort(puzzle, puzzle.solvedState); } catch (e) {}
-  }, 1200);
+  }, 800);
+
+  // Reset: back to the start position (hint penalties stay). Tap twice to confirm.
+  var resetArmed = null;
+  function disarmReset() {
+    if (resetArmed) { clearTimeout(resetArmed); resetArmed = null; }
+    el.reset.classList.remove('armed');
+    el.reset.querySelector('span').textContent = 'Reset';
+  }
+  el.reset.addEventListener('click', function () {
+    if (busy || board.dragging || game.solved || !game.stack.length) return;
+    if (!resetArmed) {
+      el.reset.classList.add('armed');
+      el.reset.querySelector('span').textContent = 'Sure?';
+      resetArmed = setTimeout(disarmReset, 2500);
+      return;
+    }
+    disarmReset();
+    pendingUndos = 0;
+    game.stack = [];
+    state = day.start.slice();
+    board.state = state;
+    board.hintMove = null;
+    save();
+    renderStatus();
+    board.draw();
+    toast('Back to the start', 1200);
+  });
 
   // ---------- winning ----------
   function win() {
@@ -554,11 +651,11 @@
     setTimeout(function () { openModal('stats'); }, 1800);
     showSolvedControls();
     if (counts()) submitScore();
-    if (window.gtag && !practice) gtag('event', 'venn_solved', { puzzle: puzzleNumber(playDate), moves: score(game), hints: game.hints });
+    if (window.gtag && !practice) gtag('event', 'venn_solved', { puzzle: puzzleNumber(playDate), moves: score(game), hints: hintsUsed(game) });
   }
   function winMessage() {
     var extra = score(game) - day.scramble.length;
-    if (game.hints > 0) return 'Nice work';
+    if (hintsUsed(game) > 0) return 'Nice work';
     if (extra <= 0) return 'Genius';
     if (extra <= 2) return 'Magnificent';
     if (extra <= 5) return 'Impressive';
@@ -667,7 +764,7 @@
     var dots = { Easy: '🟢', Medium: '🟡', Hard: '🟠', Expert: '🔴' }[day.config.label];
     var lines = [
       'Venn ' + numberLabel(playDate) + ' ' + dots + ' ' + day.config.label,
-      '🔄 ' + movesText(score(game)) + ' · 💡 ' + game.hints + (game.hints === 1 ? ' hint' : ' hints') +
+      '🔄 ' + movesText(score(game)) + ' · 💡 ' + hintsUsed(game) + (hintsUsed(game) === 1 ? ' hint' : ' hints') +
         (globalStats && globalStats.players > 1 ? ' · ' + beatText(globalStats, score(game)) : ''),
       SITE_URL
     ];
@@ -849,7 +946,8 @@
         date: playDate,
         playerId: playerId(),
         stack: game.stack.map(function (m) { return [m.c, m.k]; }),
-        hints: game.hints
+        hints: game.hints || 0,
+        peeks: game.peeks || 0
       })
     }).then(function (r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -967,8 +1065,7 @@
       result.innerHTML = '<div class="result">' +
         '<div class="result-title">Solved · ' + (freeLevel ? 'Free play' : 'Venn ' + numberLabel(playDate)) + ' · ' + day.config.label + '</div>' +
         '<div class="result-score">' + score(game) + '<span>' + (score(game) === 1 ? 'move' : 'moves') + '</span></div>' +
-        '<div class="result-meta">' + game.hints + (game.hints === 1 ? ' hint' : ' hints') +
-          (game.hints ? ' (+' + HINT_COST * game.hints + ')' : '') + '<span id="optimal-line"></span></div>' +
+        '<div class="result-meta">' + hintsText(game) + '<span id="optimal-line"></span></div>' +
         (practice ? '<div class="result-note">Practice games don\'t count toward your stats.</div>'
           : isArchive ? '<div class="result-note">Past puzzles don\'t count toward your stats.</div>' : '') +
         '<div class="result-actions">' +

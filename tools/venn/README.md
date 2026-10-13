@@ -44,12 +44,15 @@ difficulty or add a new layout, add a new schedule with a future `from` date.
 Never edit a schedule or layout that has already been used**, or past puzzles
 (and people's saved progress) would change. The tests fail if that happens.
 
+The second schedule (from 2026-10-14, Venn #1) is the easier one after early feedback;
+2026-10-13 keeps the first schedule.
+
 For example, to make Fridays a new layout starting 2026-12-04: add the layout to
 `LAYOUTS` under a new key, copy the latest schedule into a new entry with
 `from: '2026-12-04'`, change day `5`, then run `node tools/venn/solve.js 2026-12-04 2028-12-31`.
 
 - `layout`: key in `LAYOUTS`
-- `moves`: scramble length (1 to 6, since solve.js finds solutions up to 6 moves)
+- `moves`: scramble length in quarter turns (1 to 6, since solve.js finds solutions up to 6 moves)
 - `step` (optional): turn size used when scrambling. Defaults to one quarter turn
   (the number of rings).
 
@@ -57,8 +60,10 @@ For example, to make Fridays a new layout starting 2026-12-04: add the layout to
 
 ## Scoring and practice
 
-- There is no timer. Moves = turns made, minus undos, plus 2 per hint (`HINT_COST` in engine.js,
-  shared with the server).
+- There is no timer. Turns snap to quarter turns (`puzzle.step` = the number of rings).
+- Moves = turns made, minus undos, plus hint penalties: the first Hint tap shows which circle
+  (+1, `PEEK_COST`), a second tap shows direction and spaces (+1 more, a full hint = `HINT_COST` 2).
+  Reset returns to the start position; penalties stay. The header shows the goal (fewest possible).
   Stats average moves by difficulty.
 - Drag sensitivity is `DRAG_SPEED` in venn.js (0.9 = the circle turns 90% as far as the finger).
 - Practice modes, never saved or counted: `/venn/?free=Easy` (also Medium, Hard,

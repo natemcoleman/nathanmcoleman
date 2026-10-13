@@ -143,7 +143,9 @@
       faces: faces,
       commute: commute,
       solvedState: solved,
-      colorCount: faces.length
+      colorCount: faces.length,
+      // Turns snap to quarter turns: a multiple of this many spaces (= the number of rings).
+      step: radii.length
     };
   }
 
@@ -276,15 +278,22 @@
     return out;
   }
 
-  function allMoves(puzzle) {
-    if (!puzzle._moves) {
+  /**
+   * Every legal turn. Players can only stop on quarter turns (multiples of puzzle.step).
+   * anyStep: every single-space turn instead (used only by the original scramble check,
+   * which must stay exactly as it was so existing puzzles never change).
+   */
+  function allMoves(puzzle, anyStep) {
+    var key = anyStep ? '_movesAny' : '_moves';
+    if (!puzzle[key]) {
       var list = [];
+      var step = anyStep ? 1 : (puzzle.step || 1);
       puzzle.circles.forEach(function (c) {
-        for (var k = 1; k < c.slots.length; k++) list.push({ c: c.id, k: shortest(puzzle, c.id, k) });
+        for (var k = step; k < c.slots.length; k += step) list.push({ c: c.id, k: shortest(puzzle, c.id, k) });
       });
-      puzzle._moves = list;
+      puzzle[key] = list;
     }
-    return puzzle._moves;
+    return puzzle[key];
   }
 
   // Breadth-first layers from `state`: map key -> { d, parent, c, k, state }.
@@ -392,10 +401,10 @@
   }
 
   // Iterative-deepening DFS for a solution of at most maxDepth moves (used when scrambling).
-  function searchSolution(puzzle, state, maxDepth, budget) {
+  function searchSolution(puzzle, state, maxDepth, budget, anyStep) {
     var nodes = 0;
     var path = [];
-    var moveList = allMoves(puzzle);
+    var moveList = allMoves(puzzle, anyStep);
     function dfs(s, depth, lastC) {
       if (isSolved(puzzle, s)) return true;
       if (depth === 0) return false;
@@ -421,12 +430,14 @@
 
   // ---------- scoring ----------
 
-  /** Each hint adds this many moves to the score. */
+  /** A full hint (circle, direction and spaces) adds this many moves to the score. */
   var HINT_COST = 2;
+  /** A "which circle?" hint adds this many. Asking for the rest of it later adds the difference. */
+  var PEEK_COST = 1;
 
-  /** Score for a game: the turns that remain after undos, plus the hint penalty. */
-  function moveScore(stack, hints) {
-    return stack.length + HINT_COST * (hints || 0);
+  /** Score for a game: the turns that remain after undos, plus hint penalties. */
+  function moveScore(stack, hints, peeks) {
+    return stack.length + HINT_COST * (hints || 0) + PEEK_COST * (peeks || 0);
   }
 
   // ---------- daily schedule ----------
@@ -462,6 +473,19 @@
         6: { label: 'Hard', layout: 3, moves: 5 },
         0: { label: 'Expert', layout: 3, moves: 6 }
       }
+    },
+    {
+      // Easier from launch (Venn #1): early players found the first schedule too hard.
+      from: '2026-10-14',
+      days: {
+        1: { label: 'Easy', layout: 2, moves: 2 },
+        2: { label: 'Easy', layout: 2, moves: 2 },
+        3: { label: 'Medium', layout: 2, moves: 3 },
+        4: { label: 'Medium', layout: 2, moves: 3 },
+        5: { label: 'Hard', layout: 2, moves: 4 },
+        6: { label: 'Hard', layout: 3, moves: 3 },
+        0: { label: 'Expert', layout: 3, moves: 4 }
+      }
     }
   ];
 
@@ -482,13 +506,14 @@
     var def = LAYOUTS[cfg.layout];
     var rings = def.radii.length;
     var puzzle = buildPuzzle(def);
+    if (cfg.step) puzzle.step = cfg.step;
     // Reject scrambles that happen to land solved or that have a noticeably shorter solution.
     var s, attempt = 0;
     do {
       s = scramble(puzzle, cfg.moves, seed + (attempt ? ':' + attempt : ''), cfg.step || rings);
       attempt++;
     } while (attempt < 50 && (isSolved(puzzle, s.state) ||
-      searchSolution(puzzle, s.state, Math.min(cfg.moves - 1, 2), 200000)));
+      searchSolution(puzzle, s.state, Math.min(cfg.moves - 1, 2), 200000, true)));
     return { config: cfg, layout: cfg.layout, rings: rings, puzzle: puzzle, scramble: s.moves, start: s.state };
   }
 
@@ -534,6 +559,7 @@
     dailyPuzzle: dailyPuzzle,
     practicePuzzle: practicePuzzle,
     HINT_COST: HINT_COST,
+    PEEK_COST: PEEK_COST,
     moveScore: moveScore,
     hashString: hashString,
     mulberry32: mulberry32,
