@@ -5,6 +5,8 @@
  *
  *   node tools/venn/solve.js [firstDate] [lastDate]
  *
+ * Results are merged into the existing file (dates in the range are replaced).
+ *
  * Re-run this whenever LAYOUTS, SCHEDULE or the scramble code in engine.js
  * changes, or to extend the date range.
  *
@@ -130,7 +132,10 @@ function dateStr(d) {
 function main() {
   const first = process.argv[2] || '2026-10-14';
   const last = process.argv[3] || '2028-12-31';
-  const out = { generated: new Date().toISOString(), first, last, puzzles: {} };
+  const file = path.join(__dirname, '../../static/venn/solutions.json');
+  // Merge into the existing file so a short date range can be added without redoing everything.
+  const prev = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : { puzzles: {} };
+  const out = { generated: new Date().toISOString(), first, last, puzzles: prev.puzzles || {} };
   const p = first.split('-').map(Number);
   const t0 = Date.now();
   for (let d = new Date(p[0], p[1] - 1, p[2]); dateStr(d) <= last; d.setDate(d.getDate() + 1)) {
@@ -144,7 +149,9 @@ function main() {
     out.puzzles[ds] = { h: E.hashString(day.start.join(',')), s: sol.map((m) => [m.c, m.k]) };
     if (d.getDate() === 1) console.error(ds, 'done', Math.round((Date.now() - t0) / 1000) + 's');
   }
-  const file = path.join(__dirname, '../../static/venn/solutions.json');
+  const dates = Object.keys(out.puzzles).sort();
+  out.first = dates[0];
+  out.last = dates[dates.length - 1];
   fs.writeFileSync(file, JSON.stringify(out));
   console.error('wrote', Object.keys(out.puzzles).length, 'solutions to', file);
 }

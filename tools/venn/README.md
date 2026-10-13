@@ -51,6 +51,12 @@ The tests fail if the file stops covering the next 365 days or no longer
 matches the puzzles. If a day is missing, the game still offers a solution
 (it unwinds the scramble) but labels it "Solution" instead of "Shortest solution".
 
+## Share image and icons
+
+`og.png` (link preview), `apple-touch-icon.png` and `favicon-32.png` are drawn
+from the real puzzle by `tools/venn/make-images.py` (needs Python Playwright).
+Re-run it if the colors or layouts change.
+
 ## Feedback
 
 The feedback form uses Netlify Forms (form name `venn-feedback`). Form detection

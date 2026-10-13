@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<!-- Renders Venn's share image and icons. Used by make-images.py. -->
+<html><head><meta charset="utf-8">
+<style>
+  html, body { margin: 0; background: #fff; }
+  #og { width: 1200px; height: 630px; display: flex; align-items: center; font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; color: #1a1a1b; }
+  #og canvas { margin-left: 60px; }
+  #og .text { margin-left: 56px; }
+  #og h1 { font-family: Georgia, "Times New Roman", serif; font-size: 150px; margin: 0; line-height: 1; }
+  #og p { font-size: 40px; margin: 22px 0 0; color: #3a3a3c; }
+  #og .url { font-size: 30px; color: #787c7e; margin-top: 36px; }
+</style></head>
+<body>
+<div id="og" style="display:none"><canvas id="og-board"></canvas><div class="text"><h1>Venn</h1><p>A daily circle puzzle.</p><p>Turn the circles until every<br>cluster is one color.</p><div class="url">nathanmcoleman.com/venn</div></div></div>
+<canvas id="icon" style="display:none"></canvas>
+<script src="../../static/venn/engine.js"></script>
+<script>
+  var PALETTE = ['#e5484d', '#30a46c', '#f76b15', '#f5c400', '#8e4ec6', '#3e63dd'];
+  // Draw a solved board filling a size x size canvas.
+  function drawBoard(canvas, size, rings, ringWidth, pointScale, pad) {
+    var p = VennEngine.buildPuzzle(VennEngine.LAYOUTS[rings]);
+    var dpr = 1;
+    canvas.width = size; canvas.height = size;
+    var ctx = canvas.getContext('2d');
+    var x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    p.circles.forEach(function (c) { x0 = Math.min(x0, c.cx - c.r); x1 = Math.max(x1, c.cx + c.r); y0 = Math.min(y0, c.cy - c.r); y1 = Math.max(y1, c.cy + c.r); });
+    var minD = Infinity;
+    p.slots.forEach(function (a, i) { p.slots.forEach(function (b, j) { if (i < j) minD = Math.min(minD, Math.hypot(a.x - b.x, a.y - b.y)); }); });
+    var sc = (size - 2 * pad) / Math.max(x1 - x0, y1 - y0);
+    var ox = size / 2 - (x0 + x1) / 2 * sc, oy = size / 2 + (y0 + y1) / 2 * sc;
+    ctx.lineWidth = ringWidth; ctx.strokeStyle = '#b9bcc1';
+    p.circles.forEach(function (c) { ctx.beginPath(); ctx.arc(ox + c.cx * sc, oy - c.cy * sc, c.r * sc, 0, Math.PI * 2); ctx.stroke(); });
+    var r = Math.min(minD * sc * pointScale, size * 0.09);
+    p.slots.forEach(function (s) {
+      ctx.beginPath(); ctx.arc(ox + s.x * sc, oy - s.y * sc, r, 0, Math.PI * 2);
+      ctx.fillStyle = PALETTE[p.solvedState[s.id]]; ctx.fill();
+      ctx.lineWidth = Math.max(1, r * 0.12); ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.stroke();
+    });
+  }
+  var q = new URLSearchParams(location.search);
+  if (q.get('type') === 'og') {
+    document.getElementById('og').style.display = 'flex';
+    drawBoard(document.getElementById('og-board'), 540, 2, 4, 0.38, 14);
+  } else {
+    var size = Number(q.get('size') || 180);
+    var c = document.getElementById('icon'); c.style.display = 'block';
+    // 1 ring per center reads best at icon sizes
+    drawBoard(c, size, 1, Math.max(1.5, size / 40), 0.25, size * 0.11);
+  }
+  document.title = 'ready';
+</script>
+</body></html>
