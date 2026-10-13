@@ -52,6 +52,15 @@ For example, to make Fridays a new layout starting 2026-12-04: add the layout to
 
 `LAUNCH` in venn.js is the date of Venn #1.
 
+## Scoring and practice
+
+- Moves = turns made, minus undos, plus 2 per hint (`HINT_COST` in venn.js).
+  Stats average moves by difficulty.
+- Drag sensitivity is `DRAG_SPEED` in venn.js (0.75 = the circle turns 75% as far as the finger).
+- Practice modes, never saved or counted: `/venn/?free=Easy` (also Medium, Hard,
+  Expert; add `&seed=anything` to repeat one) and `/venn/?replay=YYYY-MM-DD`.
+  Both are linked from the Play (calendar) menu and the results screen.
+
 ## Hints
 
 Hints aim for the shortest solution. When 4 or fewer moves remain, the game

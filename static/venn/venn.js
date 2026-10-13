@@ -15,6 +15,12 @@
   var DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   var LEVELS = ['Easy', 'Medium', 'Hard', 'Expert'];
+  var HINT_COST = 2;     // each hint adds this many moves to the score
+  var DRAG_SPEED = 0.75; // how far the circle turns relative to the finger (1 = follows exactly)
+
+  // Score: moves made (undo takes one back) plus a penalty per hint.
+  function score(g) { return g.stack.length + HINT_COST * (g.hints || 0); }
+  function movesText(n) { return n + (n === 1 ? ' move' : ' moves'); }
 
   // ---------- dates ----------
   function pad(n) { return String(n).padStart(2, '0'); }
@@ -247,14 +253,29 @@
   // ---------- game ----------
   var params = new URLSearchParams(location.search);
   var todayStr = today();
-  var playDate = params.get('d');
-  if (!playDate || !/^\d{4}-\d{2}-\d{2}$/.test(playDate) || playDate > todayStr || puzzleNumber(playDate) < 1) playDate = todayStr;
-  var isArchive = playDate !== todayStr;
+  function validDate(d, allowPreview) {
+    return !!d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= todayStr && (allowPreview ? d >= E.SCHEDULES[0].from : puzzleNumber(d) >= 1);
+  }
+  // Practice modes (never saved or counted): ?free=Easy|Medium|Hard|Expert, ?replay=YYYY-MM-DD
+  var freeLevel = LEVELS.indexOf(params.get('free')) >= 0 ? params.get('free') : null;
+  var replayDate = !freeLevel && validDate(params.get('replay'), true) ? params.get('replay') : null;
+  var practice = !!(freeLevel || replayDate);
+  var playDate = replayDate || params.get('d');
+  if (!practice && !validDate(playDate, false)) playDate = todayStr;
+  if (freeLevel) playDate = todayStr;
+  var isArchive = practice || playDate !== todayStr;
 
-  var day = E.dailyPuzzle(playDate);
+  var day = freeLevel
+    ? E.practicePuzzle(freeLevel, params.get('seed') || String(Date.now()))
+    : E.dailyPuzzle(playDate);
   var puzzle = day.puzzle;
-  var game = store.games[playDate] || { stack: [], elapsed: 0, started: false, solved: false, hints: 0, daily: false };
-  store.games[playDate] = game;
+  var newGame = function () { return { stack: [], elapsed: 0, started: false, solved: false, hints: 0, daily: false }; };
+  var game;
+  if (practice) game = newGame();
+  else {
+    game = store.games[playDate] || newGame();
+    store.games[playDate] = game;
+  }
 
   var state = E.applyMoves(puzzle, day.start.slice(), game.stack);
   var canvas = document.getElementById('board');
@@ -274,8 +295,11 @@
     controls: document.getElementById('controls')
   };
 
-  el.label.innerHTML = '<strong>' + numberLabel(playDate) + '</strong> · ' + day.config.label;
-  if (isArchive) {
+  el.label.innerHTML = '<strong>' + (freeLevel ? 'Free play' : replayDate ? 'Replay ' + numberLabel(playDate) : numberLabel(playDate)) +
+    '</strong> · ' + day.config.label;
+  if (practice) {
+    el.banner.innerHTML = 'Practice · doesn\'t count · <a href="' + location.pathname + '">Back to today</a>';
+  } else if (isArchive) {
     var pd = parseDate(playDate);
     el.banner.innerHTML = DAY_NAMES[pd.getDay()] + ', ' + MONTHS[pd.getMonth()].slice(0, 3) + ' ' + pd.getDate() + ' · <a href="' + location.pathname + '">Back to today</a>';
   }
@@ -298,9 +322,8 @@
   }
   function renderStatus() {
     el.timer.textContent = fmtTime(game.solved ? game.time : elapsed());
-    var n = game.stack.length;
-    el.moves.textContent = n + (n === 1 ? ' move' : ' moves');
-    el.undo.disabled = game.solved || n === 0;
+    el.moves.textContent = movesText(score(game));
+    el.undo.disabled = game.solved || game.stack.length === 0;
     el.hint.disabled = game.solved;
   }
   setInterval(renderStatus, 250);
@@ -403,7 +426,7 @@
       if (da < -Math.PI) da += Math.PI * 2;
       drag.total += da;
       drag.prevA = a;
-      var s = (drag.total * c.slots.length) / (Math.PI * 2);
+      var s = (DRAG_SPEED * drag.total * c.slots.length) / (Math.PI * 2);
       if (Math.round(s) !== Math.round(b.turn.s) && navigator.vibrate) { try { navigator.vibrate(6); } catch (err) {} }
       b.turn.s = s;
       b.draw();
@@ -433,7 +456,7 @@
       b.draw();
     });
   }
-  function snapDuration(s, target) { return 140 + Math.min(200, Math.abs(target - s) * 160); }
+  function snapDuration(s, target) { return 180 + Math.min(240, Math.abs(target - s) * 200); }
 
   attachDrag(board, {
     locked: function () { return busy || game.solved; },
@@ -478,7 +501,7 @@
       game.hints += 1;
       save();
       board.hintMove = { c: h.c, k: h.k };
-      if (h.exact) toast(h.remaining === 1 ? 'One move to go' : h.remaining + ' moves to go', 1200);
+      toast('+' + HINT_COST + ' moves' + (h.exact ? ' · ' + (h.remaining === 1 ? 'one move to go' : h.remaining + ' moves to go') : ''), 1400);
       // nudge the circle in the right direction so it is easy to spot
       var dir = h.k > 0 ? 1 : -1;
       playTurn(h.c, 0, dir * 0.3, 180, function () {
@@ -513,10 +536,10 @@
     setTimeout(function () { toast(msg, 1500); }, 300);
     setTimeout(function () { openModal('stats'); }, 1800);
     showSolvedControls();
-    if (window.gtag) gtag('event', 'venn_solved', { puzzle: puzzleNumber(playDate), seconds: Math.round(game.time / 1000), hints: game.hints });
+    if (window.gtag && !practice) gtag('event', 'venn_solved', { puzzle: puzzleNumber(playDate), seconds: Math.round(game.time / 1000), moves: score(game), hints: game.hints });
   }
   function winMessage() {
-    var extra = game.stack.length - day.scramble.length;
+    var extra = score(game) - day.scramble.length;
     if (game.hints > 0) return 'Nice work';
     if (extra <= 0) return 'Genius';
     if (extra <= 2) return 'Magnificent';
@@ -537,9 +560,18 @@
       el.controls.appendChild(b);
       return b;
     }
+    if (practice) {
+      add(freeLevel ? 'New puzzle' : 'Play again', 'primary', playAgain);
+      add(ICON_PLAY + 'Solution', '', watchSolution, 'solution-btn');
+      add('Today', '', function () { location.href = location.pathname; });
+      return;
+    }
     add('Stats', 'primary', function () { openModal('stats'); });
     add(ICON_PLAY + 'Solution', '', watchSolution, 'solution-btn');
     add('Share', '', share);
+  }
+  function playAgain() {
+    location.href = location.pathname + (freeLevel ? '?free=' + freeLevel : '?replay=' + playDate);
   }
 
   // ---------- optimal solution replay ----------
@@ -549,12 +581,14 @@
   function getSolution(cb) {
     if (solutionCache) { cb(solutionCache); return; }
     function fallback() {
+      var exact = E.solveShort(puzzle, day.start);
+      if (exact) { solutionCache = { moves: exact, optimal: true }; cb(solutionCache); return; }
       var plan = E.reduceMoves(puzzle, day.scramble);
       var moves = plan.slice().reverse().map(function (m) { return { c: m.c, k: E.shortest(puzzle, m.c, -m.k) }; });
       solutionCache = { moves: moves, optimal: false };
       cb(solutionCache);
     }
-    if (!window.fetch) { fallback(); return; }
+    if (!window.fetch || freeLevel) { fallback(); return; }
     fetch(ASSET_BASE + 'solutions.json', { cache: 'no-cache' }).then(function (r) {
       if (!r.ok) throw new Error('missing');
       return r.json();
@@ -619,10 +653,9 @@
   // ---------- sharing ----------
   function shareText() {
     var dots = { Easy: '🟢', Medium: '🟡', Hard: '🟠', Expert: '🔴' }[day.config.label];
-    var n = game.stack.length;
     var lines = [
       'Venn ' + numberLabel(playDate) + ' ' + dots + ' ' + day.config.label,
-      '⏱️ ' + fmtTime(game.time) + ' · ' + n + (n === 1 ? ' move' : ' moves') + ' · ' + game.hints + (game.hints === 1 ? ' hint' : ' hints'),
+      '⏱️ ' + fmtTime(game.time) + ' · ' + movesText(score(game)) + ' · ' + game.hints + (game.hints === 1 ? ' hint' : ' hints'),
       SITE_URL
     ];
     return lines.join('\n');
@@ -789,7 +822,7 @@
     var byLevel = {};
     LEVELS.forEach(function (l) { byLevel[l] = []; });
     solvedDates.forEach(function (x) {
-      byLevel[E.configFor(x).label].push(store.games[x].time);
+      byLevel[E.configFor(x).label].push(score(store.games[x]));
     });
     function avg(a) { return a.length ? a.reduce(function (s, v) { return s + v; }, 0) / a.length : null; }
     return {
@@ -803,6 +836,7 @@
     };
   }
 
+  function fmtAvg(v) { return (Math.round(v * 10) / 10).toString(); }
   function statHtml(num, lbl) { return '<div class="stat"><div class="num">' + num + '</div><div class="lbl">' + lbl + '</div></div>'; }
 
   function renderStats() {
@@ -815,31 +849,36 @@
       var pct = x.avg ? Math.max(12, Math.round((x.avg / maxAvg) * 100)) : 0;
       var cls = 'bar' + (x.label === day.config.label && game.solved && !isArchive ? ' today' : '');
       return '<div class="dist-label">' + x.label + '</div>' +
-        '<div class="dist-track"><div class="' + cls + '"' + (x.avg ? ' style="width:' + pct + '%"' : '') + '>' + (x.avg ? fmtTime(x.avg) : '–') + '</div></div>' +
+        '<div class="dist-track"><div class="' + cls + '"' + (x.avg ? ' style="width:' + pct + '%"' : '') + '>' + (x.avg ? fmtAvg(x.avg) : '–') + '</div></div>' +
         '<div class="dist-count">' + (x.count ? x.count + ' solved' : '') + '</div>';
     }).join('');
 
     var result = document.getElementById('stats-result');
     if (game.solved) {
       result.innerHTML = '<div class="result">' +
-        '<div class="result-title">Solved · Venn ' + numberLabel(playDate) + ' · ' + day.config.label + '</div>' +
+        '<div class="result-title">Solved · ' + (freeLevel ? 'Free play' : 'Venn ' + numberLabel(playDate)) + ' · ' + day.config.label + '</div>' +
         '<div class="result-time">' + fmtTime(game.time) + '</div>' +
-        '<div class="result-meta">' + game.stack.length + (game.stack.length === 1 ? ' move' : ' moves') + ' · ' +
-          game.hints + (game.hints === 1 ? ' hint' : ' hints') + '<span id="optimal-line"></span></div>' +
-        (isArchive ? '<div class="result-note">Past puzzles don\'t count toward your stats.</div>' : '') +
+        '<div class="result-meta">' + movesText(score(game)) + ' · ' +
+          game.hints + (game.hints === 1 ? ' hint' : ' hints') + (game.hints ? ' (+' + HINT_COST * game.hints + ')' : '') +
+          '<span id="optimal-line"></span></div>' +
+        (practice ? '<div class="result-note">Practice games don\'t count toward your stats.</div>'
+          : isArchive ? '<div class="result-note">Past puzzles don\'t count toward your stats.</div>' : '') +
         '<div class="result-actions">' +
           '<button class="btn" id="watch-btn">' + ICON_PLAY + 'Solution</button>' +
-          '<button class="btn primary" id="share-btn">Share ' + ICON_SHARE + '</button>' +
+          (practice ? '<button class="btn primary" id="again-btn">' + (freeLevel ? 'New puzzle' : 'Play again') + '</button>'
+            : '<button class="btn primary" id="share-btn">Share ' + ICON_SHARE + '</button>') +
         '</div>' +
         (isArchive ? '' : '<div class="result-next">Next Venn in <span id="countdown"></span></div>') +
+        (practice ? '' : '<div class="result-next"><a href="?replay=' + playDate + '">Play it again</a> (practice)</div>') +
         '</div>';
-      document.getElementById('share-btn').addEventListener('click', share);
+      if (practice) document.getElementById('again-btn').addEventListener('click', playAgain);
+      else document.getElementById('share-btn').addEventListener('click', share);
       document.getElementById('watch-btn').addEventListener('click', watchSolution);
       getSolution(function (sol) {
         var line = document.getElementById('optimal-line');
         if (!line || !sol.optimal) return;
         var n = sol.moves.length;
-        line.textContent = game.stack.length <= n ? ' · fewest possible!' : ' · fewest possible: ' + n;
+        line.textContent = score(game) <= n ? ' · fewest possible!' : ' · fewest possible: ' + n;
       });
       tickCountdown();
     } else {
@@ -861,13 +900,17 @@
   // ---------- archive ----------
   function renderArchive() {
     var body = document.getElementById('archive-body');
+    var free = '<div class="archive-month">Free play</div><p class="small" style="margin:2px 0 8px">Random puzzles for practice. They don\'t count.</p>' +
+      '<div class="free-levels">' + LEVELS.map(function (l) {
+        return '<a class="btn" href="' + location.pathname + '?free=' + l + '">' + l + '</a>';
+      }).join('') + '</div>';
     if (puzzleNumber(todayStr) < 1) {
       var l = parseDate(LAUNCH);
-      body.innerHTML = '<p class="small" style="text-align:center">Past puzzles will appear here once Venn #1 launches on ' +
+      body.innerHTML = free + '<p class="small" style="text-align:center;margin-top:16px">Past puzzles will appear here once Venn #1 launches on ' +
         MONTHS[l.getMonth()] + ' ' + l.getDate() + '.</p>';
       return;
     }
-    var html = '', month = null;
+    var html = free, month = null;
     for (var d = todayStr; puzzleNumber(d) >= 1; d = addDays(d, -1)) {
       var pd = parseDate(d), mk = MONTHS[pd.getMonth()] + ' ' + pd.getFullYear();
       if (mk !== month) { html += (month ? '</ul>' : '') + '<div class="archive-month">' + mk + '</div><ul class="archive-list">'; month = mk; }

@@ -467,20 +467,42 @@
     return era.days[weekdayOf(dateStr)];
   }
 
-  /** dateStr: 'YYYY-MM-DD' (local date). */
-  function dailyPuzzle(dateStr) {
-    var cfg = configFor(dateStr);
+  // Builds a scrambled puzzle for a schedule entry from a seed string.
+  function makePuzzle(cfg, seed) {
     var def = LAYOUTS[cfg.layout];
     var rings = def.radii.length;
     var puzzle = buildPuzzle(def);
     // Reject scrambles that happen to land solved or that have a noticeably shorter solution.
     var s, attempt = 0;
     do {
-      s = scramble(puzzle, cfg.moves, 'venn:' + dateStr + (attempt ? ':' + attempt : ''), cfg.step || rings);
+      s = scramble(puzzle, cfg.moves, seed + (attempt ? ':' + attempt : ''), cfg.step || rings);
       attempt++;
     } while (attempt < 50 && (isSolved(puzzle, s.state) ||
       searchSolution(puzzle, s.state, Math.min(cfg.moves - 1, 2), 200000)));
-    return { date: dateStr, weekday: weekdayOf(dateStr), config: cfg, layout: cfg.layout, rings: rings, puzzle: puzzle, scramble: s.moves, start: s.state };
+    return { config: cfg, layout: cfg.layout, rings: rings, puzzle: puzzle, scramble: s.moves, start: s.state };
+  }
+
+  /** dateStr: 'YYYY-MM-DD' (local date). */
+  function dailyPuzzle(dateStr) {
+    var p = makePuzzle(configFor(dateStr), 'venn:' + dateStr);
+    p.date = dateStr;
+    p.weekday = weekdayOf(dateStr);
+    return p;
+  }
+
+  /**
+   * Free-play puzzle at a difficulty label, using the current schedule's settings for
+   * that level (the first weekday with that label, Monday first). Not saved or scored.
+   */
+  function practicePuzzle(label, seed) {
+    var era = SCHEDULES[SCHEDULES.length - 1];
+    var order = [1, 2, 3, 4, 5, 6, 0];
+    var cfg = null;
+    for (var i = 0; i < order.length && !cfg; i++) if (era.days[order[i]].label === label) cfg = era.days[order[i]];
+    if (!cfg) cfg = era.days[1];
+    var p = makePuzzle(cfg, 'practice:' + seed);
+    p.practice = true;
+    return p;
   }
 
   var api = {
@@ -500,6 +522,7 @@
     searchSolution: searchSolution,
     configFor: configFor,
     dailyPuzzle: dailyPuzzle,
+    practicePuzzle: practicePuzzle,
     hashString: hashString,
     mulberry32: mulberry32,
     LAYOUTS: LAYOUTS,
