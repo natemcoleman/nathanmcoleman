@@ -11,7 +11,9 @@ Daily rotating-circle puzzle at `/venn/`.
 | `content/venn.md` | Hugo page that serves `/venn/` |
 | `static/venn/solutions.json` | Precomputed shortest solution for every daily puzzle (used by "Watch Solution") |
 | `tools/venn/solve.js` | Generates `solutions.json`: `node tools/venn/solve.js [first] [last]` (about 11 minutes for 2 years) |
-| `tools/venn/engine.test.js` | Tests: `node --test tools/venn/engine.test.js` |
+| `netlify/functions/venn-scores.mjs` | Netlify Function for anonymous global results (thin wrapper) |
+| `netlify/venn/scores.mjs` | Global results logic: checks a solve by replaying it, one score per player per day, counts by moves |
+| `tools/venn/engine.test.js`, `scores.test.mjs` | Tests: `npm run test:venn` (no install needed) |
 
 ## Making puzzles
 
@@ -52,6 +54,16 @@ For example, to make Fridays a new layout starting 2026-12-04: add the layout to
 
 `LAUNCH` in venn.js is the date of Venn #1.
 
+## Scoring and practice
+
+- There is no timer. Moves = turns made, minus undos, plus 2 per hint (`HINT_COST` in engine.js,
+  shared with the server).
+  Stats average moves by difficulty.
+- Drag sensitivity is `DRAG_SPEED` in venn.js (0.75 = the circle turns 75% as far as the finger).
+- Practice modes, never saved or counted: `/venn/?free=Easy` (also Medium, Hard,
+  Expert; add `&seed=anything` to repeat one) and `/venn/?replay=YYYY-MM-DD`.
+  Both are linked from the Play (calendar) menu and the results screen.
+
 ## Hints
 
 Hints aim for the shortest solution. When 4 or fewer moves remain, the game
@@ -85,3 +97,18 @@ notifications there.
 
 Everything is stored in the browser under the `venn-v1` localStorage key. The
 theme uses PaperMod's `pref-theme` key, so it matches the rest of the site.
+
+## Global results ("Everyone today")
+
+When a player solves today's puzzle on its own day, the page sends the date, a
+random anonymous player id, its list of turns and its hint count to
+`/.netlify/functions/venn-scores`. The function replays the turns to check the
+puzzle really was solved, works out the move score itself, keeps only the first
+score per player per day, and returns how many players finished in each number
+of moves. Archive and practice games are never sent.
+
+Data lives in Netlify Blobs (stores `venn-players` and `venn-scores`), which needs
+the `@netlify/blobs` package (package.json) and Node 22 (netlify.toml). To see or
+delete stored scores, use the Netlify dashboard (Blobs) or the Netlify CLI
+(`netlify blobs:list venn-scores`). If the function is unavailable the game still
+works; the "Everyone today" section is just hidden.

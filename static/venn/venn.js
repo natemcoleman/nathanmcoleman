@@ -15,6 +15,13 @@
   var DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   var LEVELS = ['Easy', 'Medium', 'Hard', 'Expert'];
+  var HINT_COST = E.HINT_COST; // each hint adds this many moves (shared with the score server)
+  var DRAG_SPEED = 0.75;       // how far the circle turns relative to the finger (1 = follows exactly)
+  var SCORES_URL = '/.netlify/functions/venn-scores';
+
+  // Score: moves made (undo takes one back) plus a penalty per hint.
+  function score(g) { return E.moveScore(g.stack, g.hints); }
+  function movesText(n) { return n + (n === 1 ? ' move' : ' moves'); }
 
   // ---------- dates ----------
   function pad(n) { return String(n).padStart(2, '0'); }
@@ -24,14 +31,10 @@
   function addDays(s, n) { var d = parseDate(s); d.setDate(d.getDate() + n); return dateStr(d); }
   function puzzleNumber(s) { return dayIndex(s) - dayIndex(LAUNCH) + 1; }
   function today() { return dateStr(new Date()); }
-  function fmtTime(ms) {
-    var t = Math.floor(ms / 1000), h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
-    return h ? h + ':' + pad(m) + ':' + pad(s) : m + ':' + pad(s);
-  }
   function numberLabel(s) { var n = puzzleNumber(s); return n >= 1 ? '#' + n : 'Preview'; }
 
   // ---------- storage ----------
-  var store = { games: {}, settings: { colorblind: false, pauseWhenAway: true, seenHelp: false } };
+  var store = { games: {}, settings: { colorblind: false, seenHelp: false } };
   try {
     var raw = localStorage.getItem(STORE_KEY);
     if (raw) {
@@ -247,14 +250,29 @@
   // ---------- game ----------
   var params = new URLSearchParams(location.search);
   var todayStr = today();
-  var playDate = params.get('d');
-  if (!playDate || !/^\d{4}-\d{2}-\d{2}$/.test(playDate) || playDate > todayStr || puzzleNumber(playDate) < 1) playDate = todayStr;
-  var isArchive = playDate !== todayStr;
+  function validDate(d, allowPreview) {
+    return !!d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= todayStr && (allowPreview ? d >= E.SCHEDULES[0].from : puzzleNumber(d) >= 1);
+  }
+  // Practice modes (never saved or counted): ?free=Easy|Medium|Hard|Expert, ?replay=YYYY-MM-DD
+  var freeLevel = LEVELS.indexOf(params.get('free')) >= 0 ? params.get('free') : null;
+  var replayDate = !freeLevel && validDate(params.get('replay'), true) ? params.get('replay') : null;
+  var practice = !!(freeLevel || replayDate);
+  var playDate = replayDate || params.get('d');
+  if (!practice && !validDate(playDate, false)) playDate = todayStr;
+  if (freeLevel) playDate = todayStr;
+  var isArchive = practice || playDate !== todayStr;
 
-  var day = E.dailyPuzzle(playDate);
+  var day = freeLevel
+    ? E.practicePuzzle(freeLevel, params.get('seed') || String(Date.now()))
+    : E.dailyPuzzle(playDate);
   var puzzle = day.puzzle;
-  var game = store.games[playDate] || { stack: [], elapsed: 0, started: false, solved: false, hints: 0, daily: false };
-  store.games[playDate] = game;
+  var newGame = function () { return { stack: [], started: false, solved: false, hints: 0, daily: false }; };
+  var game;
+  if (practice) game = newGame();
+  else {
+    game = store.games[playDate] || newGame();
+    store.games[playDate] = game;
+  }
 
   var state = E.applyMoves(puzzle, day.start.slice(), game.stack);
   var canvas = document.getElementById('board');
@@ -262,11 +280,10 @@
   board.state = state;
   var demo = null;
   var busy = false;         // an animation owns the board
-  var runningSince = null;  // timestamp when the timer last resumed
 
   var el = {
     label: document.getElementById('puzzle-label'),
-    timer: document.getElementById('timer'),
+    hintsCount: document.getElementById('hints-count'),
     moves: document.getElementById('moves'),
     banner: document.getElementById('archive-banner'),
     undo: document.getElementById('undo-btn'),
@@ -274,36 +291,28 @@
     controls: document.getElementById('controls')
   };
 
-  el.label.innerHTML = '<strong>' + numberLabel(playDate) + '</strong> · ' + day.config.label;
-  if (isArchive) {
+  el.label.innerHTML = '<strong>' + (freeLevel ? 'Free play' : replayDate ? 'Replay ' + numberLabel(playDate) : numberLabel(playDate)) +
+    '</strong> · ' + day.config.label;
+  if (practice) {
+    el.banner.innerHTML = 'Practice · doesn\'t count · <a href="' + location.pathname + '">Back to today</a>';
+  } else if (isArchive) {
     var pd = parseDate(playDate);
     el.banner.innerHTML = DAY_NAMES[pd.getDay()] + ', ' + MONTHS[pd.getMonth()].slice(0, 3) + ' ' + pd.getDate() + ' · <a href="' + location.pathname + '">Back to today</a>';
   }
 
-  function elapsed() { return game.elapsed + (runningSince ? performance.now() - runningSince : 0); }
-  function startTimer() {
-    if (game.solved || runningSince) return;
-    if (!game.started) {
-      game.started = true;
-      game.startedOn = today();
-      game.daily = !isArchive && game.startedOn === playDate;
-    }
-    runningSince = performance.now();
-  }
-  function pauseTimer() {
-    if (!runningSince) return;
-    game.elapsed = elapsed();
-    runningSince = null;
-    save();
+  // Records that the game was started (and whether on its own day, for stats).
+  function markStarted() {
+    if (game.started || game.solved) return;
+    game.started = true;
+    game.startedOn = today();
+    game.daily = !isArchive && game.startedOn === playDate;
   }
   function renderStatus() {
-    el.timer.textContent = fmtTime(game.solved ? game.time : elapsed());
-    var n = game.stack.length;
-    el.moves.textContent = n + (n === 1 ? ' move' : ' moves');
-    el.undo.disabled = game.solved || n === 0;
+    el.moves.textContent = movesText(score(game));
+    el.hintsCount.textContent = game.hints ? game.hints + (game.hints === 1 ? ' hint' : ' hints') : '';
+    el.undo.disabled = game.solved || game.stack.length === 0;
     el.hint.disabled = game.solved;
   }
-  setInterval(renderStatus, 250);
 
   function layout() {
     var wrap = document.getElementById('board-wrap');
@@ -403,7 +412,7 @@
       if (da < -Math.PI) da += Math.PI * 2;
       drag.total += da;
       drag.prevA = a;
-      var s = (drag.total * c.slots.length) / (Math.PI * 2);
+      var s = (DRAG_SPEED * drag.total * c.slots.length) / (Math.PI * 2);
       if (Math.round(s) !== Math.round(b.turn.s) && navigator.vibrate) { try { navigator.vibrate(6); } catch (err) {} }
       b.turn.s = s;
       b.draw();
@@ -433,11 +442,11 @@
       b.draw();
     });
   }
-  function snapDuration(s, target) { return 140 + Math.min(200, Math.abs(target - s) * 160); }
+  function snapDuration(s, target) { return 180 + Math.min(240, Math.abs(target - s) * 200); }
 
   attachDrag(board, {
     locked: function () { return busy || game.solved; },
-    onGrab: startTimer,
+    onGrab: markStarted,
     onRelease: function (c, s, target) {
       playTurn(c, s, target, snapDuration(s, target), function () { commitMove(c, target); });
     }
@@ -474,11 +483,12 @@
         solution: sol.optimal ? sol.moves : null
       });
       if (!h) return;
-      startTimer();
+      markStarted();
       game.hints += 1;
       save();
+      renderStatus();
       board.hintMove = { c: h.c, k: h.k };
-      if (h.exact) toast(h.remaining === 1 ? 'One move to go' : h.remaining + ' moves to go', 1200);
+      toast('+' + HINT_COST + ' moves' + (h.exact ? ' · ' + (h.remaining === 1 ? 'one move to go' : h.remaining + ' moves to go') : ''), 1400);
       // nudge the circle in the right direction so it is easy to spot
       var dir = h.k > 0 ? 1 : -1;
       playTurn(h.c, 0, dir * 0.3, 180, function () {
@@ -497,10 +507,7 @@
 
   // ---------- winning ----------
   function win() {
-    if (!game.started) startTimer(); // records the game as played (normally done by the first drag)
-    game.time = elapsed();
-    game.elapsed = game.time;
-    runningSince = null;
+    markStarted(); // records the game as played (normally done by the first drag)
     game.solved = true;
     game.solvedOn = today();
     save();
@@ -513,10 +520,11 @@
     setTimeout(function () { toast(msg, 1500); }, 300);
     setTimeout(function () { openModal('stats'); }, 1800);
     showSolvedControls();
-    if (window.gtag) gtag('event', 'venn_solved', { puzzle: puzzleNumber(playDate), seconds: Math.round(game.time / 1000), hints: game.hints });
+    if (counts()) submitScore();
+    if (window.gtag && !practice) gtag('event', 'venn_solved', { puzzle: puzzleNumber(playDate), moves: score(game), hints: game.hints });
   }
   function winMessage() {
-    var extra = game.stack.length - day.scramble.length;
+    var extra = score(game) - day.scramble.length;
     if (game.hints > 0) return 'Nice work';
     if (extra <= 0) return 'Genius';
     if (extra <= 2) return 'Magnificent';
@@ -537,9 +545,18 @@
       el.controls.appendChild(b);
       return b;
     }
+    if (practice) {
+      add(freeLevel ? 'New puzzle' : 'Play again', 'primary', playAgain);
+      add(ICON_PLAY + 'Solution', '', watchSolution, 'solution-btn');
+      add('Today', '', function () { location.href = location.pathname; });
+      return;
+    }
     add('Stats', 'primary', function () { openModal('stats'); });
     add(ICON_PLAY + 'Solution', '', watchSolution, 'solution-btn');
     add('Share', '', share);
+  }
+  function playAgain() {
+    location.href = location.pathname + (freeLevel ? '?free=' + freeLevel : '?replay=' + playDate);
   }
 
   // ---------- optimal solution replay ----------
@@ -549,12 +566,14 @@
   function getSolution(cb) {
     if (solutionCache) { cb(solutionCache); return; }
     function fallback() {
+      var exact = E.solveShort(puzzle, day.start);
+      if (exact) { solutionCache = { moves: exact, optimal: true }; cb(solutionCache); return; }
       var plan = E.reduceMoves(puzzle, day.scramble);
       var moves = plan.slice().reverse().map(function (m) { return { c: m.c, k: E.shortest(puzzle, m.c, -m.k) }; });
       solutionCache = { moves: moves, optimal: false };
       cb(solutionCache);
     }
-    if (!window.fetch) { fallback(); return; }
+    if (!window.fetch || freeLevel) { fallback(); return; }
     fetch(ASSET_BASE + 'solutions.json', { cache: 'no-cache' }).then(function (r) {
       if (!r.ok) throw new Error('missing');
       return r.json();
@@ -619,10 +638,10 @@
   // ---------- sharing ----------
   function shareText() {
     var dots = { Easy: '🟢', Medium: '🟡', Hard: '🟠', Expert: '🔴' }[day.config.label];
-    var n = game.stack.length;
     var lines = [
       'Venn ' + numberLabel(playDate) + ' ' + dots + ' ' + day.config.label,
-      '⏱️ ' + fmtTime(game.time) + ' · ' + n + (n === 1 ? ' move' : ' moves') + ' · ' + game.hints + (game.hints === 1 ? ' hint' : ' hints'),
+      '🔄 ' + movesText(score(game)) + ' · 💡 ' + game.hints + (game.hints === 1 ? ' hint' : ' hints') +
+        (globalStats && globalStats.players > 1 ? ' · ' + beatText(globalStats, score(game)) : ''),
       SITE_URL
     ];
     return lines.join('\n');
@@ -765,6 +784,105 @@
       : [{ label: 'Again', onClick: function () { startTutorial(2); } }, play]);
   }
 
+  // ---------- everyone's results today (anonymous) ----------
+  // Only today's daily puzzle, played on its own day, is sent and compared.
+  function counts() { return !practice && !isArchive && game.solved && game.daily && game.solvedOn === playDate; }
+  var globalStats = null;  // { players, counts: { moves: number of players } }
+  var globalState = 'loading';
+
+  function playerId() {
+    if (!store.settings.pid) {
+      var id = '';
+      if (window.crypto && crypto.randomUUID) id = crypto.randomUUID();
+      else for (var i = 0; i < 32; i++) id += Math.floor(Math.random() * 16).toString(16);
+      store.settings.pid = id;
+      save();
+    }
+    return store.settings.pid;
+  }
+  function gotGlobal(data) {
+    if (!data || typeof data.players !== 'number' || !data.counts) throw new Error('bad data');
+    globalStats = data;
+    globalState = 'ok';
+    renderGlobal();
+  }
+  function globalFailed() {
+    globalState = 'error';
+    renderGlobal();
+  }
+  var submitting = false;
+  function submitScore() {
+    if (!window.fetch) return globalFailed();
+    if (submitting) return; // the result will render when the first request finishes
+    submitting = true;
+    fetch(SCORES_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: playDate,
+        playerId: playerId(),
+        stack: game.stack.map(function (m) { return [m.c, m.k]; }),
+        hints: game.hints
+      })
+    }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function (data) {
+      game.submitted = true; // accepted now or earlier (the server keeps one score per player per day)
+      save();
+      gotGlobal(data.stats);
+    }).catch(globalFailed).then(function () { submitting = false; });
+  }
+  function fetchGlobal() {
+    if (!window.fetch) return globalFailed();
+    fetch(SCORES_URL + '?date=' + playDate).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function (data) { gotGlobal(data.stats); }).catch(globalFailed);
+  }
+  // Share of other players who needed more moves.
+  function beatPct(stats, mine) {
+    var more = 0;
+    Object.keys(stats.counts).forEach(function (k) { if (Number(k) > mine) more += stats.counts[k]; });
+    return stats.players > 1 ? Math.round((more / (stats.players - 1)) * 100) : 0;
+  }
+  function beatText(stats, mine) { return 'beat ' + beatPct(stats, mine) + '% of players'; }
+
+  // Bar per move count (Wordle-style), with the player's own row highlighted.
+  function renderGlobal() {
+    var box = document.getElementById('global');
+    if (!box) return;
+    if (globalState === 'error') { box.innerHTML = ''; return; }
+    if (globalState === 'loading' || !globalStats) {
+      box.innerHTML = '<h2 class="sub">Everyone today</h2><p class="global-note">Loading…</p>';
+      return;
+    }
+    var mine = score(game), st = globalStats;
+    var keys = Object.keys(st.counts).map(Number).filter(function (k) { return st.counts[k] > 0; });
+    if (keys.indexOf(mine) < 0) keys.push(mine);
+    keys.sort(function (a, b) { return a - b; });
+    // Keep the chart short: everything past 12 rows joins the last row.
+    var rows = [], MAX_ROWS = 12;
+    keys.forEach(function (k) { rows.push({ label: String(k), from: k, to: k, n: st.counts[k] || 0 }); });
+    if (rows.length > MAX_ROWS) {
+      var tail = rows.splice(MAX_ROWS - 1);
+      rows.push({ label: tail[0].from + '+', from: tail[0].from, to: Infinity, n: tail.reduce(function (a, r) { return a + r.n; }, 0) });
+    }
+    var maxN = Math.max.apply(null, rows.map(function (r) { return r.n; })) || 1;
+    var note = st.players <= 1
+      ? 'You\'re the first to finish today!'
+      : 'You ' + beatText(st, mine) + ' (' + st.players + ' played today).';
+    box.innerHTML = '<h2 class="sub">Everyone today</h2>' +
+      '<div class="dist global-dist">' + rows.map(function (r) {
+        var you = mine >= r.from && mine <= r.to;
+        var pct = Math.max(r.n ? 8 : 0, Math.round((r.n / maxN) * 100));
+        return '<div class="dist-label">' + r.label + '</div>' +
+          '<div class="dist-track"><div class="bar' + (you ? ' today' : '') + '" style="width:' + pct + '%">' + r.n + '</div></div>' +
+          '<div class="dist-count">' + (you ? 'you' : '') + '</div>';
+      }).join('') + '</div>' +
+      '<p class="global-note">' + note + ' Moves include +' + HINT_COST + ' per hint.</p>';
+  }
+
   // ---------- stats ----------
   function computeStats() {
     var now = today();
@@ -785,11 +903,10 @@
       max = Math.max(max, run);
       prev = x;
     });
-    var times = solvedDates.map(function (x) { return store.games[x].time; });
     var byLevel = {};
     LEVELS.forEach(function (l) { byLevel[l] = []; });
     solvedDates.forEach(function (x) {
-      byLevel[E.configFor(x).label].push(store.games[x].time);
+      byLevel[E.configFor(x).label].push(score(store.games[x]));
     });
     function avg(a) { return a.length ? a.reduce(function (s, v) { return s + v; }, 0) / a.length : null; }
     return {
@@ -797,51 +914,59 @@
       solvedPct: played ? Math.round((solvedDates.length / played) * 100) : 0,
       streak: cur,
       maxStreak: max,
-      avg: avg(times),
-      best: times.length ? Math.min.apply(null, times) : null,
       byLevel: LEVELS.map(function (l) { return { label: l, avg: avg(byLevel[l]), count: byLevel[l].length }; })
     };
   }
 
+  function fmtAvg(v) { return (Math.round(v * 10) / 10).toString(); }
   function statHtml(num, lbl) { return '<div class="stat"><div class="num">' + num + '</div><div class="lbl">' + lbl + '</div></div>'; }
 
   function renderStats() {
     var s = computeStats();
     document.getElementById('stats-row').innerHTML =
       statHtml(s.played, 'Played') + statHtml(s.solvedPct, 'Solved %') + statHtml(s.streak, 'Streak') +
-      statHtml(s.maxStreak, 'Max Streak') + statHtml(s.best == null ? '–' : fmtTime(s.best), 'Best');
+      statHtml(s.maxStreak, 'Max Streak');
     var maxAvg = Math.max.apply(null, s.byLevel.map(function (x) { return x.avg || 0; })) || 1;
     document.getElementById('stats-dist').innerHTML = s.byLevel.map(function (x) {
       var pct = x.avg ? Math.max(12, Math.round((x.avg / maxAvg) * 100)) : 0;
       var cls = 'bar' + (x.label === day.config.label && game.solved && !isArchive ? ' today' : '');
       return '<div class="dist-label">' + x.label + '</div>' +
-        '<div class="dist-track"><div class="' + cls + '"' + (x.avg ? ' style="width:' + pct + '%"' : '') + '>' + (x.avg ? fmtTime(x.avg) : '–') + '</div></div>' +
+        '<div class="dist-track"><div class="' + cls + '"' + (x.avg ? ' style="width:' + pct + '%"' : '') + '>' + (x.avg ? fmtAvg(x.avg) : '–') + '</div></div>' +
         '<div class="dist-count">' + (x.count ? x.count + ' solved' : '') + '</div>';
     }).join('');
 
     var result = document.getElementById('stats-result');
     if (game.solved) {
       result.innerHTML = '<div class="result">' +
-        '<div class="result-title">Solved · Venn ' + numberLabel(playDate) + ' · ' + day.config.label + '</div>' +
-        '<div class="result-time">' + fmtTime(game.time) + '</div>' +
-        '<div class="result-meta">' + game.stack.length + (game.stack.length === 1 ? ' move' : ' moves') + ' · ' +
-          game.hints + (game.hints === 1 ? ' hint' : ' hints') + '<span id="optimal-line"></span></div>' +
-        (isArchive ? '<div class="result-note">Past puzzles don\'t count toward your stats.</div>' : '') +
+        '<div class="result-title">Solved · ' + (freeLevel ? 'Free play' : 'Venn ' + numberLabel(playDate)) + ' · ' + day.config.label + '</div>' +
+        '<div class="result-score">' + score(game) + '<span>' + (score(game) === 1 ? 'move' : 'moves') + '</span></div>' +
+        '<div class="result-meta">' + game.hints + (game.hints === 1 ? ' hint' : ' hints') +
+          (game.hints ? ' (+' + HINT_COST * game.hints + ')' : '') + '<span id="optimal-line"></span></div>' +
+        (practice ? '<div class="result-note">Practice games don\'t count toward your stats.</div>'
+          : isArchive ? '<div class="result-note">Past puzzles don\'t count toward your stats.</div>' : '') +
         '<div class="result-actions">' +
           '<button class="btn" id="watch-btn">' + ICON_PLAY + 'Solution</button>' +
-          '<button class="btn primary" id="share-btn">Share ' + ICON_SHARE + '</button>' +
+          (practice ? '<button class="btn primary" id="again-btn">' + (freeLevel ? 'New puzzle' : 'Play again') + '</button>'
+            : '<button class="btn primary" id="share-btn">Share ' + ICON_SHARE + '</button>') +
         '</div>' +
         (isArchive ? '' : '<div class="result-next">Next Venn in <span id="countdown"></span></div>') +
-        '</div>';
-      document.getElementById('share-btn').addEventListener('click', share);
+        (practice ? '' : '<div class="result-next"><a href="?replay=' + playDate + '">Play it again</a> (practice)</div>') +
+        '</div>' +
+        (counts() ? '<div id="global"></div>' : '');
+      if (practice) document.getElementById('again-btn').addEventListener('click', playAgain);
+      else document.getElementById('share-btn').addEventListener('click', share);
       document.getElementById('watch-btn').addEventListener('click', watchSolution);
       getSolution(function (sol) {
         var line = document.getElementById('optimal-line');
         if (!line || !sol.optimal) return;
         var n = sol.moves.length;
-        line.textContent = game.stack.length <= n ? ' · fewest possible!' : ' · fewest possible: ' + n;
+        line.textContent = score(game) <= n ? ' · fewest possible!' : ' · fewest possible: ' + n;
       });
       tickCountdown();
+      if (counts()) {
+        renderGlobal();
+        if (game.submitted) fetchGlobal(); else submitScore();
+      }
     } else {
       result.innerHTML = '';
     }
@@ -861,18 +986,22 @@
   // ---------- archive ----------
   function renderArchive() {
     var body = document.getElementById('archive-body');
+    var free = '<div class="archive-month">Free play</div><p class="small" style="margin:2px 0 8px">Random puzzles for practice. They don\'t count.</p>' +
+      '<div class="free-levels">' + LEVELS.map(function (l) {
+        return '<a class="btn" href="' + location.pathname + '?free=' + l + '">' + l + '</a>';
+      }).join('') + '</div>';
     if (puzzleNumber(todayStr) < 1) {
       var l = parseDate(LAUNCH);
-      body.innerHTML = '<p class="small" style="text-align:center">Past puzzles will appear here once Venn #1 launches on ' +
+      body.innerHTML = free + '<p class="small" style="text-align:center;margin-top:16px">Past puzzles will appear here once Venn #1 launches on ' +
         MONTHS[l.getMonth()] + ' ' + l.getDate() + '.</p>';
       return;
     }
-    var html = '', month = null;
+    var html = free, month = null;
     for (var d = todayStr; puzzleNumber(d) >= 1; d = addDays(d, -1)) {
       var pd = parseDate(d), mk = MONTHS[pd.getMonth()] + ' ' + pd.getFullYear();
       if (mk !== month) { html += (month ? '</ul>' : '') + '<div class="archive-month">' + mk + '</div><ul class="archive-list">'; month = mk; }
       var g = store.games[d], label = E.configFor(d).label;
-      var status = g && g.solved ? '<span class="status done">✓ ' + fmtTime(g.time) + '</span>'
+      var status = g && g.solved ? '<span class="status done">✓ ' + movesText(score(g)) + '</span>'
         : g && g.started ? '<span class="status">In progress</span>' : '<span class="status small">Play</span>';
       html += '<li><button data-date="' + d + '"><span><strong>#' + puzzleNumber(d) + '</strong> · ' + label +
         '<br><span class="when">' + (d === todayStr ? 'Today' : DAY_NAMES[pd.getDay()] + ', ' + MONTHS[pd.getMonth()].slice(0, 3) + ' ' + pd.getDate()) +
@@ -882,7 +1011,6 @@
     body.querySelectorAll('button[data-date]').forEach(function (b) {
       b.addEventListener('click', function () {
         var d = b.getAttribute('data-date');
-        pauseTimer();
         location.href = location.pathname + (d === todayStr ? '' : '?d=' + d);
       });
     });
@@ -926,32 +1054,18 @@
   function syncSettings() {
     document.getElementById('set-dark').checked = isDark();
     document.getElementById('set-cb').checked = !!store.settings.colorblind;
-    document.getElementById('set-pause').checked = store.settings.pauseWhenAway !== false;
   }
   document.getElementById('set-dark').addEventListener('change', function (e) { setDark(e.target.checked); });
   document.getElementById('set-cb').addEventListener('change', function (e) {
     store.settings.colorblind = e.target.checked; save(); board.draw(); if (demo) demo.draw();
   });
-  document.getElementById('set-pause').addEventListener('change', function (e) { store.settings.pauseWhenAway = e.target.checked; save(); });
 
   // ---------- lifecycle ----------
-  document.addEventListener('visibilitychange', function () {
-    if (document.hidden) {
-      if (store.settings.pauseWhenAway !== false) pauseTimer(); else { game.elapsed = elapsed(); if (runningSince) runningSince = performance.now(); save(); }
-    } else if (game.started && !game.solved && !runningSince && store.settings.pauseWhenAway !== false) {
-      // resume on return only if the player had started
-      runningSince = performance.now();
-    }
-  });
-  window.addEventListener('pagehide', function () {
-    if (runningSince) { game.elapsed = elapsed(); runningSince = performance.now(); }
-    save();
-  });
+  window.addEventListener('pagehide', save);
 
   layout();
   renderStatus();
   if (game.solved) showSolvedControls();
-  else if (game.started) runningSince = performance.now(); // resume a game in progress
   if (!store.settings.seenHelp) openModal('help');
 
   // exposed for debugging and automated checks

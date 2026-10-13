@@ -2,8 +2,16 @@
   publish = "public"
   command = "hugo --gc --minify"
 
+[build.environment]
+  # Netlify Functions (Venn global results) use @netlify/blobs, which needs Node 22+
+  NODE_VERSION = "22"
+
 [functions]
   directory = "netlify/functions"
+
+# Venn global results: bundle with esbuild so it can import the shared puzzle engine
+[functions."venn-scores"]
+  node_bundler = "esbuild"
 
 [[redirects]]
   from = "/.netlify/functions/*"

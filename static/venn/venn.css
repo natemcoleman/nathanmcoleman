@@ -114,14 +114,14 @@ header h1 {
 }
 .info .puzzle-label { justify-self: start; }
 .info .puzzle-label strong { color: var(--fg); }
-.info .timer {
+.info .moves {
   font-variant-numeric: tabular-nums;
   font-size: 20px;
   font-weight: 700;
   color: var(--fg);
   justify-self: center;
 }
-.info .moves { justify-self: end; font-variant-numeric: tabular-nums; }
+.info .hints-count { justify-self: end; font-variant-numeric: tabular-nums; }
 .archive-banner {
   text-align: center;
   font-size: 13px;
@@ -267,7 +267,12 @@ html.dark .modal { border: 1px solid #1a1a1b; }
 /* result summary at the top of the stats sheet */
 .result { text-align: center; padding: 6px 0 14px; margin-bottom: 12px; border-bottom: 1px solid var(--line); }
 .result-title { font-size: 13px; font-weight: 600; color: var(--muted); }
-.result-time { font-size: 40px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.result-score { font-size: 44px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.result-score span { font-size: 16px; font-weight: 600; color: var(--muted); margin-left: 6px; }
+#global { margin-bottom: 4px; }
+#global h2.sub { margin-top: 0; }
+.global-note { font-size: 13px; color: var(--muted); text-align: center; margin: 8px 0 12px; }
+.global-dist .dist-count { min-width: 28px; font-weight: 600; color: var(--accent); }
 .result-meta { font-size: 14px; }
 .result-note { font-size: 12px; color: var(--muted); margin-top: 4px; }
 .result-actions { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
@@ -375,3 +380,7 @@ html.dark .modal { border: 1px solid #1a1a1b; }
 @media (prefers-reduced-motion: reduce) {
   .modal { animation: none; }
 }
+
+.free-levels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.free-levels .btn { height: 40px; font-size: 13px; text-decoration: none; max-width: none; }
+.result-next a { color: var(--fg); font-weight: 600; }

@@ -58,7 +58,7 @@
       </div>
       <h1>Venn</h1>
       <div class="header-side right">
-        <button class="icon-btn" data-open="archive" aria-label="Past puzzles" title="Past puzzles">
+        <button class="icon-btn" data-open="archive" aria-label="Free play and past puzzles" title="Free play and past puzzles">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
         </button>
         <button class="icon-btn" data-open="stats" aria-label="Statistics" title="Statistics">
@@ -74,8 +74,8 @@
   <div class="app">
     <div class="info">
       <div class="puzzle-label" id="puzzle-label"></div>
-      <div class="timer" id="timer" aria-label="Time">0:00</div>
-      <div class="moves" id="moves">0 moves</div>
+      <div class="moves" id="moves" aria-live="polite">0 moves</div>
+      <div class="hints-count" id="hints-count"></div>
     </div>
     <div class="archive-banner" id="archive-banner"></div>
     <div class="board-wrap" id="board-wrap">
@@ -108,7 +108,7 @@
       </div>
       <ul class="help-list">
         <li>A new puzzle every day at midnight. Monday is easiest, Sunday is hardest.</li>
-        <li>Hints are unlimited and show the best next turn. Your hint count appears in your result.</li>
+        <li>Hints are unlimited and show the best next turn, but each one adds 2 to your moves.</li>
         <li>After you solve, you can watch the shortest possible solution.</li>
       </ul>
     </div>
@@ -121,7 +121,7 @@
       <div id="stats-result"></div>
       <h2 id="stats-title">Statistics</h2>
       <div class="stats-row" id="stats-row"></div>
-      <h2 class="sub">Average time by difficulty</h2>
+      <h2 class="sub">Average moves by difficulty</h2>
       <div class="dist" id="stats-dist"></div>
       <p class="feedback-row"><button class="link-btn" data-open="feedback">Send feedback</button></p>
     </div>
@@ -131,7 +131,7 @@
   <div class="overlay" id="archive" role="dialog" aria-modal="true" aria-labelledby="archive-title">
     <div class="modal">
       <button class="icon-btn close" data-close aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
-      <h2 id="archive-title">Past Puzzles</h2>
+      <h2 id="archive-title">Play</h2>
       <div id="archive-body"></div>
     </div>
   </div>
@@ -150,14 +150,10 @@
         <label class="switch"><input type="checkbox" id="set-cb"><span></span></label>
       </div>
       <div class="setting">
-        <div><div>Pause Timer When Away</div><div class="desc">Stops the clock while this tab is hidden</div></div>
-        <label class="switch"><input type="checkbox" id="set-pause" checked><span></span></label>
-      </div>
-      <div class="setting">
         <div><div>Feedback</div><div class="desc">Ideas, bugs, puzzles you loved</div></div>
         <button class="btn" data-open="feedback" style="flex:none;width:auto;height:36px;padding:0 14px;font-size:13px">Send</button>
       </div>
-      <p class="small" style="margin-top:16px">Progress and stats are saved in this browser only.</p>
+      <p class="small" style="margin-top:16px">Progress and stats are saved in this browser only. When you solve the daily puzzle, your move count is shared anonymously so you can compare with everyone else.</p>
     </div>
   </div>
 
