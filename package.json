@@ -1,11 +1,8 @@
 {
   "name": "nathanmcoleman-site",
   "private": true,
-  "description": "Hugo site. Node packages here are only for Netlify Functions (Venn global results).",
+  "description": "Hugo site. The api/ folder holds Vercel Functions for the Venn game (no npm packages needed).",
   "scripts": {
-    "test:venn": "node --import ./tools/venn/fakes/register.mjs --test tools/venn/engine.test.js tools/venn/scores.test.mjs"
-  },
-  "dependencies": {
-    "@netlify/blobs": "^11.1.0"
+    "test:venn": "node --test tools/venn/engine.test.js tools/venn/scores.test.mjs"
   }
 }
