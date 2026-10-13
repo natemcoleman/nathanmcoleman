@@ -243,7 +243,16 @@ html.dark .modal { border: 1px solid #1a1a1b; }
 .modal p, .modal li { font-size: 15px; line-height: 1.45; }
 .modal ul { padding-left: 20px; }
 .modal hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
-.help-demo { display: flex; justify-content: center; margin: 8px 0; }
+.help-goal { margin: 4px 0 8px; }
+.tutorial { text-align: center; background: rgba(127, 127, 127, 0.08); border-radius: 8px; padding: 8px 8px 12px; }
+#tut-board { display: block; margin: 0 auto; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+#tut-board.dragging { cursor: grabbing; }
+.modal .tut-msg { margin: 4px 0 0; font-size: 14px; font-weight: 600; min-height: 20px; }
+.tut-actions { display: flex; gap: 8px; justify-content: center; margin-top: 8px; }
+.tut-actions:empty { display: none; }
+.tut-actions .btn { height: 40px; max-width: 200px; font-size: 13px; }
+.help-list { margin: 12px 0 0; }
+.modal .help-list li { font-size: 14px; margin-bottom: 4px; }
 .small { font-size: 13px; color: var(--muted); }
 
 /* stats */

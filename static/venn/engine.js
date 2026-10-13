@@ -260,39 +260,142 @@
     return { moves: moves, state: state };
   }
 
-  // ---------- hints ----------
+  // ---------- exact short-range solving ----------
 
   /**
-   * Best next move. Tries a short exhaustive search for an actual solution first,
-   * otherwise unwinds the known history (scramble + player moves).
-   * history: every move applied since the solved state, in order.
+   * States compared by which points share a color, not by the colors themselves,
+   * so every solved arrangement (any colors on any faces) is the same goal.
    */
-  function hint(puzzle, state, history, opts) {
-    opts = opts || {};
-    if (isSolved(puzzle, state)) return null;
-    var plan = reduceMoves(puzzle, history);
-    var fallback = null;
-    if (plan.length) {
-      var last = plan[plan.length - 1];
-      fallback = { c: last.c, k: shortest(puzzle, last.c, -last.k), remaining: plan.length };
+  function canonicalKey(state) {
+    var map = {}, next = 0, out = '';
+    for (var i = 0; i < state.length; i++) {
+      var v = map[state[i]];
+      if (v === undefined) { v = map[state[i]] = next++; }
+      out += String.fromCharCode(48 + v);
     }
-    var budget = opts.nodeBudget || 400000;
-    var maxDepth = Math.min(opts.maxDepth || 4, plan.length ? plan.length - 1 : 4);
-    var found = searchSolution(puzzle, state, maxDepth, budget);
-    if (found && found.length) {
-      return { c: found[0].c, k: found[0].k, remaining: found.length };
-    }
-    return fallback;
+    return out;
   }
 
-  // Iterative-deepening DFS for a solution of at most maxDepth moves.
+  function allMoves(puzzle) {
+    if (!puzzle._moves) {
+      var list = [];
+      puzzle.circles.forEach(function (c) {
+        for (var k = 1; k < c.slots.length; k++) list.push({ c: c.id, k: shortest(puzzle, c.id, k) });
+      });
+      puzzle._moves = list;
+    }
+    return puzzle._moves;
+  }
+
+  // Breadth-first layers from `state`: map key -> { d, parent, c, k, state }.
+  function bfsLayers(puzzle, state, depth, keepStates) {
+    var moves = allMoves(puzzle);
+    var rootKey = canonicalKey(state);
+    var seen = {};
+    seen[rootKey] = { d: 0, parent: null, c: -1, state: state };
+    var layers = [[rootKey]];
+    for (var d = 1; d <= depth; d++) {
+      var next = [];
+      var prev = layers[d - 1];
+      for (var i = 0; i < prev.length; i++) {
+        var node = seen[prev[i]];
+        for (var j = 0; j < moves.length; j++) {
+          var mv = moves[j];
+          if (mv.c === node.c) continue; // two turns of one circle are one turn
+          var ns = applyMove(puzzle, node.state, mv.c, mv.k);
+          var nk = canonicalKey(ns);
+          if (!(nk in seen)) {
+            seen[nk] = { d: d, parent: prev[i], c: mv.c, k: mv.k, state: (keepStates || d < depth) ? ns : null };
+            next.push(nk);
+          }
+        }
+      }
+      layers.push(next);
+    }
+    return { seen: seen, layers: layers };
+  }
+
+  function pathFromRoot(seen, key) {
+    var out = [];
+    var node = seen[key];
+    while (node.parent !== null) { out.push({ c: node.c, k: node.k }); key = node.parent; node = seen[key]; }
+    return out.reverse();
+  }
+
+  /**
+   * Shortest solution if one exists within fwdDepth + backDepth moves, else null.
+   * Exact (meet-in-the-middle). Default 2 + 2 is fast enough for phones.
+   */
+  function solveShort(puzzle, state, fwdDepth, backDepth) {
+    fwdDepth = fwdDepth == null ? 2 : fwdDepth;
+    backDepth = backDepth == null ? 2 : backDepth;
+    var cacheKey = '_back' + backDepth;
+    if (!puzzle[cacheKey]) puzzle[cacheKey] = bfsLayers(puzzle, puzzle.solvedState, backDepth, false).seen;
+    var back = puzzle[cacheKey];
+    var fwd = bfsLayers(puzzle, state, fwdDepth, false);
+    for (var f = 0; f <= fwdDepth; f++) {
+      // The first layer that meets the goal table holds an optimal solution.
+      var best = null;
+      var layer = fwd.layers[f];
+      for (var i = 0; i < layer.length; i++) {
+        var b = back[layer[i]];
+        if (b && (!best || b.d < best.d)) best = { key: layer[i], d: b.d };
+      }
+      if (best) {
+        var first = pathFromRoot(fwd.seen, best.key);
+        var second = pathFromRoot(back, best.key).reverse().map(function (m) {
+          return { c: m.c, k: shortest(puzzle, m.c, -m.k) };
+        });
+        return first.concat(second);
+      }
+    }
+    return null;
+  }
+
+  // ---------- hints ----------
+
+  function invert(puzzle, moves) {
+    return moves.slice().reverse().map(function (m) { return { c: m.c, k: shortest(puzzle, m.c, -m.k) }; });
+  }
+
+  /**
+   * Best known plan from `state` to solved.
+   * ctx: { stack: player's moves since the start, scramble: moves from solved to the start,
+   *        solution: shortest solution from the start (optional) }
+   * Returns { moves, exact } where exact means no shorter plan exists.
+   */
+  function planSolution(puzzle, state, ctx) {
+    ctx = ctx || {};
+    if (isSolved(puzzle, state)) return { moves: [], exact: true };
+    var short = solveShort(puzzle, state, ctx.fwdDepth, ctx.backDepth);
+    if (short) return { moves: short, exact: true };
+    // Longer: walk back along the player's own moves, then follow a known route.
+    // reduceMoves cancels the walk-back against the route wherever they overlap,
+    // so a player who is on track just gets the rest of the route.
+    var back = invert(puzzle, ctx.stack || []);
+    var candidates = [];
+    if (ctx.solution) candidates.push(reduceMoves(puzzle, back.concat(ctx.solution)));
+    if (ctx.scramble) candidates.push(reduceMoves(puzzle, back.concat(invert(puzzle, ctx.scramble))));
+    var best = null;
+    candidates.forEach(function (plan) {
+      if (!isSolved(puzzle, applyMoves(puzzle, state.slice(), plan))) return;
+      if (!best || plan.length < best.length) best = plan;
+    });
+    return best ? { moves: best, exact: false } : null;
+  }
+
+  /** Next move to make, or null when solved. */
+  function hint(puzzle, state, ctx) {
+    var plan = planSolution(puzzle, state, ctx);
+    if (!plan || !plan.moves.length) return null;
+    return { c: plan.moves[0].c, k: plan.moves[0].k, remaining: plan.moves.length, exact: plan.exact };
+  }
+
+  // Iterative-deepening DFS for a solution of at most maxDepth moves (used when scrambling).
   function searchSolution(puzzle, state, maxDepth, budget) {
     var nodes = 0;
     var path = [];
-    var moveList = [];
-    puzzle.circles.forEach(function (c) {
-      for (var k = 1; k < c.slots.length; k++) moveList.push({ c: c.id, k: shortest(puzzle, c.id, k) });
-    });
+    var moveList = allMoves(puzzle);
     function dfs(s, depth, lastC) {
       if (isSolved(puzzle, s)) return true;
       if (depth === 0) return false;
@@ -318,7 +421,10 @@
 
   // ---------- daily schedule ----------
 
-  /** Layout presets, keyed by number of rings. Add new ones here. */
+  /**
+   * Board layouts. NEVER edit or remove an entry once it has been used by a live
+   * puzzle: that would change past puzzles. Add a new key instead.
+   */
   var LAYOUTS = {
     1: { centers: 3, radii: [1.75] },
     2: { centers: 3, radii: [1.25, 1.8] },
@@ -326,35 +432,55 @@
   };
 
   /**
-   * Difficulty by weekday (0 = Sunday), easy Monday -> hardest Sunday.
-   * rings: layout preset; moves: scramble length; step: turn size in slots
-   * (null = one quarter turn, i.e. the number of rings).
+   * Weekly schedules, each starting on a date. A puzzle uses the last schedule whose
+   * `from` is on or before its date, so to change difficulty or add a layout, ADD a
+   * new entry with a future `from` date. Never edit an entry that has already
+   * started; that would change past puzzles (the tests catch this).
+   *
+   * days: weekday (0 = Sunday) -> { label, layout: key in LAYOUTS, moves: scramble
+   * length, step: turn size used when scrambling (default: one quarter turn) }
    */
-  var SCHEDULE = {
-    1: { label: 'Easy', rings: 2, moves: 2 },
-    2: { label: 'Easy', rings: 2, moves: 3 },
-    3: { label: 'Medium', rings: 2, moves: 4 },
-    4: { label: 'Medium', rings: 3, moves: 3 },
-    5: { label: 'Hard', rings: 3, moves: 4 },
-    6: { label: 'Hard', rings: 3, moves: 5 },
-    0: { label: 'Expert', rings: 3, moves: 6 }
-  };
+  var SCHEDULES = [
+    {
+      from: '2026-10-13',
+      days: {
+        1: { label: 'Easy', layout: 2, moves: 2 },
+        2: { label: 'Easy', layout: 2, moves: 3 },
+        3: { label: 'Medium', layout: 2, moves: 4 },
+        4: { label: 'Medium', layout: 3, moves: 3 },
+        5: { label: 'Hard', layout: 3, moves: 4 },
+        6: { label: 'Hard', layout: 3, moves: 5 },
+        0: { label: 'Expert', layout: 3, moves: 6 }
+      }
+    }
+  ];
+
+  function weekdayOf(dateStr) {
+    var p = dateStr.split('-').map(Number);
+    return new Date(p[0], p[1] - 1, p[2]).getDay();
+  }
+
+  /** The schedule entry for a date ('YYYY-MM-DD'). */
+  function configFor(dateStr) {
+    var era = SCHEDULES[0];
+    for (var i = 1; i < SCHEDULES.length; i++) if (SCHEDULES[i].from <= dateStr) era = SCHEDULES[i];
+    return era.days[weekdayOf(dateStr)];
+  }
 
   /** dateStr: 'YYYY-MM-DD' (local date). */
   function dailyPuzzle(dateStr) {
-    var parts = dateStr.split('-').map(Number);
-    var weekday = new Date(parts[0], parts[1] - 1, parts[2]).getDay();
-    var cfg = SCHEDULE[weekday];
-    var def = LAYOUTS[cfg.rings];
+    var cfg = configFor(dateStr);
+    var def = LAYOUTS[cfg.layout];
+    var rings = def.radii.length;
     var puzzle = buildPuzzle(def);
     // Reject scrambles that happen to land solved or that have a noticeably shorter solution.
     var s, attempt = 0;
     do {
-      s = scramble(puzzle, cfg.moves, 'venn:' + dateStr + (attempt ? ':' + attempt : ''), cfg.step || cfg.rings);
+      s = scramble(puzzle, cfg.moves, 'venn:' + dateStr + (attempt ? ':' + attempt : ''), cfg.step || rings);
       attempt++;
     } while (attempt < 50 && (isSolved(puzzle, s.state) ||
       searchSolution(puzzle, s.state, Math.min(cfg.moves - 1, 2), 200000)));
-    return { date: dateStr, weekday: weekday, config: cfg, puzzle: puzzle, scramble: s.moves, start: s.state };
+    return { date: dateStr, weekday: weekdayOf(dateStr), config: cfg, layout: cfg.layout, rings: rings, puzzle: puzzle, scramble: s.moves, start: s.state };
   }
 
   var api = {
@@ -367,13 +493,17 @@
     isSolved: isSolved,
     misplaced: misplaced,
     scramble: scramble,
+    canonicalKey: canonicalKey,
+    solveShort: solveShort,
+    planSolution: planSolution,
     hint: hint,
     searchSolution: searchSolution,
+    configFor: configFor,
     dailyPuzzle: dailyPuzzle,
     hashString: hashString,
     mulberry32: mulberry32,
     LAYOUTS: LAYOUTS,
-    SCHEDULE: SCHEDULE
+    SCHEDULES: SCHEDULES
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

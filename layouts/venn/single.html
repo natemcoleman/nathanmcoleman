@@ -100,17 +100,17 @@
     <div class="modal">
       <button class="icon-btn close" data-close aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
       <h3 id="help-title">How To Play</h3>
-      <p><strong>Make every cluster a single color.</strong></p>
-      <ul>
-        <li>Drag any circle to turn it. Every point on that circle travels along it together.</li>
-        <li>Let go and the points snap to the nearest spots.</li>
-        <li>Points sit where circles cross, so turning one circle moves points onto other circles.</li>
+      <p class="help-goal"><strong>Make every cluster a single color.</strong> Drag a circle to turn it. Every point on it moves together, and they snap into place when you let go.</p>
+      <div class="tutorial">
+        <canvas id="tut-board" aria-label="Practice board"></canvas>
+        <p class="tut-msg" id="tut-msg" aria-live="polite"></p>
+        <div class="tut-actions" id="tut-actions"></div>
+      </div>
+      <ul class="help-list">
+        <li>A new puzzle every day at midnight. Monday is easiest, Sunday is hardest.</li>
+        <li>Hints are unlimited and show the best next turn. Your hint count appears in your result.</li>
+        <li>After you solve, you can watch the shortest possible solution.</li>
       </ul>
-      <p><strong>Solved looks like this:</strong></p>
-      <div class="help-demo"><canvas id="help-demo" width="220" height="200" aria-hidden="true"></canvas></div>
-      <hr>
-      <p>A new puzzle is released every day at midnight. Monday is easiest, and each day gets harder through Sunday.</p>
-      <p>Stuck? Hints are unlimited. Each one highlights a circle and shows which way to turn it, and your hint count appears in your result.</p>
     </div>
   </div>
 

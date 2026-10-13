@@ -7,7 +7,7 @@
  *
  * Results are merged into the existing file (dates in the range are replaced).
  *
- * Re-run this whenever LAYOUTS, SCHEDULE or the scramble code in engine.js
+ * Re-run this whenever LAYOUTS, SCHEDULES or the scramble code in engine.js
  * changes, or to extend the date range.
  *
  * Method: meet-in-the-middle breadth-first search. One move = turning one
@@ -83,7 +83,7 @@ function backwardTable(puzzle, layoutId, moves) {
   if (!backCache.has(layoutId)) {
     const t0 = Date.now();
     backCache.set(layoutId, bfs(puzzle, puzzle.solvedState, BACK_DEPTH, moves).seen);
-    console.error(`  goal table for ${layoutId}-ring: ${backCache.get(layoutId).size} states in ${Date.now() - t0} ms`);
+    console.error(`  goal table for layout ${layoutId}: ${backCache.get(layoutId).size} states in ${Date.now() - t0} ms`);
   }
   return backCache.get(layoutId);
 }
@@ -141,7 +141,7 @@ function main() {
   for (let d = new Date(p[0], p[1] - 1, p[2]); dateStr(d) <= last; d.setDate(d.getDate() + 1)) {
     const ds = dateStr(d);
     const day = E.dailyPuzzle(ds);
-    const sol = solveOptimal(day.puzzle, day.config.rings, day.start);
+    const sol = solveOptimal(day.puzzle, day.layout, day.start);
     if (!sol) throw new Error('No solution found within ' + (BACK_DEPTH + FWD_DEPTH) + ' moves for ' + ds);
     const end = E.applyMoves(day.puzzle, day.start.slice(), sol);
     if (!E.isSolved(day.puzzle, end)) throw new Error('Solution check failed for ' + ds);

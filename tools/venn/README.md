@@ -30,17 +30,34 @@ gives 6 faces of N×N points, like an N×N×N cube.
 
 ## Daily schedule
 
-`SCHEDULE` in engine.js sets each weekday's layout and scramble length:
+`SCHEDULES` in engine.js is a list of weekly schedules, each with a start date:
 
 ```js
-1: { label: 'Easy', rings: 2, moves: 2 },   // Monday
+{ from: '2026-10-13', days: { 1: { label: 'Easy', layout: 2, moves: 2 }, ... } }
 ```
 
-`step` (optional) is the turn size used when scrambling. It defaults to one
-quarter turn (= the number of rings). Changing the schedule, layouts or scramble
-code changes every puzzle, past ones included, so treat them as fixed once live.
+A puzzle uses the last schedule that started on or before its date. **To change
+difficulty or add a new layout, add a new schedule with a future `from` date.
+Never edit a schedule or layout that has already been used**, or past puzzles
+(and people's saved progress) would change. The tests fail if that happens.
+
+For example, to make Fridays a new layout starting 2026-12-04: add the layout to
+`LAYOUTS` under a new key, copy the latest schedule into a new entry with
+`from: '2026-12-04'`, change day `5`, then run `node tools/venn/solve.js 2026-12-04 2028-12-31`.
+
+- `layout`: key in `LAYOUTS`
+- `moves`: scramble length (1 to 6, since solve.js finds solutions up to 6 moves)
+- `step` (optional): turn size used when scrambling. Defaults to one quarter turn
+  (the number of rings).
 
 `LAUNCH` in venn.js is the date of Venn #1.
+
+## Hints
+
+Hints aim for the shortest solution. When 4 or fewer moves remain, the game
+searches for the exact best move (and says how many moves are left). Otherwise
+it walks back along the player's own moves to the nearest point on the
+precomputed shortest route and continues along it.
 
 ## Shortest solutions
 
