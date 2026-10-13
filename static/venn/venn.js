@@ -143,7 +143,6 @@
       ctx.stroke();
     });
 
-    if (this.hintMove) this.drawHintArrow(hintColor);
 
     // points
     var moving = {};
@@ -172,45 +171,77 @@
       ctx.stroke();
       if (store.settings.colorblind) drawGlyph(ctx, GLYPHS[color % GLYPHS.length], sp.x, sp.y, r * 0.55);
     });
+    // hint on top of the points so the arrow and its number stay readable
+    if (this.hintMove) this.drawHintArrow(hintColor);
   };
 
+  // Hint: an arrow along the circle from one point to where it will land, a dot at
+  // every space it passes, rings on the start and end points, and the number of spaces.
   Board.prototype.drawHintArrow = function (color) {
     var ctx = this.ctx, c = this.puzzle.circles[this.hintMove.c], self = this;
-    var m = c.slots.length, k = this.hintMove.k;
-    // Anchor on the circle's point nearest the middle of the board, so the arrow is visible.
+    var m = c.slots.length, k = this.hintMove.k, n = Math.abs(k), dirSign = k > 0 ? 1 : -1;
+    // Start from the circle's point nearest the middle of the board, so the arrow is visible.
     var mx = (this.bbox.x0 + this.bbox.x1) / 2, my = (this.bbox.y0 + this.bbox.y1) / 2;
     var best = 0, bestD = Infinity;
     c.slots.forEach(function (sid, i) {
-      var s = self.puzzle.slots[sid], d = Math.hypot(s.x - mx, s.y - my);
+      var sl = self.puzzle.slots[sid], d = Math.hypot(sl.x - mx, sl.y - my);
       if (d < bestD) { bestD = d; best = i; }
     });
-    var a0 = c.slotAngles[best];
-    var span = (k * Math.PI * 2) / m;
+    // Math angles of every space passed, following the real (uneven) spacing.
+    var TAU = Math.PI * 2, angles = [c.slotAngles[best]], a = c.slotAngles[best];
+    for (var step = 1; step <= n; step++) {
+      var from = ((best + dirSign * (step - 1)) % m + m) % m, to = ((best + dirSign * step) % m + m) % m;
+      var gap = dirSign > 0 ? c.slotAngles[to] - c.slotAngles[from] : c.slotAngles[from] - c.slotAngles[to];
+      if (gap <= 0) gap += TAU;
+      a += dirSign * gap;
+      angles.push(a);
+    }
     var ctr = this.toScreen(c.cx, c.cy);
-    // Drawn just inside the circle so it always stays on screen.
-    var R = c.r * this.scale - this.pointR * 1.9;
-    // canvas y is flipped: math angle a -> screen angle -a
-    var s0 = -a0, s1 = -(a0 + span);
+    var rOnCircle = c.r * this.scale;
+    var R = rOnCircle - this.pointR * 1.9; // arrow runs just inside the circle so it stays on screen
+    function at(radius, ang) { return { x: ctr.x + radius * Math.cos(-ang), y: ctr.y + radius * Math.sin(-ang) }; }
+    var aStart = angles[0], aEnd = angles[n];
+    var trim = Math.min(0.12, Math.abs(aEnd - aStart) * 0.1); // leave room for the arrowhead
     ctx.save();
-    ctx.globalAlpha = 0.95;
     ctx.strokeStyle = color;
     ctx.fillStyle = color;
-    ctx.lineWidth = 4;
     ctx.lineCap = 'round';
+    // rings: solid on the point that moves, dashed where it lands
+    ctx.lineWidth = 3;
+    var p0 = at(rOnCircle, aStart), p1 = at(rOnCircle, aEnd);
+    ctx.beginPath(); ctx.arc(p0.x, p0.y, this.pointR + 4, 0, TAU); ctx.stroke();
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.arc(p1.x, p1.y, this.pointR + 4, 0, TAU); ctx.stroke();
+    ctx.setLineDash([]);
+    // arrow body
+    ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.arc(ctr.x, ctr.y, R, s0, s1, span > 0);
+    ctx.arc(ctr.x, ctr.y, R, -aStart, -(aEnd - dirSign * trim), dirSign > 0);
     ctx.stroke();
-    // arrowhead at the end, pointing along the direction of travel
-    var ex = ctr.x + R * Math.cos(s1), ey = ctr.y + R * Math.sin(s1);
-    var dir = span > 0 ? -1 : 1;
-    var tx = -Math.sin(s1) * dir, ty = Math.cos(s1) * dir;
-    var nx = Math.cos(s1), ny = Math.sin(s1), L = 12;
+    // a dot for every space passed
+    for (var i = 1; i < n; i++) {
+      var d = at(R, angles[i]);
+      ctx.beginPath(); ctx.arc(d.x, d.y, 4, 0, TAU); ctx.fill();
+    }
+    // arrowhead at the landing space, pointing along the direction of travel
+    var tip = at(R, aEnd);
+    var sA = -aEnd, tdir = dirSign > 0 ? -1 : 1;
+    var tx = -Math.sin(sA) * tdir, ty = Math.cos(sA) * tdir, nx = Math.cos(sA), ny = Math.sin(sA), L = 13;
     ctx.beginPath();
-    ctx.moveTo(ex + tx * L * 0.9, ey + ty * L * 0.9);
-    ctx.lineTo(ex + nx * L * 0.6, ey + ny * L * 0.6);
-    ctx.lineTo(ex - nx * L * 0.6, ey - ny * L * 0.6);
+    ctx.moveTo(tip.x + tx * L * 0.5, tip.y + ty * L * 0.5);
+    ctx.lineTo(tip.x - tx * L * 0.6 + nx * L * 0.6, tip.y - ty * L * 0.6 + ny * L * 0.6);
+    ctx.lineTo(tip.x - tx * L * 0.6 - nx * L * 0.6, tip.y - ty * L * 0.6 - ny * L * 0.6);
     ctx.closePath();
     ctx.fill();
+    // number of spaces, in a badge just inside the arrow's midpoint
+    var mid = at(R - 20, (aStart + aEnd) / 2);
+    ctx.beginPath(); ctx.arc(mid.x, mid.y, 12, 0, TAU); ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = cssVar('--bg'); ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = '700 14px -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(n), mid.x, mid.y + 1);
     ctx.restore();
   };
 
@@ -488,7 +519,9 @@
       save();
       renderStatus();
       board.hintMove = { c: h.c, k: h.k };
-      toast('+' + HINT_COST + ' moves' + (h.exact ? ' · ' + (h.remaining === 1 ? 'one move to go' : h.remaining + ' moves to go') : ''), 1400);
+      var spaces = Math.abs(h.k);
+      toast('Turn ' + spaces + (spaces === 1 ? ' space' : ' spaces') + ' · +' + HINT_COST + ' moves' +
+        (h.exact ? ' · ' + (h.remaining === 1 ? 'last move' : h.remaining + ' moves to go') : ''), 1800);
       // nudge the circle in the right direction so it is easy to spot
       var dir = h.k > 0 ? 1 : -1;
       playTurn(h.c, 0, dir * 0.3, 180, function () {
@@ -545,15 +578,9 @@
       el.controls.appendChild(b);
       return b;
     }
-    if (practice) {
-      add(freeLevel ? 'New puzzle' : 'Play again', 'primary', playAgain);
-      add(ICON_PLAY + 'Solution', '', watchSolution, 'solution-btn');
-      add('Today', '', function () { location.href = location.pathname; });
-      return;
-    }
-    add('Stats', 'primary', function () { openModal('stats'); });
-    add(ICON_PLAY + 'Solution', '', watchSolution, 'solution-btn');
-    add('Share', '', share);
+    // Solution and Share live on the results sheet; the main screen just reopens it.
+    add('See results', 'primary', function () { openModal('stats'); });
+    if (practice) add(freeLevel ? 'New puzzle' : 'Play again', '', playAgain);
   }
   function playAgain() {
     location.href = location.pathname + (freeLevel ? '?free=' + freeLevel : '?replay=' + playDate);
