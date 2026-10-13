@@ -118,3 +118,16 @@ test('the Vercel function: 503 until storage is connected, then works', async ()
     delete process.env.KV_REST_API_URL; delete process.env.KV_REST_API_TOKEN;
   }
 });
+
+test('finds the Upstash connection under any of the usual names', async () => {
+  const { findRedisConfig, storageEnvNames } = await import('../../lib/venn/redis.mjs');
+  assert.strictEqual(findRedisConfig({}), null);
+  assert.deepStrictEqual(findRedisConfig({ KV_REST_API_URL: 'https://a.upstash.io', KV_REST_API_TOKEN: 't1' }),
+    { url: 'https://a.upstash.io', token: 't1', source: 'KV_REST_API_URL' });
+  assert.strictEqual(findRedisConfig({ UPSTASH_REDIS_REST_URL: 'https://b.upstash.io', UPSTASH_REDIS_REST_TOKEN: 't2' }).token, 't2');
+  assert.strictEqual(findRedisConfig({ STORAGE_KV_REST_API_URL: 'https://c.upstash.io', STORAGE_KV_REST_API_TOKEN: 't3' }).url, 'https://c.upstash.io');
+  const fromUrl = findRedisConfig({ REDIS_URL: 'rediss://default:abc%3D@fine-cat-123.upstash.io:6379' });
+  assert.deepStrictEqual(fromUrl, { url: 'https://fine-cat-123.upstash.io', token: 'abc=', source: 'REDIS_URL' });
+  assert.strictEqual(findRedisConfig({ REDIS_URL: 'redis://default:pw@redis-cloud.example.com:6379' }), null, 'only Upstash hosts');
+  assert.deepStrictEqual(storageEnvNames({ KV_URL: 'x', PATH: 'y', MY_REDIS_URL: 'z' }), ['KV_URL', 'MY_REDIS_URL']);
+});
