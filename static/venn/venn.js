@@ -1227,6 +1227,7 @@
   renderStatus();
   if (game.solved) showSolvedControls();
   if (!store.settings.seenHelp) openModal('help');
+  else if (game.solved && !isArchive) openModal('stats'); // already solved today: go straight to the results
 
   // exposed for debugging and automated checks
   window.Venn = { puzzle: puzzle, day: day, game: game, board: board, tutorialBoard: function () { return demo; }, getState: function () { return state; }, commitMove: commitMove };
