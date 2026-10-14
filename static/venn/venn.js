@@ -1173,7 +1173,7 @@
   function renderArchive() {
     var body = document.getElementById('archive-body');
     var free = '<div class="archive-month">Free play</div><p class="small" style="margin:2px 0 8px">Random puzzles for practice. They don\'t count.</p>' +
-      '<div class="free-levels">' + LEVELS.map(function (l) {
+      '<div class="free-levels" style="grid-template-columns:repeat(' + E.practiceLevels().length + ',1fr)">' + E.practiceLevels().map(function (l) {
         return '<a class="btn" href="' + location.pathname + '?free=' + l + '">' + l + '</a>';
       }).join('') + '</div>';
     if (puzzleNumber(todayStr) < 1) {

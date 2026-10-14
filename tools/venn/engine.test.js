@@ -208,6 +208,9 @@ test('puzzles before the easier schedule are unchanged', () => {
   assert.strictEqual(E.hashString(E.dailyPuzzle('2026-10-13').start.join(',')), 179409699);
   assert.strictEqual(E.configFor('2026-10-13').moves, 3);
   assert.strictEqual(E.configFor('2026-10-14').label, 'Medium');
+  // Venn #1 (2026-10-14) was live before the third schedule; it must never change either.
+  assert.strictEqual(E.hashString(E.dailyPuzzle('2026-10-14').start.join(',')), 726987395);
+  assert.strictEqual(E.configFor('2026-10-15').moves, 2);
 });
 
 test('hint penalties: full hint 2, which-circle hint 1', () => {
@@ -215,4 +218,11 @@ test('hint penalties: full hint 2, which-circle hint 1', () => {
   assert.strictEqual(E.moveScore([1, 2, 3], 0, 1), 4);
   assert.strictEqual(E.moveScore([1, 2, 3], 1, 1), 6);
   assert.strictEqual(E.moveScore([1], 2), 5, 'older games without peeks still score the same');
+});
+
+test('free play offers the levels in the current schedule', () => {
+  assert.deepStrictEqual(E.practiceLevels(), ['Easy', 'Medium', 'Hard']);
+  assert.strictEqual(E.practicePuzzle('Easy', 's').config.moves, 1);
+  assert.strictEqual(E.practicePuzzle('Hard', 's').config.moves, 3);
+  assert.strictEqual(E.practicePuzzle('Expert', 's').config.moves, 3, 'old links fall back to the hardest level');
 });
