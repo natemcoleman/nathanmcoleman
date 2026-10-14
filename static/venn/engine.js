@@ -486,6 +486,19 @@
         6: { label: 'Hard', layout: 3, moves: 3 },
         0: { label: 'Expert', layout: 3, moves: 4 }
       }
+    },
+    {
+      // Gentler still, all on 2 rings: 1 turn early in the week, 3 at the weekend.
+      from: '2026-10-15',
+      days: {
+        1: { label: 'Easy', layout: 2, moves: 1 },
+        2: { label: 'Easy', layout: 2, moves: 1 },
+        3: { label: 'Medium', layout: 2, moves: 2 },
+        4: { label: 'Medium', layout: 2, moves: 2 },
+        5: { label: 'Medium', layout: 2, moves: 2 },
+        6: { label: 'Hard', layout: 2, moves: 3 },
+        0: { label: 'Hard', layout: 2, moves: 3 }
+      }
     }
   ];
 
@@ -517,6 +530,15 @@
     return { config: cfg, layout: cfg.layout, rings: rings, puzzle: puzzle, scramble: s.moves, start: s.state };
   }
 
+  /** Difficulty labels used by the current schedule, easiest first. */
+  function practiceLevels() {
+    var era = SCHEDULES[SCHEDULES.length - 1], seen = [];
+    [1, 2, 3, 4, 5, 6, 0].map(function (d) { return era.days[d]; })
+      .sort(function (a, b) { return a.moves - b.moves; })
+      .forEach(function (c) { if (seen.indexOf(c.label) < 0) seen.push(c.label); });
+    return seen;
+  }
+
   /** dateStr: 'YYYY-MM-DD' (local date). */
   function dailyPuzzle(dateStr) {
     var p = makePuzzle(configFor(dateStr), 'venn:' + dateStr);
@@ -534,7 +556,9 @@
     var order = [1, 2, 3, 4, 5, 6, 0];
     var cfg = null;
     for (var i = 0; i < order.length && !cfg; i++) if (era.days[order[i]].label === label) cfg = era.days[order[i]];
-    if (!cfg) cfg = era.days[1];
+    if (!cfg) { // label not in today's schedule: use its hardest day
+      order.forEach(function (d) { if (!cfg || era.days[d].moves > cfg.moves) cfg = era.days[d]; });
+    }
     var p = makePuzzle(cfg, 'practice:' + seed);
     p.practice = true;
     return p;
@@ -558,6 +582,7 @@
     configFor: configFor,
     dailyPuzzle: dailyPuzzle,
     practicePuzzle: practicePuzzle,
+    practiceLevels: practiceLevels,
     HINT_COST: HINT_COST,
     PEEK_COST: PEEK_COST,
     moveScore: moveScore,
