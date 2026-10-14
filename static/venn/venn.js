@@ -965,15 +965,88 @@
       return r.json();
     }).then(function (data) { gotGlobal(data.stats); }).catch(globalFailed);
   }
-  // Share of other players who needed more moves.
+  // Share of the other players who needed more moves (0-100). Counts the player in
+  // even if the server's numbers haven't caught up with their score yet.
   function beatPct(stats, mine) {
-    var more = 0;
-    Object.keys(stats.counts).forEach(function (k) { if (Number(k) > mine) more += stats.counts[k]; });
-    return stats.players > 1 ? Math.round((more / (stats.players - 1)) * 100) : 0;
+    var more = 0, total = 0, mineCounted = false;
+    Object.keys(stats.counts).forEach(function (k) {
+      var n = stats.counts[k];
+      total += n;
+      if (Number(k) > mine) more += n;
+      if (Number(k) === mine && n > 0) mineCounted = true;
+    });
+    if (!mineCounted) total += 1;
+    var others = total - 1;
+    return others > 0 ? Math.max(0, Math.min(100, Math.round((more / others) * 100))) : 0;
   }
   function beatText(stats, mine) { return 'beat ' + beatPct(stats, mine) + '% of players'; }
 
-  // Bar per move count (Wordle-style), with the player's own row highlighted.
+  // Dot strip: players grouped in buckets of 5 moves along a stretched (log) scale, so
+  // 4 and 53 can share one chart. Dots stack per bucket; once a stack would get too tall,
+  // each dot stands for several players. Buckets that would overlap are merged.
+  var STRIP = { W: 320, PAD: 16, R: 5, GAP: 2, MAX_STACK: 8, BUCKET: 5 };
+  function stripLayout(counts, mine, goal) {
+    var cols = {};
+    Object.keys(counts).forEach(function (k) {
+      var m = Number(k), n = counts[k];
+      if (!(m >= 1) || !(n > 0)) return;
+      var b = Math.floor((m - 1) / STRIP.BUCKET);
+      if (!cols[b]) cols[b] = { from: b * STRIP.BUCKET + 1, to: (b + 1) * STRIP.BUCKET, n: 0 };
+      cols[b].n += n;
+    });
+    var list = Object.keys(cols).map(function (b) { return cols[b]; }).sort(function (a, b) { return a.from - b.from; });
+    if (!list.length) return null;
+    var lo = Math.log(list[0].from), hi = Math.log(list[list.length - 1].to);
+    if (goal >= 1) { lo = Math.min(lo, Math.log(goal)); }
+    var span = Math.max(hi - lo, 1e-6), inner = STRIP.W - 2 * STRIP.PAD;
+    function x(m) { return list.length === 1 && !(goal >= 1 && goal < list[0].from) ? STRIP.W / 2 : STRIP.PAD + ((Math.log(m) - lo) / span) * inner; }
+    function center(c) { return x((c.from + c.to) / 2); }
+    // merge columns that would overlap at this scale
+    var merged = [], minGap = 2 * STRIP.R + 3;
+    list.forEach(function (c) {
+      var prev = merged[merged.length - 1];
+      if (prev && center(c) - center(prev) < minGap) { prev.to = c.to; prev.n += c.n; }
+      else merged.push({ from: c.from, to: c.to, n: c.n });
+    });
+    merged.forEach(function (c) { c.x = center(c); c.you = mine >= c.from && mine <= c.to; });
+    var maxN = Math.max.apply(null, merged.map(function (c) { return c.n; }));
+    // players per dot, rounded up to a friendly number (1, 2, 5, 10, 20, 25, 50, 100, ...)
+    var raw = Math.max(1, Math.ceil(maxN / STRIP.MAX_STACK)), unit = 1;
+    for (var mag = 1; unit < raw; mag *= 10) {
+      var opts = [1, 2, 5, 10, 20, 25, 50].map(function (v) { return v * mag; });
+      for (var i = 0; i < opts.length && unit < raw; i++) unit = opts[i];
+    }
+    merged.forEach(function (c) { c.dots = Math.ceil(c.n / unit); });
+    return { cols: merged, unit: unit, goalX: goal >= 1 ? x(goal) : null };
+  }
+  function stripSvg(L, goal) {
+    var R = STRIP.R, step = 2 * R + STRIP.GAP;
+    var top = 16, base = top + STRIP.MAX_STACK * step, h = base + 30;
+    var out = '<svg class="strip" viewBox="0 0 ' + STRIP.W + ' ' + h + '" role="img" aria-label="Moves taken by everyone today">';
+    out += '<line class="strip-axis" x1="' + STRIP.PAD / 2 + '" y1="' + (base + 2) + '" x2="' + (STRIP.W - STRIP.PAD / 2) + '" y2="' + (base + 2) + '"/>';
+    if (L.goalX !== null) {
+      out += '<line class="strip-goal" x1="' + L.goalX + '" y1="' + top + '" x2="' + L.goalX + '" y2="' + (base + 2) + '"/>' +
+        '<text class="strip-label strip-goal-label" x="' + L.goalX + '" y="' + (top - 4) + '" text-anchor="middle">goal ' + goal + '</text>';
+    }
+    var lastLabel = -Infinity;
+    L.cols.forEach(function (c, i) {
+      for (var d = 0; d < c.dots; d++) {
+        var you = c.you && d === c.dots - 1;
+        out += '<circle class="strip-dot' + (you ? ' you' : '') + '" cx="' + c.x.toFixed(1) + '" cy="' + (base - R - d * step).toFixed(1) + '" r="' + R + '"/>';
+      }
+      if (c.you) {
+        out += '<text class="strip-label strip-you" x="' + c.x.toFixed(1) + '" y="' + (base - c.dots * step - 4).toFixed(1) + '" text-anchor="middle">you</text>';
+      }
+      // range labels under columns, skipping ones that would collide (always keep yours)
+      var label = c.from === c.to ? String(c.from) : c.from + '–' + c.to;
+      if (c.x - lastLabel >= 34 || c.you) {
+        out += '<text class="strip-label' + (c.you ? ' strip-you' : '') + '" x="' + c.x.toFixed(1) + '" y="' + (base + 18) + '" text-anchor="middle">' + label + '</text>';
+        lastLabel = c.x;
+      }
+    });
+    return out + '</svg>';
+  }
+
   function renderGlobal() {
     var box = document.getElementById('global');
     if (!box) return;
@@ -983,29 +1056,18 @@
       return;
     }
     var mine = score(game), st = globalStats;
-    var keys = Object.keys(st.counts).map(Number).filter(function (k) { return st.counts[k] > 0; });
-    if (keys.indexOf(mine) < 0) keys.push(mine);
-    keys.sort(function (a, b) { return a - b; });
-    // Keep the chart short: everything past 12 rows joins the last row.
-    var rows = [], MAX_ROWS = 12;
-    keys.forEach(function (k) { rows.push({ label: String(k), from: k, to: k, n: st.counts[k] || 0 }); });
-    if (rows.length > MAX_ROWS) {
-      var tail = rows.splice(MAX_ROWS - 1);
-      rows.push({ label: tail[0].from + '+', from: tail[0].from, to: Infinity, n: tail.reduce(function (a, r) { return a + r.n; }, 0) });
-    }
-    var maxN = Math.max.apply(null, rows.map(function (r) { return r.n; })) || 1;
+    var counts = {};
+    Object.keys(st.counts).forEach(function (k) { counts[k] = st.counts[k]; });
+    if (!counts[mine]) counts[mine] = 1; // make sure the player appears even if the count lags
+    var goal = solutionCache && solutionCache.optimal ? solutionCache.moves.length : null;
+    var L = stripLayout(counts, mine, goal);
     var note = st.players <= 1
       ? 'You\'re the first to finish today!'
       : 'You ' + beatText(st, mine) + ' (' + st.players + ' played today).';
-    box.innerHTML = '<h2 class="sub">Everyone today</h2>' +
-      '<div class="dist global-dist">' + rows.map(function (r) {
-        var you = mine >= r.from && mine <= r.to;
-        var pct = Math.max(r.n ? 8 : 0, Math.round((r.n / maxN) * 100));
-        return '<div class="dist-label">' + r.label + '</div>' +
-          '<div class="dist-track"><div class="bar' + (you ? ' today' : '') + '" style="width:' + pct + '%">' + r.n + '</div></div>' +
-          '<div class="dist-count">' + (you ? 'you' : '') + '</div>';
-      }).join('') + '</div>' +
-      '<p class="global-note">' + note + ' Moves include +' + HINT_COST + ' per hint.</p>';
+    box.innerHTML = '<h2 class="sub">Everyone today</h2>' + (L ? stripSvg(L, goal) : '') +
+      '<p class="global-note">' + note +
+      (L && L.unit > 1 ? ' Each dot is ' + L.unit + ' players.' : '') +
+      ' Moves include hint penalties.</p>';
   }
 
   // ---------- stats ----------
@@ -1230,5 +1292,5 @@
   else if (game.solved && !isArchive) openModal('stats'); // already solved today: go straight to the results
 
   // exposed for debugging and automated checks
-  window.Venn = { puzzle: puzzle, day: day, game: game, board: board, tutorialBoard: function () { return demo; }, getState: function () { return state; }, commitMove: commitMove };
+  window.Venn = { stripLayout: stripLayout, puzzle: puzzle, day: day, game: game, board: board, tutorialBoard: function () { return demo; }, getState: function () { return state; }, commitMove: commitMove };
 })();

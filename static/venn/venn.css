@@ -396,3 +396,12 @@ html.dark .modal { border: 1px solid #1a1a1b; }
 .controls .btn { font-size: 14px; gap: 6px; padding: 0 6px; }
 .controls .btn svg { width: 18px; height: 18px; flex: none; }
 #reset-btn.armed { background: #e5484d; color: #fff; }
+
+.strip { display: block; width: 100%; max-width: 420px; height: auto; margin: 0 auto; overflow: visible; }
+.strip-axis { stroke: var(--line); stroke-width: 1.5; }
+.strip-goal { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.strip-dot { fill: var(--muted); opacity: 0.75; }
+.strip-dot.you { fill: var(--accent); opacity: 1; }
+.strip-label { fill: var(--muted); font-size: 11px; font-family: inherit; paint-order: stroke; stroke: var(--modal-bg); stroke-width: 3px; stroke-linejoin: round; }
+.strip-you { fill: var(--accent); font-weight: 700; }
+.strip-goal-label { fill: var(--accent); }
