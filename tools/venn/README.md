@@ -72,9 +72,39 @@ For example, to make Fridays a new layout starting 2026-12-04: add the layout to
   Expert; add `&seed=anything` to repeat one) and `/venn/?replay=YYYY-MM-DD`.
   Both are linked from the Play (calendar) menu and the results screen.
 
+## Lab (testing before going live)
+
+The Play menu has a **Lab** section for trying new shapes, color rules and the
+hot/cold meter. Lab puzzles are practice only: never saved, never counted, and
+they don't change any daily puzzle. Every Lab setup is also a shareable link:
+
+    /venn/?lab=<shape>&goal=<goal>&turns=<1-5>&hc=1
+
+| `lab=` | Shape | Points | `goal=` options |
+|---|---|---|---|
+| `tri-2` | 3 circles, 2 rings (today's daily) | 24 | `faces` 6 colors, `pairs` 3 colors, `radial` 2 colors |
+| `tri-3` | 3 circles, 3 rings | 54 | same as tri-2 |
+| `tri-1` | 3 circles, 1 ring | 6 | `pattern` (each point back to its own spot) |
+| `duo-2` | 2 circles, 2 rings | 8 | `faces` 2 colors (top / bottom) |
+| `clover-4` | 4 circles | 8 | `radial` 2 colors (inner / outer), `pairs` 4 colors |
+| `flower-6` | 6 circles | 12 | `radial` 2 colors (inner / outer), `pairs` 6 colors |
+
+Goals (`groups` in a layout definition): `faces` = each crossing cluster is one
+color (the daily rule); `pairs` = both clusters of a pair of circles share a
+color; `radial` = clusters split into inner and outer; `pattern` = exact
+positions (shown with a target ring around each point). With 3 or fewer colors
+the board uses blue, orange and green. `hc=1` shows the hot/cold meter: it
+measures the exact moves left (up to 6) and says Warmer, Colder or No closer
+after each turn. Add `&seed=anything` to repeat one Lab puzzle.
+
+Shapes live in `LAB_SHAPES` in engine.js. To make a Lab setup a daily puzzle,
+add its definition (centers, radii, rotate, groups) to `LAYOUTS` under a new id,
+add a new dated entry to `SCHEDULES` that uses it (never edit past entries),
+then re-run `solve.js` for the dates it covers.
+
 ## Hints
 
-Hints aim for the shortest solution. When 4 or fewer moves remain, the game
+Hints aim for the shortest solution. When 6 or fewer moves remain, the game
 searches for the exact best move (and says how many moves are left). Otherwise
 it walks back along the player's own moves to the nearest point on the
 precomputed shortest route and continues along it.

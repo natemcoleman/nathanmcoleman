@@ -15,6 +15,8 @@
  * "Solved" means every face is a single color, in any arrangement of colors,
  * so states are compared by which points share a color, not by the colors
  * themselves. That makes every solved state the same search goal.
+ * Layouts with groups: 'pattern' need exact positions, so their states are
+ * compared point by point instead.
  */
 'use strict';
 const fs = require('fs');
@@ -36,6 +38,13 @@ function canonicalKey(state) {
   }
   return out;
 }
+// Search key: color grouping, or exact colors for pattern goals. Both decode with fromKey.
+function keyFor(puzzle, state) {
+  if (!puzzle.exact) return canonicalKey(state);
+  let out = '';
+  for (let i = 0; i < state.length; i++) out += String.fromCharCode(48 + state[i]);
+  return out;
+}
 function fromKey(key) {
   const a = new Array(key.length);
   for (let i = 0; i < key.length; i++) a[i] = key.charCodeAt(i) - 48;
@@ -53,7 +62,7 @@ function allMoves(puzzle) {
 
 // BFS layers: Map key -> { d, parent, c, k } (parent key and the move that led here)
 function bfs(puzzle, startState, depth, moves) {
-  const startKey = canonicalKey(startState);
+  const startKey = keyFor(puzzle, startState);
   const seen = new Map([[startKey, { d: 0, parent: null }]]);
   const layers = [[startKey]];
   for (let d = 1; d <= depth; d++) {
@@ -63,7 +72,7 @@ function bfs(puzzle, startState, depth, moves) {
       const last = seen.get(key).c;
       for (const mv of moves) {
         if (mv.c === last) continue; // merging with the previous turn is never shorter
-        const nk = canonicalKey(E.applyMove(puzzle, s, mv.c, mv.k));
+        const nk = keyFor(puzzle, E.applyMove(puzzle, s, mv.c, mv.k));
         if (!seen.has(nk)) { seen.set(nk, { d: d, parent: key, c: mv.c, k: mv.k }); next.push(nk); }
       }
     }
@@ -92,7 +101,7 @@ function backwardTable(puzzle, layoutId, moves) {
 function solveOptimal(puzzle, layoutId, start) {
   const moves = allMoves(puzzle);
   const back = backwardTable(puzzle, layoutId, moves);
-  const startKey = canonicalKey(start);
+  const startKey = keyFor(puzzle, start);
   const fwd = new Map([[startKey, { d: 0, parent: null }]]);
   let layer = [startKey];
   for (let f = 0; f <= FWD_DEPTH; f++) {
@@ -103,7 +112,7 @@ function solveOptimal(puzzle, layoutId, start) {
         const last = fwd.get(key).c;
         for (const mv of moves) {
           if (mv.c === last) continue;
-          const nk = canonicalKey(E.applyMove(puzzle, s, mv.c, mv.k));
+          const nk = keyFor(puzzle, E.applyMove(puzzle, s, mv.c, mv.k));
           if (!fwd.has(nk)) { fwd.set(nk, { d: f, parent: key, c: mv.c, k: mv.k }); next.push(nk); }
         }
       }
@@ -157,5 +166,5 @@ function main() {
   console.error('wrote', Object.keys(out.puzzles).length, 'solutions to', file);
 }
 
-module.exports = { solveOptimal, canonicalKey };
+module.exports = { solveOptimal, canonicalKey, keyFor };
 if (require.main === module) main();

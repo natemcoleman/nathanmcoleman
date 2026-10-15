@@ -226,3 +226,38 @@ test('free play offers the levels in the current schedule', () => {
   assert.strictEqual(E.practicePuzzle('Hard', 's').config.moves, 3);
   assert.strictEqual(E.practicePuzzle('Expert', 's').config.moves, 3, 'old links fall back to the hardest level');
 });
+
+test('lab shapes match the sketches and every goal is playable', () => {
+  const expect = { 'tri-2': 24, 'tri-3': 54, 'tri-1': 6, 'duo-2': 8, 'clover-4': 8, 'flower-6': 12 };
+  for (const [shape, sh] of Object.entries(E.LAB_SHAPES)) {
+    for (const goal of Object.keys(sh.goals)) {
+      for (const turns of [1, 3, 5]) {
+        const day = E.labPuzzle(shape, goal, turns, 'test');
+        const p = day.puzzle;
+        assert.strictEqual(p.slots.length, expect[shape], shape);
+        assert.ok(p.slots.every((s) => s.circles.length === 2), shape + ': every point sits on exactly two circles');
+        assert.ok(!E.isSolved(p, day.start), shape + '/' + goal + ' starts scrambled');
+        let state = day.start, stack = [], steps = 0;
+        while (!E.isSolved(p, state)) {
+          const h = E.hint(p, state, { stack, scramble: day.scramble });
+          state = E.applyMove(p, state, h.c, h.k);
+          stack.push({ c: h.c, k: h.k });
+          assert.ok(++steps <= turns, shape + '/' + goal + ' solvable within the scramble');
+        }
+      }
+    }
+  }
+  assert.deepStrictEqual(E.buildPuzzle({ ...E.LAB_SHAPES['tri-2'].def, groups: 'pairs' }).faces.map((f) => f.slots.length), [8, 8, 8]);
+  assert.deepStrictEqual(E.buildPuzzle({ ...E.LAB_SHAPES['flower-6'].def, groups: 'radial' }).faces.map((f) => f.slots.length), [6, 6]);
+});
+
+test('pattern goal needs exact positions; distance is exact for short puzzles', () => {
+  const day = E.labPuzzle('tri-1', 'pattern', 2, 'x');
+  const p = day.puzzle;
+  assert.ok(p.exact);
+  assert.ok(E.isSolved(p, p.solvedState));
+  const swapped = p.solvedState.slice(); [swapped[0], swapped[1]] = [swapped[1], swapped[0]];
+  assert.ok(!E.isSolved(p, swapped), 'a single swap is not solved in pattern mode');
+  assert.strictEqual(E.distanceToSolve(p, p.solvedState), 0);
+  assert.ok(E.distanceToSolve(p, day.start) >= 1);
+});
