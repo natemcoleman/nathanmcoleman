@@ -12,6 +12,8 @@
   // Face colors, assigned clockwise from the top cluster, plus color-blind glyphs.
   var PALETTE = ['#e5484d', '#30a46c', '#f76b15', '#f5c400', '#8e4ec6', '#3e63dd'];
   var GLYPHS = ['circle', 'triangle', 'square', 'diamond', 'plus', 'star'];
+  var FEW_COLORS = ['#3e63dd', '#f76b15', '#30a46c']; // blue, orange, green for 2- and 3-color boards
+  function colorFor(p, id) { return p.colorCount <= 3 ? FEW_COLORS[id % 3] : PALETTE[id % PALETTE.length]; }
   var DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   var LEVELS = ['Easy', 'Medium', 'Hard', 'Expert'];
@@ -155,17 +157,28 @@
     if (this.turn && this.turn.s !== 0) p.circles[this.turn.c].slots.forEach(function (sid) { turningSlots[sid] = true; });
     p.faces.forEach(function (f) {
       var c0 = self.state[f.slots[0]];
-      var done = f.slots.every(function (sid) { return self.state[sid] === c0 && !turningSlots[sid]; });
+      var done = f.slots.every(function (sid) {
+        return !turningSlots[sid] && (p.exact ? self.state[sid] === p.solvedState[sid] : self.state[sid] === c0);
+      });
       if (!done) return;
       ctx.save();
       ctx.globalAlpha = 0.22;
-      ctx.fillStyle = PALETTE[c0 % PALETTE.length];
+      ctx.fillStyle = colorFor(p, c0);
       f.slots.forEach(function (sid) {
         var sl = p.slots[sid], sp = self.toScreen(sl.x, sl.y);
         ctx.beginPath(); ctx.arc(sp.x, sp.y, self.pointR * 1.8, 0, Math.PI * 2); ctx.fill();
       });
       ctx.restore();
     });
+
+    // "match the pattern" goals: a ring in each spot's target color
+    if (p.exact) {
+      p.slots.forEach(function (sl) {
+        var sp = self.toScreen(sl.x, sl.y);
+        ctx.beginPath(); ctx.arc(sp.x, sp.y, self.pointR + 5, 0, Math.PI * 2);
+        ctx.lineWidth = 3; ctx.strokeStyle = colorFor(p, p.solvedState[sl.id]); ctx.stroke();
+      });
+    }
 
     // points
     var moving = {};
@@ -187,7 +200,7 @@
       }
       ctx.beginPath();
       ctx.arc(sp.x, sp.y, r, 0, Math.PI * 2);
-      ctx.fillStyle = PALETTE[color % PALETTE.length];
+      ctx.fillStyle = colorFor(p, color);
       ctx.fill();
       ctx.lineWidth = 1.5;
       ctx.strokeStyle = edge;
@@ -308,17 +321,22 @@
     return !!d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= todayStr && (allowPreview ? d >= E.SCHEDULES[0].from : puzzleNumber(d) >= 1);
   }
   // Practice modes (never saved or counted): ?free=Easy|Medium|Hard|Expert, ?replay=YYYY-MM-DD
-  var freeLevel = LEVELS.indexOf(params.get('free')) >= 0 ? params.get('free') : null;
-  var replayDate = !freeLevel && validDate(params.get('replay'), true) ? params.get('replay') : null;
-  var practice = !!(freeLevel || replayDate);
+  // Lab (experimental shapes/goals): ?lab=<shape>&goal=<mode>&turns=<n>&hc=1 (hot/cold meter)
+  var labShape = E.LAB_SHAPES[params.get('lab')] ? params.get('lab') : null;
+  var hotCold = !!labShape && params.get('hc') === '1';
+  var freeLevel = !labShape && LEVELS.indexOf(params.get('free')) >= 0 ? params.get('free') : null;
+  var replayDate = !labShape && !freeLevel && validDate(params.get('replay'), true) ? params.get('replay') : null;
+  var practice = !!(labShape || freeLevel || replayDate);
   var playDate = replayDate || params.get('d');
   if (!practice && !validDate(playDate, false)) playDate = todayStr;
-  if (freeLevel) playDate = todayStr;
+  if (freeLevel || labShape) playDate = todayStr;
   var isArchive = practice || playDate !== todayStr;
 
-  var day = freeLevel
-    ? E.practicePuzzle(freeLevel, params.get('seed') || String(Date.now()))
-    : E.dailyPuzzle(playDate);
+  var day = labShape
+    ? E.labPuzzle(labShape, params.get('goal'), params.get('turns'), params.get('seed') || String(Date.now()))
+    : freeLevel
+      ? E.practicePuzzle(freeLevel, params.get('seed') || String(Date.now()))
+      : E.dailyPuzzle(playDate);
   var puzzle = day.puzzle;
   var newGame = function () { return { stack: [], started: false, solved: false, hints: 0, peeks: 0, daily: false }; };
   var game;
@@ -347,9 +365,14 @@
     controls: document.getElementById('controls')
   };
 
-  el.label.innerHTML = '<strong>' + (freeLevel ? 'Free play' : replayDate ? 'Replay ' + numberLabel(playDate) : numberLabel(playDate)) +
-    '</strong> · ' + day.config.label;
-  if (practice) {
+  el.label.innerHTML = labShape
+    ? '<strong>Lab</strong> · ' + day.lab.name
+    : '<strong>' + (freeLevel ? 'Free play' : replayDate ? 'Replay ' + numberLabel(playDate) : numberLabel(playDate)) +
+      '</strong> · ' + day.config.label;
+  if (labShape) {
+    el.banner.innerHTML = 'Lab · ' + day.lab.goalName + (puzzle.exact ? ': put each point back in its ring' : '') +
+      ' · <a href="' + location.pathname + '">Back to today</a>';
+  } else if (practice) {
     el.banner.innerHTML = 'Practice · doesn\'t count · <a href="' + location.pathname + '">Back to today</a>';
   } else if (isArchive) {
     var pd = parseDate(playDate);
@@ -388,7 +411,31 @@
     board.hintMove = null;
     save();
     renderStatus();
+    updateHeat();
     if (E.isSolved(puzzle, state)) win();
+  }
+
+  // ---------- hot / cold meter (Lab option) ----------
+  // Shows how close the board is to solved (exact up to 6 moves away) and whether the
+  // last move made it warmer or colder.
+  var heatPrev = null;
+  function updateHeat() {
+    if (!hotCold) return;
+    var box = document.getElementById('heat');
+    var d = E.distanceToSolve(puzzle, state);
+    var far = d === null ? 7 : d;
+    var frac = Math.max(0, (6 - Math.min(far, 6)) / 6);
+    var text;
+    if (far === 0) text = '🔥 Solved!';
+    else if (heatPrev === null) text = 'How close you are';
+    else if (far < heatPrev) text = '🔥 Warmer';
+    else if (far > heatPrev) text = '🧊 Colder';
+    else text = '↔ No closer';
+    heatPrev = far;
+    box.hidden = false;
+    document.getElementById('heat-fill').style.width = Math.round(4 + frac * 96) + '%';
+    document.getElementById('heat-text').textContent = text;
+    box.className = 'heat' + (far < 3 ? ' hot' : far > 4 ? ' cold' : '');
   }
 
   // Animate circle c from s0 to s1 steps, then commit the whole-step result.
@@ -546,6 +593,7 @@
       board.state = state;
       save();
       renderStatus();
+      updateHeat();
     });
   }
 
@@ -633,6 +681,7 @@
     renderStatus();
     board.draw();
     toast('Back to the start', 1200);
+    updateHeat();
   });
 
   // ---------- winning ----------
@@ -677,10 +726,15 @@
     }
     // Solution and Share live on the results sheet; the main screen just reopens it.
     add('See results', 'primary', function () { openModal('stats'); });
-    if (practice) add(freeLevel ? 'New puzzle' : 'Play again', '', playAgain);
+    if (practice) add(freeLevel || labShape ? 'New puzzle' : 'Play again', '', playAgain);
+  }
+  function labUrl(shape, goal, turns, hc) {
+    return location.pathname + '?lab=' + encodeURIComponent(shape) + '&goal=' + encodeURIComponent(goal) +
+      '&turns=' + turns + (hc ? '&hc=1' : '');
   }
   function playAgain() {
-    location.href = location.pathname + (freeLevel ? '?free=' + freeLevel : '?replay=' + playDate);
+    location.href = labShape ? labUrl(labShape, day.lab.goal, day.lab.turns, hotCold)
+      : location.pathname + (freeLevel ? '?free=' + freeLevel : '?replay=' + playDate);
   }
 
   // ---------- optimal solution replay ----------
@@ -697,7 +751,7 @@
       solutionCache = { moves: moves, optimal: false };
       cb(solutionCache);
     }
-    if (!window.fetch || freeLevel) { fallback(); return; }
+    if (!window.fetch || freeLevel || labShape) { fallback(); return; }
     fetch(ASSET_BASE + 'solutions.json', { cache: 'no-cache' }).then(function (r) {
       if (!r.ok) throw new Error('missing');
       return r.json();
@@ -1125,14 +1179,14 @@
     var result = document.getElementById('stats-result');
     if (game.solved) {
       result.innerHTML = '<div class="result">' +
-        '<div class="result-title">Solved · ' + (freeLevel ? 'Free play' : 'Venn ' + numberLabel(playDate)) + ' · ' + day.config.label + '</div>' +
+        '<div class="result-title">Solved · ' + (labShape ? 'Lab · ' + day.lab.name : (freeLevel ? 'Free play' : 'Venn ' + numberLabel(playDate)) + ' · ' + day.config.label) + '</div>' +
         '<div class="result-score">' + score(game) + '<span>' + (score(game) === 1 ? 'move' : 'moves') + '</span></div>' +
         '<div class="result-meta">' + hintsText(game) + '<span id="optimal-line"></span></div>' +
         (practice ? '<div class="result-note">Practice games don\'t count toward your stats.</div>'
           : isArchive ? '<div class="result-note">Past puzzles don\'t count toward your stats.</div>' : '') +
         '<div class="result-actions">' +
           '<button class="btn" id="watch-btn">' + ICON_PLAY + 'Solution</button>' +
-          (practice ? '<button class="btn primary" id="again-btn">' + (freeLevel ? 'New puzzle' : 'Play again') + '</button>'
+          (practice ? '<button class="btn primary" id="again-btn">' + (freeLevel || labShape ? 'New puzzle' : 'Play again') + '</button>'
             : '<button class="btn primary" id="share-btn">Share ' + ICON_SHARE + '</button>') +
         '</div>' +
         (isArchive ? '' : '<div class="result-next">Next Venn in <span id="countdown"></span></div>') +
@@ -1176,13 +1230,15 @@
       '<div class="free-levels" style="grid-template-columns:repeat(' + E.practiceLevels().length + ',1fr)">' + E.practiceLevels().map(function (l) {
         return '<a class="btn" href="' + location.pathname + '?free=' + l + '">' + l + '</a>';
       }).join('') + '</div>';
+    free += labSectionHtml();
     if (puzzleNumber(todayStr) < 1) {
       var l = parseDate(LAUNCH);
       body.innerHTML = free + '<p class="small" style="text-align:center;margin-top:16px">Past puzzles will appear here once Venn #1 launches on ' +
         MONTHS[l.getMonth()] + ' ' + l.getDate() + '.</p>';
+      bindLab();
       return;
     }
-    var html = free, month = null;
+    var html = free + '<div class="archive-month">Past puzzles</div>', month = null;
     for (var d = todayStr; puzzleNumber(d) >= 1; d = addDays(d, -1)) {
       var pd = parseDate(d), mk = MONTHS[pd.getMonth()] + ' ' + pd.getFullYear();
       if (mk !== month) { html += (month ? '</ul>' : '') + '<div class="archive-month">' + mk + '</div><ul class="archive-list">'; month = mk; }
@@ -1194,11 +1250,64 @@
         '</span></span>' + status + '</button></li>';
     }
     body.innerHTML = html + '</ul>';
+    bindLab();
     body.querySelectorAll('button[data-date]').forEach(function (b) {
       b.addEventListener('click', function () {
         var d = b.getAttribute('data-date');
         location.href = location.pathname + (d === todayStr ? '' : '?d=' + d);
       });
+    });
+  }
+
+  // ---------- Lab menu ----------
+  function labSectionHtml() {
+    var saved = store.settings.lab || {};
+    var shapes = Object.keys(E.LAB_SHAPES);
+    var turns = [1, 2, 3, 4, 5].map(function (n) {
+      return '<option value="' + n + '"' + (Number(saved.turns || 2) === n ? ' selected' : '') + '>' + n + '</option>';
+    }).join('');
+    return '<div class="archive-month">Lab <span class="lab-tag">experimental</span></div>' +
+      '<p class="small" style="margin:2px 0 8px">Try new shapes, color rules and a hot/cold meter before they reach the daily puzzle. Practice only.</p>' +
+      '<div class="lab">' +
+        '<canvas id="lab-preview" aria-hidden="true"></canvas>' +
+        '<div class="lab-form">' +
+          '<label>Shape<select id="lab-shape">' + shapes.map(function (k) {
+            return '<option value="' + k + '"' + (saved.shape === k ? ' selected' : '') + '>' + E.LAB_SHAPES[k].name + '</option>';
+          }).join('') + '</select></label>' +
+          '<label>Colors<select id="lab-goal"></select></label>' +
+          '<label>Turns<select id="lab-turns">' + turns + '</select></label>' +
+          '<label class="lab-check"><input type="checkbox" id="lab-hc"' + (saved.hc ? ' checked' : '') + '> Hot/cold meter</label>' +
+          '<button class="btn primary" id="lab-go">Play</button>' +
+        '</div>' +
+      '</div>';
+  }
+  var labPreview = null;
+  function bindLab() {
+    var shapeEl = document.getElementById('lab-shape'), goalEl = document.getElementById('lab-goal');
+    if (!shapeEl) return;
+    var saved = store.settings.lab || {};
+    function fillGoals() {
+      var goals = E.LAB_SHAPES[shapeEl.value].goals;
+      goalEl.innerHTML = Object.keys(goals).map(function (g) {
+        return '<option value="' + g + '"' + (saved.goal === g ? ' selected' : '') + '>' + goals[g] + '</option>';
+      }).join('');
+      drawPreview();
+    }
+    function drawPreview() {
+      var sh = E.LAB_SHAPES[shapeEl.value], def = {};
+      for (var k in sh.def) def[k] = sh.def[k];
+      def.groups = goalEl.value;
+      labPreview = new Board(document.getElementById('lab-preview'), E.buildPuzzle(def));
+      labPreview.resize(120, 110);
+    }
+    shapeEl.addEventListener('change', fillGoals);
+    goalEl.addEventListener('change', drawPreview);
+    fillGoals();
+    document.getElementById('lab-go').addEventListener('click', function () {
+      var choice = { shape: shapeEl.value, goal: goalEl.value, turns: Number(document.getElementById('lab-turns').value), hc: document.getElementById('lab-hc').checked };
+      store.settings.lab = choice;
+      save();
+      location.href = labUrl(choice.shape, choice.goal, choice.turns, choice.hc);
     });
   }
 
@@ -1211,7 +1320,8 @@
       e.preventDefault();
       var msg = document.getElementById('fb-message');
       if (!msg.value.trim()) { status.className = 'fb-status error'; status.textContent = 'Please write a message first.'; msg.focus(); return; }
-      var puzzleInfo = (freeLevel ? 'Free play ' + freeLevel : 'Venn ' + numberLabel(playDate) + ' (' + playDate + ')') +
+      var puzzleInfo = (labShape ? 'Lab ' + labShape + ' / ' + day.lab.goal + ' / ' + day.lab.turns + ' turns' + (hotCold ? ' / hot-cold' : '')
+        : freeLevel ? 'Free play ' + freeLevel : 'Venn ' + numberLabel(playDate) + ' (' + playDate + ')') +
         (game.solved ? ', solved' : game.started ? ', in progress' : '');
       submit.disabled = true;
       submit.textContent = 'Sending…';
@@ -1288,9 +1398,10 @@
   layout();
   renderStatus();
   if (game.solved) showSolvedControls();
+  updateHeat();
   if (!store.settings.seenHelp) openModal('help');
   else if (game.solved && !isArchive) openModal('stats'); // already solved today: go straight to the results
 
   // exposed for debugging and automated checks
-  window.Venn = { stripLayout: stripLayout, puzzle: puzzle, day: day, game: game, board: board, tutorialBoard: function () { return demo; }, getState: function () { return state; }, commitMove: commitMove };
+  window.Venn = { stripLayout: stripLayout, updateHeat: updateHeat, puzzle: puzzle, day: day, game: game, board: board, tutorialBoard: function () { return demo; }, getState: function () { return state; }, commitMove: commitMove };
 })();

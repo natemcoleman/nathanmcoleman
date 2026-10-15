@@ -405,3 +405,23 @@ html.dark .modal { border: 1px solid #1a1a1b; }
 .strip-label { fill: var(--muted); font-size: 11px; font-family: inherit; paint-order: stroke; stroke: var(--modal-bg); stroke-width: 3px; stroke-linejoin: round; }
 .strip-you { fill: var(--accent); font-weight: 700; }
 .strip-goal-label { fill: var(--accent); }
+
+/* Lab */
+.lab-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; color: #fff; background: #8e4ec6; border-radius: 4px; padding: 1px 5px; margin-left: 4px; vertical-align: 1px; }
+.lab { display: flex; gap: 10px; align-items: flex-start; }
+#lab-preview { flex: none; border-radius: 8px; background: rgba(127, 127, 127, 0.08); }
+.lab-form { flex: 1; display: grid; gap: 6px; min-width: 0; }
+.lab-form label { display: grid; grid-template-columns: 52px minmax(0, 1fr); align-items: center; font-size: 13px; gap: 6px; }
+.lab-form select { width: 100%; min-width: 0; font: inherit; font-size: 14px; padding: 5px 6px; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; }
+.lab-form .lab-check { display: flex; gap: 6px; }
+.lab-form .btn { height: 38px; max-width: none; font-size: 13px; }
+
+/* hot / cold meter */
+.heat { display: flex; align-items: center; gap: 10px; padding: 6px 16px 0; }
+.heat[hidden] { display: none; }
+.heat-bar { flex: 1; height: 10px; border-radius: 999px; background: linear-gradient(90deg, #3e63dd, #8e4ec6 50%, #e5484d); opacity: 0.25; position: relative; overflow: hidden; }
+.heat-fill { position: absolute; inset: 0 auto 0 0; width: 4%; border-radius: 999px; background: linear-gradient(90deg, #3e63dd, #8e4ec6 50%, #e5484d); background-size: 100vw 100%; transition: width 0.35s ease; }
+.heat .heat-bar { opacity: 1; background: rgba(127, 127, 127, 0.18); }
+.heat-text { flex: none; font-size: 13px; font-weight: 700; min-width: 92px; text-align: right; }
+.heat.hot .heat-text { color: #e5484d; }
+.heat.cold .heat-text { color: #3e63dd; }

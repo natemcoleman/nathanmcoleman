@@ -50,7 +50,7 @@
     var radii = def.radii;
     var centers = [];
     for (var k = 0; k < n; k++) {
-      var t = -Math.PI / 2 + (TAU * k) / n; // first center straight down
+      var t = -Math.PI / 2 + (TAU * k) / n + ((def.rotate || 0) * Math.PI) / 180; // first center straight down (before rotation)
       centers.push({ x: Math.cos(t), y: Math.sin(t) });
     }
 
@@ -133,19 +133,61 @@
       });
     });
 
-    var solved = slots.map(function (s) { return faces[s.face].color; });
+    // Goal groups. 'faces' (default): each crossing cluster is its own color.
+    // 'pairs': both clusters of a pair of centers share a color ("sections").
+    // 'radial': clusters split into inner and outer by distance from the middle (2 colors).
+    // 'pattern': every point must return to its exact starting spot.
+    var mode = def.groups || 'faces';
+    var groups = faces;
+    if (mode === 'pairs') {
+      var byPair = {};
+      groups = [];
+      faces.forEach(function (f) {
+        var pk = f.key.split(':').slice(0, 2).join(':');
+        if (!(pk in byPair)) { byPair[pk] = groups.length; groups.push({ id: groups.length, key: pk, slots: [] }); }
+        groups[byPair[pk]].slots = groups[byPair[pk]].slots.concat(f.slots);
+      });
+    } else if (mode === 'radial') {
+      var byDist = faces.slice().sort(function (a, b) { return Math.hypot(a.cx, a.cy) - Math.hypot(b.cx, b.cy); });
+      var cut = 1, bestGap = -1;
+      for (var gi = 1; gi < byDist.length; gi++) {
+        var gap = Math.hypot(byDist[gi].cx, byDist[gi].cy) - Math.hypot(byDist[gi - 1].cx, byDist[gi - 1].cy);
+        if (gap > bestGap + 1e-9) { bestGap = gap; cut = gi; }
+      }
+      groups = [
+        { id: 0, key: 'inner', slots: [].concat.apply([], byDist.slice(0, cut).map(function (f) { return f.slots; })) },
+        { id: 1, key: 'outer', slots: [].concat.apply([], byDist.slice(cut).map(function (f) { return f.slots; })) }
+      ];
+    }
+    if (groups !== faces) {
+      groups.forEach(function (g) {
+        var gx = 0, gy = 0;
+        g.slots.forEach(function (id) { gx += slots[id].x; gy += slots[id].y; slots[id].face = g.id; });
+        g.cx = gx / g.slots.length; g.cy = gy / g.slots.length;
+        g.order = mode === 'radial' ? g.id : normAngle(Math.PI / 2 - Math.atan2(g.cy, g.cx));
+      });
+      groups.slice().sort(function (a, b) { return a.order - b.order; }).forEach(function (g, idx) { g.color = idx; });
+    }
+
+    var solved = slots.map(function (s) { return groups[s.face].color; });
+
+    // Turns snap to quarter turns: a quarter of a circle's spaces when that divides evenly
+    // (= the number of rings for 3-center layouts), otherwise single spaces.
+    var m0 = circles[0].slots.length;
+    var uniform = circles.every(function (c) { return c.slots.length === m0; });
 
     return {
       def: def,
       centers: centers,
       circles: circles,
       slots: slots,
-      faces: faces,
+      faces: groups,
       commute: commute,
       solvedState: solved,
-      colorCount: faces.length,
-      // Turns snap to quarter turns: a multiple of this many spaces (= the number of rings).
-      step: radii.length
+      colorCount: groups.length,
+      exact: mode === 'pattern',
+      mode: mode,
+      step: uniform && m0 % 4 === 0 ? m0 / 4 : 1
     };
   }
 
@@ -200,6 +242,10 @@
   }
 
   function isSolved(puzzle, state) {
+    if (puzzle.exact) {
+      for (var i = 0; i < state.length; i++) if (state[i] !== puzzle.solvedState[i]) return false;
+      return true;
+    }
     return puzzle.faces.every(function (f) {
       var c = state[f.slots[0]];
       return f.slots.every(function (s) { return state[s] === c; });
@@ -283,6 +329,10 @@
    * anyStep: every single-space turn instead (used only by the original scramble check,
    * which must stay exactly as it was so existing puzzles never change).
    */
+  function goalKey(puzzle, state) {
+    return puzzle.exact ? state.join(',') : canonicalKey(state);
+  }
+
   function allMoves(puzzle, anyStep) {
     var key = anyStep ? '_movesAny' : '_moves';
     if (!puzzle[key]) {
@@ -299,7 +349,7 @@
   // Breadth-first layers from `state`: map key -> { d, parent, c, k, state }.
   function bfsLayers(puzzle, state, depth, keepStates) {
     var moves = allMoves(puzzle);
-    var rootKey = canonicalKey(state);
+    var rootKey = goalKey(puzzle, state);
     var seen = {};
     seen[rootKey] = { d: 0, parent: null, c: -1, state: state };
     var layers = [[rootKey]];
@@ -312,7 +362,7 @@
           var mv = moves[j];
           if (mv.c === node.c) continue; // two turns of one circle are one turn
           var ns = applyMove(puzzle, node.state, mv.c, mv.k);
-          var nk = canonicalKey(ns);
+          var nk = goalKey(puzzle, ns);
           if (!(nk in seen)) {
             seen[nk] = { d: d, parent: prev[i], c: mv.c, k: mv.k, state: (keepStates || d < depth) ? ns : null };
             next.push(nk);
@@ -333,11 +383,12 @@
 
   /**
    * Shortest solution if one exists within fwdDepth + backDepth moves, else null.
-   * Exact (meet-in-the-middle). Default 2 + 2 is fast enough for phones.
+   * Exact (meet-in-the-middle). Default 3 + 3; the goal table is built once per puzzle,
+   * then each call takes well under 0.1 s in Node for every current layout.
    */
   function solveShort(puzzle, state, fwdDepth, backDepth) {
-    fwdDepth = fwdDepth == null ? 2 : fwdDepth;
-    backDepth = backDepth == null ? 2 : backDepth;
+    fwdDepth = fwdDepth == null ? 3 : fwdDepth;
+    backDepth = backDepth == null ? 3 : backDepth;
     var cacheKey = '_back' + backDepth;
     if (!puzzle[cacheKey]) puzzle[cacheKey] = bfsLayers(puzzle, puzzle.solvedState, backDepth, false).seen;
     var back = puzzle[cacheKey];
@@ -516,18 +567,59 @@
 
   // Builds a scrambled puzzle for a schedule entry from a seed string.
   function makePuzzle(cfg, seed) {
-    var def = LAYOUTS[cfg.layout];
+    var def = cfg.def || LAYOUTS[cfg.layout];
     var rings = def.radii.length;
     var puzzle = buildPuzzle(def);
     if (cfg.step) puzzle.step = cfg.step;
     // Reject scrambles that happen to land solved or that have a noticeably shorter solution.
-    var s, attempt = 0;
+    var s, attempt = 0, lastUnsolved = null;
     do {
-      s = scramble(puzzle, cfg.moves, seed + (attempt ? ':' + attempt : ''), cfg.step || rings);
+      s = scramble(puzzle, cfg.moves, seed + (attempt ? ':' + attempt : ''), cfg.step || puzzle.step);
+      if (!isSolved(puzzle, s.state)) lastUnsolved = s;
       attempt++;
     } while (attempt < 50 && (isSolved(puzzle, s.state) ||
       searchSolution(puzzle, s.state, Math.min(cfg.moves - 1, 2), 200000, true)));
+    // Tiny boards can't always fit a long scramble; never hand out an already-solved one.
+    if (isSolved(puzzle, s.state) && lastUnsolved) s = lastUnsolved;
     return { config: cfg, layout: cfg.layout, rings: rings, puzzle: puzzle, scramble: s.moves, start: s.state };
+  }
+
+  /**
+   * Lab: experimental shapes and goals for testing before they go into the schedule.
+   * goals: grouping mode -> description shown in the Lab menu.
+   */
+  var LAB_SHAPES = {
+    'tri-2': { name: '3 circles · 2 rings', def: LAYOUTS[2],
+      goals: { faces: '6 colors (clusters)', pairs: '3 colors (sections)', radial: '2 colors (inner / outer)' } },
+    'tri-3': { name: '3 circles · 3 rings', def: LAYOUTS[3],
+      goals: { faces: '6 colors (clusters)', pairs: '3 colors (sections)', radial: '2 colors (inner / outer)' } },
+    'tri-1': { name: '3 circles · 1 ring', def: LAYOUTS[1],
+      goals: { pattern: 'Match the pattern (6 colors)' } },
+    'duo-2': { name: '2 circles · 2 rings', def: { centers: 2, radii: [1.25, 1.6], rotate: 90 },
+      goals: { faces: '2 colors (top / bottom)' } },
+    'clover-4': { name: '4 circles', def: { centers: 4, radii: [0.82], rotate: 45 },
+      goals: { radial: '2 colors (inner / outer)', pairs: '4 colors (sections)' } },
+    'flower-6': { name: '6 circles', def: { centers: 6, radii: [0.75] },
+      goals: { radial: '2 colors (inner / outer)', pairs: '6 colors (sections)' } }
+  };
+
+  function labPuzzle(shape, goal, turns, seed) {
+    var sh = LAB_SHAPES[shape] || LAB_SHAPES['tri-2'];
+    if (!sh.goals[goal]) goal = Object.keys(sh.goals)[0];
+    var def = {};
+    for (var k in sh.def) def[k] = sh.def[k];
+    def.groups = goal;
+    var n = Math.max(1, Math.min(6, Math.round(Number(turns) || 2)));
+    var p = makePuzzle({ label: 'Lab', def: def, moves: n }, 'lab:' + shape + ':' + goal + ':' + seed);
+    p.practice = true;
+    p.lab = { shape: LAB_SHAPES[shape] ? shape : 'tri-2', goal: goal, turns: n, name: sh.name, goalName: sh.goals[goal] };
+    return p;
+  }
+
+  /** Fewest moves left to solve (exact up to 6), or null if more than that. */
+  function distanceToSolve(puzzle, state) {
+    var s = solveShort(puzzle, state);
+    return s ? s.length : null;
   }
 
   /** Difficulty labels used by the current schedule, easiest first. */
@@ -583,6 +675,10 @@
     dailyPuzzle: dailyPuzzle,
     practicePuzzle: practicePuzzle,
     practiceLevels: practiceLevels,
+    LAB_SHAPES: LAB_SHAPES,
+    labPuzzle: labPuzzle,
+    distanceToSolve: distanceToSolve,
+    goalKey: goalKey,
     HINT_COST: HINT_COST,
     PEEK_COST: PEEK_COST,
     moveScore: moveScore,
