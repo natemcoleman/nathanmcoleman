@@ -21,6 +21,10 @@ menu:
       name: Venn
       url: /venn/
       weight: 35
+    - identifier: rover
+      name: Moon Rover
+      url: /rover/
+      weight: 36
     - identifier: projects
       name: Projects
       url: /projects

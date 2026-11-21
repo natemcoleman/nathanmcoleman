@@ -1,0 +1,14 @@
+{
+  "color": {
+    "hi": "lroc_color_4k.jpg",
+    "lo": "lroc_color_2k.jpg"
+  },
+  "dem": {
+    "hi": "ldem_16bit_2k.png",
+    "lo": "ldem_16bit_1k.png",
+    "encoding": "rg16 (R=high byte, G=low byte, 0..65535 spans minKm..maxKm)",
+    "minKm": -8.6571,
+    "maxKm": 10.4949
+  },
+  "credit": "NASA Scientific Visualization Studio (SVS 4720), LROC/ASU, LOLA/GSFC"
+}

@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#050811" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Lunar Explorer" />
+  <title>LRO Lunar Explorer — NASA CGI Moon Kit (SVS 4720)</title>
+
+  <!-- Three.js version. Newest by default; add ?three=128 to the address to compare with the original.
+       To roll back for everyone, change THREE_DEFAULT to '128'. -->
+  <script>
+    (function () {
+      var THREE_DEFAULT = '187';
+      var builds = { '187': './vendor/three-r187/three.module.js', '128': './vendor/three-r128/three.module.js' };
+      var asked = new URLSearchParams(location.search).get('three');
+      var v = builds[asked] ? asked : THREE_DEFAULT;
+      document.write('<script type="importmap">' + JSON.stringify({ imports: { three: builds[v] } }) + '<\/script>');
+      window.LRO_THREE = v;
+    })();
+  </script>
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/game.css" />
+  <link rel="stylesheet" href="css/tailwind.css" />
+</head>
+<body>
+
+  <!-- 3D WebGL Viewport -->
+  <div id="canvas-container"></div>
+
+  <!-- Impact Red Vignette Flash -->
+  <div id="impact-flash" class="fixed inset-0 z-20"></div>
+
+  <!-- Global Drag & Drop Overlay -->
+  <div id="global-drop-overlay" class="hidden fixed inset-0 z-50 bg-[#050811]/88 backdrop-blur-md flex items-center justify-center p-6 pointer-events-none">
+    <div class="max-w-lg w-full border-2 border-dashed border-[#f4d58d] rounded-3xl p-8 text-center bg-[#0b101c]/90">
+      <div class="text-xs font-mono-tech uppercase tracking-[0.2em] text-[#f4d58d] mb-2">NASA CGI MOON KIT · SVS 4720</div>
+      <h2 class="text-2xl font-bold text-white">Drop Lunar Map Files Anywhere</h2>
+      <p class="text-sm text-slate-300 mt-2">
+        Supports <span class="text-[#f4d58d] font-mono-tech">.tif / .tiff</span> (8-bit, 16-bit sRGB, Float32 DEM) &amp; <span class="text-[#7ec4a0] font-mono-tech">.jpg / .png</span>.<br/>
+        Files are auto-routed to Color Albedo or LOLA Elevation by filename.
+      </p>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- START / BRIEFING OVERLAY                                                -->
+  <!-- ======================================================================= -->
+  <div id="start-overlay" class="fixed inset-0 z-40 flex items-center justify-center p-4 bg-[#050811]/72 backdrop-blur-sm">
+    <div class="hud-panel max-w-xl w-full rounded-3xl p-6 sm:p-8 border border-slate-700/70">
+      <div class="flex items-center justify-between gap-3">
+        <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-mono-tech font-semibold tracking-wider bg-[#f4d58d]/14 text-[#f4d58d] border border-[#f4d58d]/35">
+          <span class="w-2 h-2 rounded-full bg-[#7ec4a0] pulse-soft"></span>
+          NASA LRO / LOLA DATA
+        </span>
+        <span id="boot-dataset-badge" class="text-[11px] font-mono-tech text-slate-400 text-right">Initializing Lunar Sphere...</span>
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-white mt-4">LRO Lunar Explorer</h1>
+      <p class="text-[15px] text-slate-300 mt-2 leading-relaxed">
+        Fly a Lunar Module over the real Moon, drive the rover, dock with <span class="text-[#7ec4a0] font-medium">Apollo 11's Columbia</span>, and go find out what's out there.
+      </p>
+      <p class="mt-3 text-[13px] text-slate-400">
+        <span class="only-touch">Left thumb steers, right thumb acts — buttons appear when you need them.</span>
+        <span class="only-desktop">WASD + mouse. The keys that matter right now are always shown at the bottom.</span>
+      </p>
+      <p id="save-summary" class="hidden mt-3 text-[13px] text-[#7ec4a0]"></p>
+      <p id="rotate-hint" class="mt-2 text-[13px] text-[#f4d58d]">↻ Turn your phone sideways for the best view.</p>
+      <div class="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <button id="launch-mission-btn" class="flex-1 py-4 px-6 rounded-2xl font-semibold text-base bg-[#f4d58d] hover:bg-[#f8e1aa] text-[#050811] transition shadow-lg shadow-[#f4d58d]/20 cursor-pointer">
+          Start exploring
+        </button>
+        <button id="start-open-kit-btn" class="py-3 px-4 rounded-2xl font-mono-tech text-[12px] font-medium bg-[#111827] hover:bg-[#1e293b] text-slate-300 border border-slate-700 transition cursor-pointer">
+          Load NASA maps
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- MAIN IN-GAME HUD                                                        -->
+  <!-- ======================================================================= -->
+  <div id="hud-root" class="hidden">
+
+    <!-- TOP-LEFT: status + waypoint, then 2–4 readouts for the current situation (tap for full telemetry) -->
+    <div id="ui-top-left">
+      <div id="status-chip" class="hud-panel pointer-events-auto rounded-full pl-1.5 pr-1 py-1 flex items-center gap-1.5">
+        <span id="flight-status-pill" class="text-[10px] font-mono-tech font-semibold px-2 py-0.5 rounded-full bg-[#111827] text-slate-200 border border-slate-700">AIRBORNE</span>
+        <button id="waypoint-chip" title="Mission sites" class="flex items-center gap-1.5 px-2 py-0.5 rounded-full hover:bg-slate-800/70 cursor-pointer">
+          <svg id="compass-arrow" class="w-3.5 h-3.5 text-[#f4d58d]" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L18 20L12 16L6 20L12 2Z" /></svg>
+          <span id="compass-target-name" class="text-[12px] font-semibold text-white truncate max-w-[120px]">Apollo 11</span>
+          <span class="text-[11px] font-mono-tech text-[#7ec4a0]"><span id="compass-dist">0</span> km</span>
+        </button>
+      </div>
+      <div id="signal-pill" class="hidden hud-panel rounded-xl px-2.5 py-1.5 flex items-center gap-2 max-w-full">
+        <span class="text-[10px] font-mono-tech font-semibold text-[#7dd3fc] tracking-wider">SIGNAL</span>
+        <span id="signal-bars" class="font-mono-tech text-[13px] text-[#7dd3fc] tracking-tight">▯▯▯▯▯</span>
+        <span id="signal-text" class="text-[11px] text-slate-200 leading-snug"></span>
+      </div>
+      <button id="readouts" title="Tap for full telemetry [I]" class="hidden hud-panel pointer-events-auto rounded-xl px-2.5 py-1.5 flex items-stretch gap-3 cursor-pointer"></button>
+    </div>
+
+    <!-- TOP-RIGHT: map + menu, overlay legend under them -->
+    <div id="ui-top-right">
+      <div class="flex items-center gap-1.5 pointer-events-auto">
+        <button id="journal-btn" title="Field journal [J]" class="ui-round-btn hud-panel hud-btn">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 016.5 3H20v15H6.5A2.5 2.5 0 004 20.5v-15z"/><path d="M4 20.5A2.5 2.5 0 016.5 18H20v3H6.5A2.5 2.5 0 014 20.5z"/><path d="M9 7.5h7M9 11h5"/></svg>
+          <span id="journal-count" class="ui-round-label text-[#7ec4a0]">0/37</span>
+        </button>
+        <button id="map-btn" title="Orbital map [TAB]" class="ui-round-btn hud-panel hud-btn">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><line x1="3" y1="12" x2="21" y2="12"/></svg>
+          <span id="map-btn-label" class="ui-round-label">Map</span>
+        </button>
+        <button id="menu-btn" title="Menu" class="ui-round-btn hud-panel hud-btn">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+        </button>
+      </div>
+      <div id="overlay-legend" class="hidden hud-panel rounded-xl px-3 py-2 text-[10px] font-mono-tech w-[230px]">
+        <div id="legend-elev" class="hidden">
+          <div class="text-slate-300 font-semibold mb-1">LOLA ELEVATION</div>
+          <div class="h-2 rounded" style="background: linear-gradient(90deg,#1e1b4b,#2563eb,#06b6d4,#22c55e,#eab308,#f97316,#dc2626,#fafafa)"></div>
+          <div class="flex justify-between mt-0.5 text-slate-400"><span id="legend-min">-9.1 km</span><span>0</span><span id="legend-max">+10.8 km</span></div>
+        </div>
+        <div id="legend-slope" class="hidden">
+          <div class="text-slate-300 font-semibold mb-1">LANDING SLOPE HAZARD</div>
+          <div class="grid grid-cols-5 gap-0.5 text-center text-[9px]">
+            <div><div class="h-2 rounded-sm bg-[#16a34a]"></div>&lt;4°</div>
+            <div><div class="h-2 rounded-sm bg-[#84cc16]"></div>4–8°</div>
+            <div><div class="h-2 rounded-sm bg-[#facc15]"></div>8–14°</div>
+            <div><div class="h-2 rounded-sm bg-[#f97316]"></div>14–22°</div>
+            <div><div class="h-2 rounded-sm bg-[#dc2626]"></div>&gt;22°</div>
+          </div>
+          <div class="mt-1 text-slate-400">Red = LM tips over on touchdown</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOP-CENTER (portrait: under the top bar): challenge / rendezvous HUDs + orbit predictor pill -->
+    <div id="mission-slot">
+      <div id="find-card" class="hidden pointer-events-auto w-full hud-panel rounded-2xl px-3.5 py-2.5 border border-[#7ec4a0]/60">
+        <div class="flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <div id="find-card-cat" class="text-[10px] font-mono-tech font-semibold tracking-wider">NEW FIND</div>
+            <div id="find-card-name" class="text-[15px] font-bold text-white truncate">—</div>
+          </div>
+          <button id="find-card-open" class="shrink-0 px-3 py-1.5 rounded-full text-[12px] font-semibold bg-[#7ec4a0] text-[#050811] cursor-pointer">Read in journal</button>
+        </div>
+        <div id="find-card-hook" class="text-[12px] text-slate-300 mt-1 leading-snug"></div>
+      </div>
+<div id="hadley-hud" class="hidden pointer-events-auto w-full max-w-[470px] mb-2">
+      <div class="hud-panel rounded-2xl px-3.5 py-2.5 border border-[#f4d58d]/55">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-mono-tech font-semibold bg-[#f4d58d]/18 text-[#f4d58d] border border-[#f4d58d]/45">
+              APOLLO 15 · LRV-1
+            </span>
+            <span class="text-xs font-semibold text-white">Hadley Rille Run</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="hadley-timer" class="font-mono-tech text-sm font-bold text-[#f4d58d]">00:00.0</span>
+            <button id="hadley-abort-btn" title="Exit Hadley Rille Run" class="hud-btn px-2 py-0.5 rounded-lg text-[10px] font-mono-tech bg-[#111827] border border-slate-700 text-slate-300 hover:text-white cursor-pointer">
+              EXIT
+            </button>
+          </div>
+        </div>
+
+        <!-- Active Objective & Bearing -->
+        <div class="mt-2 flex items-center justify-between gap-2 bg-[#070b14]/85 border border-slate-800 rounded-xl px-2.5 py-1.5">
+          <div class="min-w-0">
+              <div id="hadley-target-name" class="text-xs font-semibold text-[#f4d58d] truncate">STN 1 · Elbow Crater (Mare Basalt)</div>
+            <div id="hadley-target-hint" class="text-[10px] text-slate-400 truncate">Hold SHIFT for turbo boost</div>
+          </div>
+          <div class="flex items-center gap-2 shrink-0 font-mono-tech">
+            <span id="hadley-arrow" class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#f4d58d]/15 border border-[#f4d58d]/45 text-[#f4d58d] text-xs font-bold" style="transform: rotate(0deg);">↑</span>
+            <span id="hadley-dist" class="text-xs font-semibold text-white w-14 text-right">-- km</span>
+          </div>
+        </div>
+
+        <!-- 3 Samples + Return Progress -->
+        <div class="mt-2 grid grid-cols-4 gap-1.5 text-[10px] font-mono-tech text-center">
+          <div id="hadley-pill-0" class="py-1 px-1 rounded-lg border border-[#f4d58d]/65 bg-[#f4d58d]/18 text-[#f4d58d] font-semibold truncate">1. Basalt</div>
+          <div id="hadley-pill-1" class="py-1 px-1 rounded-lg border border-slate-800 bg-[#0b101c] text-slate-500 truncate">2. Rille</div>
+          <div id="hadley-pill-2" class="py-1 px-1 rounded-lg border border-slate-800 bg-[#0b101c] text-slate-500 truncate">3. Genesis</div>
+          <div id="hadley-pill-3" class="py-1 px-1 rounded-lg border border-slate-800 bg-[#0b101c] text-slate-500 truncate">4. Falcon</div>
+        </div>
+      </div>
+    </div>
+<div id="ice-hud" class="hidden pointer-events-auto w-full max-w-[470px] mb-2">
+      <div class="hud-panel rounded-2xl px-3.5 py-2.5 border border-[#7dd3fc]/55">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-mono-tech font-semibold bg-[#7dd3fc]/18 text-[#7dd3fc] border border-[#7dd3fc]/45">
+              ARTEMIS III · PSR
+            </span>
+            <span class="text-xs font-semibold text-white">South Pole Ice Run</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="ice-timer" class="font-mono-tech text-sm font-bold text-[#7dd3fc]">00:00.0</span>
+            <button id="ice-abort-btn" title="Exit South Pole Ice Run" class="hud-btn px-2 py-0.5 rounded-lg text-[10px] font-mono-tech bg-[#111827] border border-slate-700 text-slate-300 hover:text-white cursor-pointer">
+              EXIT
+            </button>
+          </div>
+        </div>
+
+        <!-- Live Thermal & Solar Heater Battery Telemetry -->
+        <div class="mt-2 grid grid-cols-12 gap-2 items-center bg-[#070b14]/90 border border-slate-800 rounded-xl px-2.5 py-1.5 font-mono-tech text-[10px]">
+          <div class="col-span-5 flex items-center justify-between gap-1">
+            <span id="ice-zone-badge" class="text-[#f4d58d] font-semibold">SUNLIT RIM</span>
+            <span id="ice-temp-val" class="text-slate-200 font-bold">+18°C</span>
+          </div>
+          <div class="col-span-7 flex items-center gap-2">
+            <span class="text-slate-400 shrink-0">HEATER</span>
+            <div class="flex-1 h-2 rounded-full bg-slate-800 overflow-hidden">
+                <div id="ice-battery-bar" class="h-full bg-[#7dd3fc] transition-all duration-150" style="width: 100%;"></div>
+            </div>
+            <span id="ice-battery-pct" class="text-[#7dd3fc] font-bold w-8 text-right">100%</span>
+          </div>
+        </div>
+
+        <!-- Active Objective & Bearing -->
+        <div class="mt-2 flex items-center justify-between gap-2 bg-[#070b14]/85 border border-slate-800 rounded-xl px-2.5 py-1.5">
+          <div class="min-w-0">
+            <div id="ice-target-name" class="text-xs font-semibold text-[#7dd3fc] truncate">STN 1 · Shackleton Rim Overlook</div>
+            <div id="ice-target-hint" class="text-[10px] text-slate-400 truncate">Descend into the polar frost line · Watch heater battery</div>
+          </div>
+          <div class="flex items-center gap-2 shrink-0 font-mono-tech">
+            <span id="ice-arrow" class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#7dd3fc]/15 border border-[#7dd3fc]/45 text-[#7dd3fc] text-xs font-bold" style="transform: rotate(0deg);">↑</span>
+            <span id="ice-dist" class="text-xs font-semibold text-white w-14 text-right">-- km</span>
+          </div>
+        </div>
+
+        <!-- 4-Step Ice Core & Sunlit Return Progress -->
+        <div class="mt-2 grid grid-cols-4 gap-1.5 text-[10px] font-mono-tech text-center">
+          <div id="ice-pill-0" class="py-1 px-1 rounded-lg border border-[#7dd3fc]/60 bg-[#7dd3fc]/18 text-[#7dd3fc] truncate">1. Rim</div>
+          <div id="ice-pill-1" class="py-1 px-1 rounded-lg border border-slate-800 bg-[#0b101c] text-slate-500 truncate">2. PSR Ice</div>
+          <div id="ice-pill-2" class="py-1 px-1 rounded-lg border border-slate-800 bg-[#0b101c] text-slate-500 truncate">3. Vein</div>
+          <div id="ice-pill-3" class="py-1 px-1 rounded-lg border border-slate-800 bg-[#0b101c] text-slate-500 truncate">4. Sunlight</div>
+        </div>
+      </div>
+    </div>
+      <div id="a11-hud" class="hidden pointer-events-auto w-full max-w-[470px] mb-2">
+        <div class="hud-panel rounded-2xl px-3.5 py-2.5 border border-[#f4d58d]/55">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-mono-tech font-semibold bg-[#f4d58d]/18 text-[#f4d58d] border border-[#f4d58d]/45 shrink-0">APOLLO 11 · EAGLE</span>
+              <span class="text-xs font-semibold text-white truncate">30 Seconds of Fuel</span>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <span id="a11-timer" class="font-mono-tech text-sm font-bold text-[#f4d58d]">00:00.0</span>
+              <button id="a11-abort-btn" class="hud-btn px-2 py-0.5 rounded-lg text-[10px] font-mono-tech bg-[#111827] border border-slate-700 text-slate-300 hover:text-white cursor-pointer">EXIT</button>
+            </div>
+          </div>
+          <div class="mt-2 flex items-center gap-2 font-mono-tech text-[11px]">
+            <span class="text-slate-400 shrink-0">DESCENT FUEL</span>
+            <div class="flex-1 h-2.5 rounded-full bg-slate-800 overflow-hidden"><div id="a11-fuel-bar" class="h-full bg-[#7ec4a0] transition-all duration-100" style="width:100%"></div></div>
+            <span id="a11-fuel-sec" class="text-white font-bold w-10 text-right">40 s</span>
+          </div>
+          <div class="mt-2 flex items-center justify-between gap-2">
+            <div id="a11-hint" class="text-[11px] text-slate-300 leading-snug">Switch on the Slope Map</div>
+            <button id="a11-slope-btn" class="shrink-0 px-3 py-1 rounded-full text-[12px] font-semibold bg-[#7ec4a0] text-[#050811] cursor-pointer">Slope map</button>
+          </div>
+        </div>
+      </div>
+    <div id="dock-hud" class="hidden pointer-events-auto w-full max-w-[470px] mb-2">
+      <div class="hud-panel rounded-2xl px-3.5 py-2.5 border border-[#7ec4a0]/55">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-mono-tech font-semibold bg-[#7ec4a0]/18 text-[#7ec4a0] border border-[#7ec4a0]/45 shrink-0">CSM COLUMBIA</span>
+            <span id="dock-phase-label" class="text-xs font-semibold text-white truncate">HOHMANN RENDEZVOUS</span>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <span id="dock-warp" class="hidden px-1.5 py-0.5 rounded text-[10px] font-mono-tech font-bold bg-[#f4d58d]/20 text-[#f4d58d]">WARP ×1</span>
+            <button id="dock-abort-btn" title="Abort / undock [K]" class="hud-btn px-2 py-0.5 rounded-lg text-[10px] font-mono-tech bg-[#111827] border border-slate-700 text-slate-300 hover:text-white cursor-pointer">[K] ABORT</button>
+          </div>
+        </div>
+        <div id="dock-info" class="mt-1.5 text-[10.5px] font-mono-tech text-slate-300 leading-snug">Guidance armed.</div>
+        <div class="mt-2 flex items-center gap-2.5">
+          <svg id="dock-reticle" class="w-11 h-11 shrink-0 rounded-full bg-[#070b14] border border-slate-700" viewBox="-22 -22 44 44">
+            <circle r="18" fill="none" stroke="#334155" stroke-width="1"/>
+            <circle r="6" fill="none" stroke="#7ec4a0" stroke-width="1"/>
+            <line x1="-20" y1="0" x2="20" y2="0" stroke="#334155" stroke-width="0.8"/>
+            <line x1="0" y1="-20" x2="0" y2="20" stroke="#334155" stroke-width="0.8"/>
+            <circle id="dock-dot" cx="0" cy="0" r="2.6" fill="#f4d58d"/>
+          </svg>
+          <div class="flex-1 grid grid-cols-4 gap-1.5 text-center font-mono-tech">
+            <div class="rounded-lg bg-[#070b14] border border-slate-800 py-1"><div class="text-[9px] text-slate-400">RANGE</div><div id="dock-range" class="text-[11px] font-semibold text-white">--</div></div>
+            <div class="rounded-lg bg-[#070b14] border border-slate-800 py-1"><div class="text-[9px] text-slate-400">CLOSING</div><div id="dock-closing" class="text-[11px] font-semibold text-white">--</div></div>
+            <div class="rounded-lg bg-[#070b14] border border-slate-800 py-1"><div class="text-[9px] text-slate-400">LATERAL</div><div id="dock-lateral" class="text-[11px] font-semibold text-white">--</div></div>
+            <div class="rounded-lg bg-[#070b14] border border-slate-800 py-1"><div class="text-[9px] text-slate-400">ALIGN</div><div id="dock-align" class="text-[11px] font-semibold text-white">--</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+          <div id="orbit-ring-hud" class="hidden hud-panel pointer-events-none rounded-full px-3.5 py-1 flex items-center gap-2.5 text-[10px] font-mono-tech">
+      <span id="orbit-ring-dot" class="w-2 h-2 rounded-full bg-[#f4d58d]"></span>
+      <span id="orbit-ring-status" class="font-semibold tracking-wider text-[#f4d58d]">SUB-ORBITAL</span>
+      <span class="text-slate-500">AP</span><span id="orbit-ring-ap" class="text-slate-100">--</span>
+      <span class="text-slate-500">PE</span><span id="orbit-ring-pe" class="text-slate-100">--</span>
+      <span class="text-slate-500">e</span><span id="orbit-ring-ecc" class="text-slate-100">0.00</span>
+      <span id="orbit-ring-period-wrap" class="hidden"><span class="text-slate-500">T</span> <span id="orbit-ring-period" class="text-slate-100">--</span></span>
+    </div>
+    </div>
+
+    <div id="details-panel" class="hidden hud-panel pointer-events-auto rounded-2xl p-3">
+        <div class="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-800">
+          <span class="text-[10px] font-mono-tech tracking-[0.14em] text-slate-400">FULL TELEMETRY</span>
+          <button id="details-close-btn" class="hud-btn w-7 h-7 rounded-lg bg-[#111827] border border-slate-700 text-slate-300 cursor-pointer" title="Close [I]">✕</button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-x-2.5 gap-y-1.5 mt-2 font-mono-tech text-[11px]">
+          <div>
+            <div class="text-[9px] text-slate-400">LAT / LON</div>
+            <div class="text-slate-100 font-semibold leading-tight"><span id="tel-lat">0.67°N</span></div>
+            <div class="text-slate-300 text-[10px] leading-tight"><span id="tel-lon">23.47°E</span></div>
+          </div>
+          <div>
+            <div class="text-[9px] text-slate-400">AGL / LOLA ELEV</div>
+            <div id="tel-alt" class="text-[#f4d58d] font-semibold leading-tight">0 m</div>
+            <div id="tel-elev" class="text-slate-400 text-[10px] leading-tight">-1.80 km</div>
+          </div>
+          <div>
+            <div class="text-[9px] text-slate-400">HORIZ SPEED</div>
+            <div id="tel-gspeed" class="text-slate-200 font-semibold">0.0 m/s</div>
+          </div>
+          <div>
+            <div class="text-[9px] text-slate-400">VERT SPEED</div>
+            <div id="tel-vspeed" class="text-slate-200 font-semibold">0.0 m/s</div>
+          </div>
+          <div>
+            <div class="text-[9px] text-slate-400">APOAPSIS (Ap)</div>
+            <div id="tel-ap" class="text-slate-300 font-semibold">--</div>
+          </div>
+          <div>
+            <div class="text-[9px] text-slate-400">PERIAPSIS (Pe)</div>
+            <div id="tel-pe" class="text-slate-300 font-semibold">--</div>
+          </div>
+        </div>
+
+        <!-- Orbital Velocity Target Bar (shown in Lander mode) -->
+        <div id="orbit-vel-strip" class="mt-1.5 pt-1.5 border-t border-slate-800/80 flex items-center justify-between font-mono-tech text-[10px]">
+          <span class="text-slate-400">ORBIT TARGET: <strong id="tel-vcirc" class="text-[#f4d58d]">1,677 m/s</strong></span>
+          <span id="tel-orb-pct" class="text-slate-300">0%</span>
+        </div>
+
+        <!-- Live surface slope under the craft (matches the [L] slope-hazard overlay) -->
+        <div id="slope-strip" class="mt-1 flex items-center justify-between font-mono-tech text-[10px]">
+          <span class="text-slate-400">SURFACE SLOPE: <strong id="tel-slope" class="text-slate-200">0°</strong></span>
+          <span id="tel-slope-class" class="text-[#7ec4a0] font-semibold">SAFE</span>
+        </div>
+
+        <!-- Surface temperature & solar battery -->
+        <div class="mt-1 flex items-center justify-between font-mono-tech text-[10px]">
+          <span class="text-slate-400">SURFACE TEMP: <strong id="tel-temp" class="text-slate-200">--</strong></span>
+          <span class="text-slate-400">SOLAR BATT: <strong id="tel-batt" class="text-slate-200">--</strong></span>
+        </div>
+
+        <!-- Attitude & Artificial Horizon Strip -->
+        <div class="mt-2 pt-2 border-t border-slate-800 flex items-center gap-2.5">
+          <svg class="w-10 h-10 shrink-0 rounded-full border border-slate-700 bg-[#070b14]" viewBox="0 0 40 40">
+            <defs>
+              <clipPath id="att-clip"><circle cx="20" cy="20" r="18" /></clipPath>
+            </defs>
+            <g clip-path="url(#att-clip)">
+              <g id="att-horizon-group" transform="translate(20, 20)">
+                <rect x="-32" y="-32" width="64" height="32" fill="#17253d" />
+                <rect x="-32" y="0" width="64" height="32" fill="#3a2f22" />
+                <line x1="-32" y1="0" x2="32" y2="0" stroke="#f4d58d" stroke-width="1.2" />
+              </g>
+            </g>
+            <line x1="12" y1="20" x2="17" y2="20" stroke="#7ec4a0" stroke-width="1.5" />
+            <line x1="23" y1="20" x2="28" y2="20" stroke="#7ec4a0" stroke-width="1.5" />
+            <circle cx="20" cy="20" r="1.4" fill="#f4d58d" />
+          </svg>
+          <div class="flex-1 font-mono-tech text-[10px]">
+            <div class="flex items-center justify-between">
+              <span id="gyro-status-badge" class="text-[#7ec4a0] font-semibold">AUTO-GYRO ON</span>
+              <span id="inverted-badge" class="hidden px-1.5 py-0.2 rounded bg-[#d9826c]/25 text-[#d9826c] font-bold">INVERTED</span>
+            </div>
+            <div class="flex items-center gap-3 text-slate-300 mt-1">
+              <span>PIT: <strong id="tel-pitch" class="text-white">0°</strong></span>
+              <span>ROL: <strong id="tel-roll" class="text-white">0°</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ALSEP Passive Seismic Experiment live trace -->
+        <div id="seismo-panel" class="hidden mt-2 pt-2 border-t border-slate-800">
+          <div class="flex items-center justify-between font-mono-tech text-[10px]">
+            <span class="text-slate-400">ALSEP PSE SEISMOGRAPH</span>
+            <span><span id="seismo-stations" class="text-[#7ec4a0] font-semibold">1 STN</span> <span class="text-slate-600">·</span> <span id="seismo-peak" class="text-slate-200">QUIET</span></span>
+          </div>
+          <canvas id="seismo-canvas" width="460" height="72" class="mt-1 w-full h-9 rounded-md bg-[#070b14] border border-slate-800"></canvas>
+        </div>
+
+        <div class="mt-2 pt-2 border-t border-slate-800">
+          <div>
+            <div class="flex justify-between text-[10px] font-mono-tech text-slate-400 mb-0.5">
+              <span>PROPELLANT</span>
+              <span id="tel-fuel-pct" class="text-slate-200">100%</span>
+            </div>
+            <div class="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
+              <div id="tel-fuel-bar" class="h-full bg-[#7ec4a0] transition-all duration-100" style="width: 100%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    <!-- MESSAGE RAIL: stunts, toasts, scan progress — bottom-center between the thumb zones -->
+    <div id="msg-rail">
+      <div id="radio-caption" class="hidden" role="status" aria-live="polite"><span class="radio-tag"><span class="radio-dot"></span>HOUSTON</span><span id="radio-caption-text"></span></div>
+      <div id="stunt-hud" class="hidden hud-panel rounded-full px-3.5 py-1.5 border border-[#f4d58d]/55 flex items-center justify-center gap-2 text-[11px] font-mono-tech whitespace-nowrap max-w-full overflow-hidden">
+        <span id="stunt-status-label" class="text-[#f4d58d] font-semibold">AIRBORNE</span>
+        <span id="stunt-tricks-label" class="text-white font-bold truncate">LUNAR JUMP</span>
+        <span id="stunt-points-label" class="text-[#f4d58d] font-semibold">SPIN OR FLIP</span>
+        <span id="stunt-airtime" class="text-slate-400">0.0s</span>
+      </div>
+      <div id="toast-box" class="hidden hud-panel px-3.5 py-1.5 rounded-full text-[11px] sm:text-xs font-mono-tech font-medium border text-center max-w-full"></div>
+      <div id="scan-cta-wrapper" class="hidden flex flex-col items-center gap-1">
+        <div class="hud-panel rounded-full px-3 py-1 text-[11px] font-mono-tech font-semibold text-[#f4d58d]"><span id="scan-btn-label">SCANNING</span></div>
+        <div id="scan-progress-wrap" class="hidden w-56 h-2 rounded-full bg-[#0b101c] border border-slate-700 overflow-hidden">
+          <div id="scan-progress-bar" class="h-full bg-[#7ec4a0] w-0 transition-all duration-75"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM-CENTER: orbital quick views (orbital map only) -->
+    <div id="ui-bottom-center">
+      <div id="orbital-controls-bar" class="hidden hud-panel rounded-2xl px-2.5 py-2 flex flex-wrap items-center justify-center gap-1.5">
+          <span class="text-[10px] font-mono-tech text-slate-400 px-1.5 hidden sm:inline">QUICK VIEW:</span>
+          <button data-view="near" class="orbital-qv-btn hud-btn px-2.5 py-1 rounded-lg text-[11px] font-mono-tech bg-[#111827] border border-slate-700 text-slate-200 cursor-pointer">Near Side</button>
+          <button data-view="far" class="orbital-qv-btn hud-btn px-2.5 py-1 rounded-lg text-[11px] font-mono-tech bg-[#111827] border border-slate-700 text-slate-200 cursor-pointer">Far Side</button>
+          <button data-view="north" class="orbital-qv-btn hud-btn px-2.5 py-1 rounded-lg text-[11px] font-mono-tech bg-[#111827] border border-slate-700 text-slate-200 cursor-pointer">North Pole</button>
+          <button data-view="south" class="orbital-qv-btn hud-btn px-2.5 py-1 rounded-lg text-[11px] font-mono-tech bg-[#111827] border border-slate-700 text-slate-200 cursor-pointer">South Pole</button>
+          <button data-view="csm" class="orbital-qv-btn hud-btn px-2.5 py-1 rounded-lg text-[11px] font-mono-tech bg-[#111827] border border-[#7ec4a0]/50 text-[#7ec4a0] cursor-pointer">CSM Columbia</button>
+          <button id="orbital-grid-btn" class="hud-btn px-2.5 py-1 rounded-lg text-[11px] font-mono-tech bg-[#111827] border border-slate-700 text-[#f4d58d] cursor-pointer">Grid: OFF</button>
+        </div>
+      <div id="key-hints" class="hidden hud-panel rounded-xl px-3 py-1.5"></div>
+    </div>
+
+    <!-- BOTTOM-LEFT: floating thumbstick (touch only, appears where your thumb lands) -->
+    <div id="joy-zone" class="hidden">
+      <div id="joy-base"><div id="joy-knob"></div></div>
+    </div>
+
+    <!-- BOTTOM-RIGHT: context actions — secondary chips, the one prompt that matters now, hold buttons -->
+    <div id="ui-actions">
+      <div id="act-secondary"></div>
+      <div id="act-prompt"></div>
+      <div id="act-holds"></div>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- MENU (everything that isn't needed moment-to-moment)                    -->
+  <!-- ======================================================================= -->
+  <div id="menu-backdrop" class="hidden fixed inset-0 z-[34]"></div>
+  <div id="menu-sheet" class="hidden hud-panel rounded-2xl custom-scroll">
+    <div class="flex items-center justify-between gap-2 px-1 pb-2">
+      <div>
+        <div class="text-[11px] font-mono-tech tracking-[0.16em] text-[#f4d58d] font-semibold">LRO EXPLORER</div>
+        <div class="text-[12px] text-slate-300 mt-0.5">Surveyed <strong id="hud-survey-count" class="text-white font-mono-tech">0/10</strong> · <span id="hud-alsep-count" class="text-[#7ec4a0] font-mono-tech font-semibold">0/5 stations</span></div>
+      </div>
+      <button id="menu-close-btn" class="hud-btn w-9 h-9 rounded-lg bg-[#111827] border border-slate-700 text-slate-300 cursor-pointer">✕</button>
+    </div>
+
+    <div class="menu-section">Explore</div>
+    <button id="journal-menu-btn" data-close-menu class="menu-item"><span>Field journal</span><span class="menu-kb">J</span></button>
+    <button id="open-sites-btn" data-close-menu class="menu-item"><span>Mission sites</span><span class="menu-kb">10 landmarks</span></button>
+    <button data-action="map" data-close-menu class="menu-item"><span>Orbital map</span><span class="menu-kb">TAB</span></button>
+    <button id="overlay-btn" class="menu-item"><span id="overlay-btn-label">[L] Map: Albedo</span><span class="menu-kb">L</span></button>
+    <button id="orbit-ring-toggle-btn" class="menu-item" title="3D Orbital Ring: ON [V]"><span>Orbit predictor ring</span><span class="menu-kb">V</span></button>
+    <button id="details-toggle-btn" data-close-menu class="menu-item"><span>Full telemetry</span><span class="menu-kb">I</span></button>
+
+    <div class="menu-section">Challenges</div>
+    <button id="hadley-run-btn" data-close-menu class="menu-item"><span class="text-[#f4d58d]">Apollo 15 · Hadley Rille Run</span><span id="hadley-best-badge" class="menu-kb">START ▸</span></button>
+    <button id="a11-run-btn" data-close-menu class="menu-item"><span class="text-[#f4d58d]">Apollo 11 · 30 Seconds of Fuel</span><span id="a11-best-badge" class="menu-kb">START ▸</span></button>
+    <button id="ice-run-btn" data-close-menu class="menu-item"><span class="text-[#7dd3fc]">Artemis III · South Pole Ice</span><span id="ice-best-badge" class="menu-kb">START ▸</span></button>
+
+    <div class="menu-section">Lunar Module</div>
+    <button data-action="dock" data-close-menu class="menu-item"><span>Rendezvous with Columbia</span><span class="menu-kb">K</span></button>
+    <button data-action="alsep" data-close-menu class="menu-item"><span>Deploy science station (ALSEP)</span><span class="menu-kb">P</span></button>
+    <button data-action="stage" data-close-menu class="menu-item"><span>Stage separation</span><span class="menu-kb">X</span></button>
+    <button id="autogyro-btn" class="menu-item"><span>Auto-gyro (stabilizer)</span><span id="autogyro-state" class="menu-kb">ON</span></button>
+    <button id="hover-assist-btn" class="menu-item"><span>Hover assist</span><span id="hover-state" class="menu-kb">ON</span></button>
+
+    <div class="menu-section">Your records</div>
+    <div id="records-list" class="rounded-xl bg-[#070b14]/80 border border-slate-800 px-3 py-2 mb-1.5 text-[13px]"></div>
+
+    <div class="menu-section">Settings</div>
+    <button id="music-toggle-btn" class="menu-item" title="Music: ON (Click to Mute)"><span>Music</span><span class="menu-kb"><span id="music-on-icon">ON</span><span id="music-off-icon" class="hidden">OFF</span></span></button>
+    <button id="radio-mode-btn" class="menu-item"><span>Mission Control radio</span><span id="radio-mode-state" class="menu-kb">VOICE</span></button>
+    <button id="sound-toggle-btn" class="menu-item"><span>All sound</span><span class="menu-kb"><span id="sound-on-icon">ON</span><span id="sound-off-icon" class="hidden">OFF</span></span></button>
+    <button id="touch-mode-btn" class="menu-item"><span>Touch controls</span><span id="touch-mode-state" class="menu-kb">AUTO</span></button>
+    <button id="fullscreen-btn" class="menu-item"><span>Full screen</span><span class="menu-kb">⤢</span></button>
+    <button id="open-env-btn" data-close-menu class="menu-item"><span>Sun &amp; terrain relief</span><span class="menu-kb">☀</span></button>
+    <button id="open-kit-btn" data-close-menu class="menu-item"><span>Load NASA map files</span><span class="menu-kb">SVS 4720</span></button>
+    <button id="help-btn" data-close-menu class="menu-item"><span>All controls</span><span class="menu-kb">?</span></button>
+    <button id="reset-btn" class="menu-item"><span id="reset-btn-label">Start fresh</span><span class="menu-kb">↺</span></button>
+    <div id="save-note" class="px-1 pt-1 text-[12px] text-slate-500">Progress saves automatically on this device.</div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- FULL CONTROLS REFERENCE                                                 -->
+  <!-- ======================================================================= -->
+  <div id="help-modal" class="hidden fixed inset-0 z-40 flex items-center justify-center p-4 bg-[#050811]/78 backdrop-blur-sm">
+    <div class="hud-panel max-w-2xl w-full rounded-3xl p-5 border border-slate-700/80 max-h-[88vh] overflow-y-auto custom-scroll">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+        <h2 class="text-lg font-bold text-white">All controls</h2>
+        <button id="help-close-btn" class="hud-btn w-9 h-9 rounded-lg bg-[#111827] border border-slate-700 text-slate-300 cursor-pointer">✕</button>
+      </div>
+      <p class="text-[13px] text-slate-400 mt-2">You never need to memorize these — the buttons and hints on screen always show what works right now.</p>
+      <div class="grid sm:grid-cols-2 gap-3 mt-3 text-[13px]">
+        <div class="help-group"><div class="help-title">Lunar Module</div>
+          <div><kbd>W A S D</kbd> move / tilt</div><div><kbd>Space</kbd> engine · <kbd>Shift</kbd> boost</div><div>Hovering: <kbd>Shift</kbd> rise · <kbd>Ctrl</kbd> lower</div><div><kbd>Q</kbd>/<kbd>Z</kbd> turn</div>
+          <div><kbd>B</kbd> retro hold — engine against your motion</div>
+          <div><kbd>G</kbd> auto-land · <kbd>T</kbd> auto-gyro · <kbd>H</kbd> hover</div><div><kbd>X</kbd> stage separation · <kbd>P</kbd> science station</div></div>
+        <div class="help-group"><div class="help-title">Lunar Rover</div>
+          <div><kbd>W</kbd>/<kbd>S</kbd> drive · <kbd>A</kbd>/<kbd>D</kbd> steer</div><div><kbd>Shift</kbd> turbo · <kbd>Space</kbd> brake / self-right</div>
+          <div>In the air: <kbd>W</kbd>/<kbd>S</kbd> flip · <kbd>A</kbd>/<kbd>D</kbd> spin · <kbd>Q</kbd>/<kbd>Z</kbd> roll</div><div><kbd>R</kbd> deploy / board rover</div></div>
+        <div class="help-group"><div class="help-title">Docking with Columbia</div>
+          <div><kbd>K</kbd> start rendezvous · undock · release</div><div><kbd>W</kbd>/<kbd>S</kbd> close / open · <kbd>A</kbd>/<kbd>D</kbd> sideways</div>
+          <div><kbd>Space</kbd>/<kbd>C</kbd> up / down · <kbd>Shift</kbd> fast</div><div><kbd>↑↓←→</kbd> pitch / yaw · <kbd>Q</kbd>/<kbd>Z</kbd> roll · <kbd>T</kbd> attitude hold</div></div>
+        <div class="help-group"><div class="help-title">Everywhere</div>
+          <div><kbd>E</kbd> lidar scan near a beacon · <kbd>F</kbd> ping for hidden finds</div>
+          <div><kbd>J</kbd> field journal</div><div><kbd>Tab</kbd> orbital map · <kbd>V</kbd> orbit ring · <kbd>L</kbd> map layers</div>
+          <div><kbd>I</kbd> full telemetry · <kbd>?</kbd> this screen · <kbd>Esc</kbd> close</div><div>Drag to look · wheel / pinch to zoom</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- MISSION SITES DRAWER                                                    -->
+  <!-- ======================================================================= -->
+  <div id="sites-drawer" class="hidden fixed inset-y-0 right-0 z-30 w-full max-w-sm p-3 sm:p-4 pointer-events-none flex justify-end">
+    <div class="hud-panel pointer-events-auto w-full h-full rounded-3xl flex flex-col overflow-hidden border border-slate-700/80">
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+        <div>
+          <div class="text-[10px] font-mono-tech tracking-[0.16em] text-[#f4d58d]">SELENOGRAPHIC TARGETS</div>
+          <h2 class="text-lg font-bold text-white">Lunar Mission Sites</h2>
+        </div>
+        <button id="close-sites-btn" class="hud-btn w-8 h-8 rounded-lg bg-[#111827] border border-slate-700 text-slate-300 cursor-pointer">✕</button>
+      </div>
+      <div id="sites-list" class="flex-1 overflow-y-auto custom-scroll p-3 space-y-2"></div>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- ENVIRONMENT (SUN PHASE & RELIEF) POPOVER                                -->
+  <!-- ======================================================================= -->
+  <div id="env-modal" class="hidden fixed top-16 right-4 z-30 w-80 hud-panel rounded-2xl p-4 border border-slate-700/80">
+    <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+      <span class="text-xs font-mono-tech font-semibold text-[#f4d58d] tracking-wider">LUNAR ENVIRONMENT</span>
+      <button id="close-env-btn" class="text-slate-400 hover:text-white text-sm cursor-pointer">✕</button>
+    </div>
+
+    <div class="mt-3 space-y-4">
+      <div>
+        <div class="flex justify-between text-xs font-mono-tech mb-1.5">
+          <span class="text-slate-300">Sun Phase / Terminator</span>
+          <span id="sun-angle-val" class="text-[#f4d58d]">42°</span>
+        </div>
+        <input id="sun-angle-slider" type="range" min="0" max="360" step="1" value="42" class="lunar-slider w-full" />
+        <label class="flex items-center gap-2 mt-2 text-xs text-slate-300 cursor-pointer">
+          <input id="sun-cycle-check" type="checkbox" class="rounded accent-[#f4d58d]" />
+          <span>Auto-Orbit Sun (Day/Night Cycle)</span>
+        </label>
+      </div>
+
+      <div>
+        <div class="flex justify-between text-xs font-mono-tech mb-1.5">
+          <span class="text-slate-300">LOLA Relief Exaggeration</span>
+          <span id="relief-scale-val" class="text-[#7ec4a0]">5.0x</span>
+        </div>
+        <input id="relief-scale-slider" type="range" min="1" max="15" step="0.5" value="5" class="lunar-slider w-full" />
+        <p class="text-[11px] text-slate-400 mt-1">Updates both 3D displaced geometry and live lander/rover terrain altimeter.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- NASA CGI MOON KIT (SVS 4720) UPLOAD MODAL                               -->
+  <!-- ======================================================================= -->
+  <div id="kit-modal" class="hidden fixed inset-0 z-40 flex items-center justify-center p-4 bg-[#050811]/78 backdrop-blur-sm">
+    <div class="hud-panel max-w-2xl w-full rounded-3xl p-5 sm:p-6 border border-slate-700/80 max-h-[90vh] overflow-y-auto custom-scroll">
+      <div class="flex items-start justify-between gap-4 pb-3 border-b border-slate-800">
+        <div>
+          <div class="text-[10px] font-mono-tech tracking-[0.16em] text-[#f4d58d]">NASA SVS 4720 · LIVE TEXTURE LOADER</div>
+          <h2 class="text-xl font-bold text-white mt-0.5">CGI Moon Kit Data Manager</h2>
+          <p class="text-xs text-slate-400 mt-1">
+            Drag &amp; drop or select files from <a href="https://svs.gsfc.nasa.gov/4720/" target="_blank" rel="noopener" class="text-[#f4d58d] underline">svs.gsfc.nasa.gov/4720/</a>. Native GeoTIFF (<span class="font-mono-tech text-slate-200">.tif</span>) and <span class="font-mono-tech text-slate-200">.jpg / .png</span> are decoded locally in your browser.
+          </p>
+        </div>
+        <button id="close-kit-btn" class="hud-btn w-8 h-8 rounded-lg bg-[#111827] border border-slate-700 text-slate-300 shrink-0 cursor-pointer">✕</button>
+      </div>
+
+      <!-- Decode Progress Bar -->
+      <div id="kit-progress-wrap" class="hidden mt-3 p-3 rounded-xl bg-[#111827] border border-[#f4d58d]/35">
+        <div class="flex justify-between text-xs font-mono-tech mb-1.5">
+          <span id="kit-progress-label" class="text-[#f4d58d]">Decoding GeoTIFF...</span>
+          <span id="kit-progress-pct" class="text-slate-300">0%</span>
+        </div>
+        <div class="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
+          <div id="kit-progress-bar" class="h-full bg-[#f4d58d] transition-all duration-150" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Error Notice -->
+      <div id="kit-error-box" class="hidden mt-3 p-3 rounded-xl bg-[#d9826c]/15 border border-[#d9826c]/45 text-xs text-[#f8c4b4] font-mono-tech"></div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+        <!-- Zone A: Color Map -->
+        <div id="dropzone-color" class="rounded-2xl border-2 border-dashed border-slate-700 bg-[#070b14]/75 p-4 flex flex-col justify-between transition cursor-pointer hover:border-[#f4d58d]/60">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-mono-tech font-semibold text-[#f4d58d]">ZONE A · ALBEDO COLOR</span>
+              <button id="reset-color-btn" class="text-[10px] font-mono-tech text-slate-400 hover:text-white underline cursor-pointer">Reset</button>
+            </div>
+            <div class="text-sm font-semibold text-white mt-1">LROC Color Mosaic</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">e.g. <span class="font-mono-tech">lroc_color_2k.jpg</span> or <span class="font-mono-tech">lroc_color_16bit_srgb_4k.tif</span></div>
+            <div class="mt-3 h-24 rounded-xl overflow-hidden bg-[#111827] border border-slate-800 flex items-center justify-center">
+              <img id="preview-color-img" alt="Color map preview" class="w-full h-full object-cover hidden" />
+              <span id="preview-color-placeholder" class="text-[11px] font-mono-tech text-slate-500">Procedural 2K Albedo Active</span>
+            </div>
+          </div>
+          <div class="mt-3 flex items-center justify-between text-[11px] font-mono-tech">
+            <span id="color-status-label" class="text-[#7ec4a0] truncate">Procedural 2048×1024</span>
+            <span class="text-[#f4d58d] shrink-0">Click / Drop</span>
+          </div>
+          <input id="input-color-file" type="file" accept=".tif,.tiff,.jpg,.jpeg,.png,.webp" class="hidden" />
+        </div>
+
+        <!-- Zone B: Elevation Map -->
+        <div id="dropzone-dem" class="rounded-2xl border-2 border-dashed border-slate-700 bg-[#070b14]/75 p-4 flex flex-col justify-between transition cursor-pointer hover:border-[#7ec4a0]/60">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-mono-tech font-semibold text-[#7ec4a0]">ZONE B · LOLA ELEVATION</span>
+              <button id="reset-dem-btn" class="text-[10px] font-mono-tech text-slate-400 hover:text-white underline cursor-pointer">Reset</button>
+            </div>
+            <div class="text-sm font-semibold text-white mt-1">LOLA Displacement DEM</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">e.g. <span class="font-mono-tech">ldem_3_8bit.jpg</span>, <span class="font-mono-tech">ldem_4.tif</span>, or <span class="font-mono-tech">ldem_16_uint.tif</span></div>
+            <div class="mt-3 h-24 rounded-xl overflow-hidden bg-[#111827] border border-slate-800 flex items-center justify-center">
+              <img id="preview-dem-img" alt="DEM preview" class="w-full h-full object-cover hidden" />
+              <span id="preview-dem-placeholder" class="text-[11px] font-mono-tech text-slate-500">Procedural LOLA DEM Active</span>
+            </div>
+          </div>
+          <div class="mt-3 flex items-center justify-between text-[11px] font-mono-tech">
+            <span id="dem-status-label" class="text-[#7ec4a0] truncate">Procedural 1024×512</span>
+            <span class="text-[#7ec4a0] shrink-0">Click / Drop</span>
+          </div>
+          <input id="input-dem-file" type="file" accept=".tif,.tiff,.jpg,.jpeg,.png,.webp" class="hidden" />
+        </div>
+      </div>
+
+      <div class="mt-4 p-3 rounded-xl bg-[#111827]/80 border border-slate-800 text-[11px] text-slate-400 leading-relaxed">
+        <strong class="text-slate-200">Self-Hosting Tip:</strong> On your own site, put a <span class="font-mono-tech text-slate-300">textures.json</span> (listing the color and 16-bit elevation maps) next to this page and they auto-load on startup; phones get lighter versions. Credit: <em>NASA's Scientific Visualization Studio, LROC/ASU, and LOLA</em>.
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- APOLLO 11: 30 SECONDS OF FUEL — RESULT                                  -->
+  <!-- ======================================================================= -->
+  <div id="a11-result-modal" class="hidden fixed inset-0 z-40 flex items-center justify-center p-4 bg-[#050811]/78 backdrop-blur-sm">
+    <div class="hud-panel max-w-lg w-full rounded-3xl p-6 border border-[#f4d58d]/55 max-h-[92vh] overflow-y-auto custom-scroll">
+      <div class="flex items-center justify-between gap-2">
+        <span id="a11-medal" class="px-3 py-1 rounded-full text-[11px] font-mono-tech font-semibold bg-[#f4d58d]/22 text-[#f4d58d] border border-[#f4d58d]/55">GOLD</span>
+        <button id="a11-close-btn" class="hud-btn w-8 h-8 rounded-lg bg-[#111827] border border-slate-700 text-slate-300 cursor-pointer">✕</button>
+      </div>
+      <h2 id="a11-title" class="text-2xl font-bold text-white mt-3">The Eagle has landed.</h2>
+      <div class="mt-3 grid grid-cols-3 gap-2 text-center font-mono-tech">
+        <div class="p-2.5 rounded-xl bg-[#070b14] border border-slate-800"><div class="text-[10px] text-slate-400">FUEL LEFT</div><div id="a11-fuel-left" class="text-lg font-bold text-[#7ec4a0] mt-0.5">—</div></div>
+        <div class="p-2.5 rounded-xl bg-[#070b14] border border-slate-800"><div class="text-[10px] text-slate-400">TOUCHDOWN</div><div id="a11-td" class="text-lg font-bold text-white mt-0.5">—</div></div>
+        <div class="p-2.5 rounded-xl bg-[#070b14] border border-slate-800"><div class="text-[10px] text-slate-400">TIME</div><div id="a11-time" class="text-lg font-bold text-[#f4d58d] mt-0.5">—</div></div>
+      </div>
+      <p class="text-[14px] text-slate-300 mt-4 leading-relaxed">
+        On July 20, 1969, Eagle’s computer was steering toward the boulder-covered flank of <strong class="text-white">West Crater</strong>. Neil Armstrong took over, flew across it at around 100 m, and kept going west hunting for smooth ground — touching down about 550 m beyond it. Capcom Charlie Duke called out <span class="text-[#f4d58d]">“60 seconds”</span> and then <span class="text-[#f4d58d]">“30 seconds”</span> of fuel; Eagle landed with roughly 20–25 seconds to spare.
+      </p>
+      <div class="mt-3 p-3 rounded-xl bg-[#111827] border border-slate-800 text-[12px] font-mono-tech text-slate-400">
+        The real West Crater is about 190 m across — it’s scaled up here so you can see it.<br>MEDALS: Gold ≥ 20 s left · Silver ≥ 8 s · Bronze = safe landing
+      </div>
+      <div class="mt-5 flex items-center justify-end gap-2.5">
+        <button id="a11-freeroam-btn" class="px-4 py-2.5 rounded-xl text-xs font-mono-tech font-medium bg-[#111827] hover:bg-[#1e293b] text-slate-200 border border-slate-700 cursor-pointer">Free Roam</button>
+        <button id="a11-retry-btn" class="px-5 py-2.5 rounded-xl text-xs font-mono-tech font-semibold bg-[#f4d58d] text-[#050811] hover:bg-[#f8e1aa] cursor-pointer">Try Again</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- FIELD JOURNAL                                                           -->
+  <!-- ======================================================================= -->
+  <div id="journal-modal" class="hidden fixed inset-0 z-40 flex items-center justify-center p-3 sm:p-4 bg-[#050811]/80 backdrop-blur-sm">
+    <div class="hud-panel max-w-4xl w-full rounded-3xl border border-slate-700/80 flex flex-col" style="max-height: calc(100vh - 24px);">
+      <div class="px-4 sm:px-5 pt-4 pb-3 border-b border-slate-800">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <div class="text-[11px] font-mono-tech tracking-[0.16em] text-[#7ec4a0] font-semibold">FIELD JOURNAL</div>
+            <div class="text-lg font-bold text-white">Things you’ve found on the Moon</div>
+          </div>
+          <button id="journal-close-btn" class="hud-btn w-10 h-10 rounded-xl bg-[#111827] border border-slate-700 text-slate-300 cursor-pointer">✕</button>
+        </div>
+        <div class="mt-2 flex items-center gap-3">
+          <div class="flex-1 h-1.5 rounded-full bg-slate-800 overflow-hidden"><div id="journal-progress-bar" class="h-full bg-[#7ec4a0]" style="width:0%"></div></div>
+          <span id="journal-progress-text" class="text-[12px] font-mono-tech text-slate-300">0 / 37 found</span>
+        </div>
+        <div id="journal-tabs" class="mt-3 flex gap-1.5 overflow-x-auto custom-scroll pb-1">
+          <button data-filter="all" class="journal-tab on">All <span class="jt-count"></span></button>
+          <button data-filter="craft" class="journal-tab">Spacecraft <span class="jt-count"></span></button>
+          <button data-filter="human" class="journal-tab">Human stories <span class="jt-count"></span></button>
+          <button data-filter="geology" class="journal-tab">Geology <span class="jt-count"></span></button>
+          <button data-filter="moment" class="journal-tab">Moments <span class="jt-count"></span></button>
+        </div>
+      </div>
+      <div id="journal-body" class="flex-1 overflow-y-auto custom-scroll p-3 sm:p-4"></div>
+      <div class="px-4 py-2 border-t border-slate-800 text-[12px] text-slate-500">Tip: <strong class="text-slate-300">Ping</strong> listens for the nearest unfound signal. <strong class="text-slate-300">Track signal</strong> on a card to follow one anywhere on the Moon.</div>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- SCIENTIFIC DOSSIER MODAL (POST-SCAN)                                    -->
+  <!-- ======================================================================= -->
+  <div id="dossier-modal" class="hidden fixed inset-0 z-40 flex items-center justify-center p-4 bg-[#050811]/75 backdrop-blur-sm">
+    <div class="hud-panel max-w-lg w-full rounded-3xl p-6 border border-[#7ec4a0]/45">
+      <div class="flex items-center justify-between">
+        <span class="px-2.5 py-1 rounded-full text-[10px] font-mono-tech font-semibold bg-[#7ec4a0]/18 text-[#7ec4a0] border border-[#7ec4a0]/45">
+          <span id="dossier-badge">LIDAR SURVEY COMPLETE</span>
+        </span>
+        <button id="close-dossier-btn" class="hud-btn w-8 h-8 rounded-lg bg-[#111827] border border-slate-700 text-slate-300 cursor-pointer">✕</button>
+      </div>
+      <h2 id="dossier-title" class="text-2xl font-bold text-white mt-3">Apollo 11 — Mare Tranquillitatis</h2>
+      <div id="dossier-coords" class="text-xs font-mono-tech text-[#f4d58d] mt-1">0.67°N, 23.47°E</div>
+      <p id="dossier-desc" class="text-sm text-slate-300 mt-3 leading-relaxed"></p>
+      <div class="mt-4 p-3 rounded-xl bg-[#111827] border border-slate-800 text-xs font-mono-tech text-slate-300">
+        <span class="text-slate-400">SCIENCE NOTE:</span> <span id="dossier-science"></span>
+      </div>
+      <div class="mt-5 flex justify-end">
+        <button id="dossier-continue-btn" class="px-5 py-2.5 rounded-xl text-xs font-mono-tech font-semibold bg-[#f4d58d] text-[#050811] hover:bg-[#f8e1aa] cursor-pointer">
+          Continue Exploration
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- APOLLO 15: HADLEY RILLE ROVER RUN LIVE CHALLENGE HUD                    -->
+  <!-- ======================================================================= -->
+    <!-- ======================================================================= -->
+  <!-- APOLLO 15: HADLEY RILLE RUN COMPLETION MODAL                            -->
+  <!-- ======================================================================= -->
+  <div id="hadley-result-modal" class="hidden fixed inset-0 z-40 flex items-center justify-center p-4 bg-[#050811]/78 backdrop-blur-sm">
+    <div class="hud-panel max-w-lg w-full rounded-3xl p-6 border border-[#f4d58d]/55">
+      <div class="flex items-center justify-between gap-2">
+        <span id="hadley-medal-badge" class="px-3 py-1 rounded-full text-[11px] font-mono-tech font-semibold bg-[#f4d58d]/22 text-[#f4d58d] border border-[#f4d58d]/55">
+          GOLD MEDAL · APOLLO ACE
+        </span>
+        <button id="hadley-result-close-btn" class="hud-btn w-8 h-8 rounded-lg bg-[#111827] border border-slate-700 text-slate-300 cursor-pointer">✕</button>
+      </div>
+
+      <h2 class="text-2xl font-bold text-white mt-3">All Apollo 15 Samples Stowed!</h2>
+      <div class="mt-3 grid grid-cols-2 gap-2 text-center font-mono-tech">
+        <div class="p-2.5 rounded-xl bg-[#070b14] border border-slate-800">
+          <div class="text-[10px] text-slate-400">FINAL TIME</div>
+          <div id="hadley-final-time" class="text-lg font-bold text-[#f4d58d] mt-0.5">00:00.0</div>
+        </div>
+        <div class="p-2.5 rounded-xl bg-[#070b14] border border-slate-800">
+          <div class="text-[10px] text-slate-400">PERSONAL BEST</div>
+          <div id="hadley-final-pts" class="text-lg font-bold text-white mt-0.5">--</div>
+        </div>
+      </div>
+
+      <p class="text-sm text-slate-300 mt-4 leading-relaxed">
+        In 1971, Dave Scott and Jim Irwin drove <span class="text-[#f4d58d] font-medium">LRV-1</span>, the first car on the Moon, along the edge of Hadley Rille. Their haul included the <strong class="text-white">Genesis Rock</strong>, a 4.1-billion-year-old fragment of the Moon’s original crust.
+      </p>
+
+      <div class="mt-3 p-3 rounded-xl bg-[#111827] border border-slate-800 text-[11px] font-mono-tech text-slate-400">
+        MEDAL TARGETS: Gold &lt; 55s · Silver &lt; 80s · Bronze = Finish
+      </div>
+
+      <div class="mt-5 flex items-center justify-end gap-2.5">
+        <button id="hadley-freeroam-btn" class="px-4 py-2.5 rounded-xl text-xs font-mono-tech font-medium bg-[#111827] hover:bg-[#1e293b] text-slate-200 border border-slate-700 cursor-pointer">
+          Free Roam
+        </button>
+        <button id="hadley-retry-btn" class="px-5 py-2.5 rounded-xl text-xs font-mono-tech font-semibold bg-[#f4d58d] text-[#050811] hover:bg-[#f8e1aa] cursor-pointer">
+          Run Again
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- ARTEMIS III: SOUTH POLE ICE RUN — DEEP-SHADOW FROST VIGNETTE            -->
+  <!-- ======================================================================= -->
+  <div id="ice-frost-vignette" class="fixed inset-0 z-10 pointer-events-none transition-opacity duration-300" style="opacity: 0; background: radial-gradient(circle, rgba(56, 189, 248, 0) 48%, rgba(56, 189, 248, 0.28) 100%);"></div>
+
+  <!-- ======================================================================= -->
+  <!-- ARTEMIS III: SOUTH POLE ICE RUN LIVE CHALLENGE HUD                      -->
+  <!-- ======================================================================= -->
+    <!-- ======================================================================= -->
+  <!-- ARTEMIS III: SOUTH POLE ICE RUN COMPLETION / FREEZE-OUT MODAL           -->
+  <!-- ======================================================================= -->
+  <div id="ice-result-modal" class="hidden fixed inset-0 z-40 flex items-center justify-center p-4 bg-[#050811]/78 backdrop-blur-sm">
+    <div class="hud-panel max-w-lg w-full rounded-3xl p-6 border border-[#7dd3fc]/55">
+      <div class="flex items-center justify-between gap-2">
+        <span id="ice-medal-badge" class="px-3 py-1 rounded-full text-[11px] font-mono-tech font-semibold bg-[#7dd3fc]/20 text-[#7dd3fc] border border-[#7dd3fc]/50">
+          GOLD MEDAL · ICE SECURED
+        </span>
+        <button id="ice-result-close-btn" class="hud-btn w-8 h-8 rounded-lg bg-[#111827] border border-slate-700 text-slate-300 cursor-pointer">✕</button>
+      </div>
+
+      <h2 id="ice-result-title" class="text-2xl font-bold text-white mt-3">Shackleton Water Ice Secured!</h2>
+      <div class="mt-3 grid grid-cols-3 gap-2 text-center font-mono-tech">
+        <div class="p-2.5 rounded-xl bg-[#070b14] border border-slate-800">
+          <div class="text-[10px] text-slate-400">FINAL TIME</div>
+          <div id="ice-final-time" class="text-lg font-bold text-[#7dd3fc] mt-0.5">00:46.8</div>
+        </div>
+        <div class="p-2.5 rounded-xl bg-[#070b14] border border-slate-800">
+          <div class="text-[10px] text-slate-400">BATTERY LEFT</div>
+          <div id="ice-final-batt" class="text-lg font-bold text-[#7ec4a0] mt-0.5">64%</div>
+        </div>
+        <div class="p-2.5 rounded-xl bg-[#070b14] border border-slate-800">
+          <div class="text-[10px] text-slate-400">PERSONAL BEST</div>
+          <div id="ice-final-pts" class="text-lg font-bold text-white mt-0.5">--</div>
+        </div>
+      </div>
+
+      <p id="ice-result-body" class="text-sm text-slate-300 mt-4 leading-relaxed">
+        Because the Moon's axial tilt is just <strong class="text-white">1.5°</strong>, the floors of polar craters like <span class="text-[#7dd3fc] font-medium">Shackleton Crater</span> have not seen sunlight in billions of years—trapping ancient water ice at <span class="text-[#7dd3fc] font-mono-tech">-223°C</span> right beside sunlit ridges ("Peaks of Eternal Light") where Artemis solar arrays can run nearly nonstop.
+      </p>
+
+      <div class="mt-3 p-3 rounded-xl bg-[#111827] border border-slate-800 text-[11px] font-mono-tech text-slate-300 space-y-1">
+        <div><span class="text-[#7dd3fc]">✓ ARTEMIS SCIENCE:</span> Lunar H₂O ice can be purified for drinking &amp; split into O₂ + H₂ rocket propellant.</div>
+        <div class="text-slate-400">MEDAL TARGETS: Gold &lt; 55s · Silver &lt; 80s · Bronze = Finish</div>
+      </div>
+
+      <div class="mt-5 flex items-center justify-end gap-2.5">
+        <button id="ice-freeroam-btn" class="px-4 py-2.5 rounded-xl text-xs font-mono-tech font-medium bg-[#111827] hover:bg-[#1e293b] text-slate-200 border border-slate-700 cursor-pointer">
+          Free Roam
+        </button>
+        <button id="ice-retry-btn" class="px-5 py-2.5 rounded-xl text-xs font-mono-tech font-semibold bg-[#7dd3fc] text-[#050811] hover:bg-[#bae6fd] cursor-pointer">
+          Run Again
+        </button>
+      </div>
+    </div>
+  </div>
+  <!-- ======================================================================= -->
+  <!-- APPLICATION SCRIPT                                                      -->
+  <!-- ======================================================================= -->
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

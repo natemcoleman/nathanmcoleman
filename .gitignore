@@ -4,3 +4,6 @@ ignoreErrors: ["error-remote-getjson"]  #yml or ignoreErrors = ["error-remote-ge
 
 
 node_modules/
+
+# Original NASA source maps for /rover/ (web copies are generated from these)
+static/rover/*.tif
