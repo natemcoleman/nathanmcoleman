@@ -131,12 +131,8 @@ function contextSpec(ctx) {
       const nearCsm = lander.inOrbit || lander.pos.distanceTo(csm.pos) < PROX_RANGE;
       spec.prompt = scan
         || (gameState.autoSoftLand ? { label: 'Cancel auto-land', key: 'G', act: 'autoland', tone: 'dim' } : null)
-        || (nearCsm ? { label: 'Rendezvous with Columbia', key: 'K', act: 'dock', tone: 'sage' } : null)
-        || (lander.aglUnits < 12 && !lander.inOrbit ? { label: 'Land for me', key: 'G', act: 'autoland' } : null);
+        || (nearCsm ? { label: 'Rendezvous with Columbia', key: 'K', act: 'dock', tone: 'sage' } : null);
       if (scan && nearCsm) spec.secondary.push({ label: 'Rendezvous with Columbia', key: 'K', act: 'dock' });
-      if (spec.prompt && spec.prompt.act !== 'autoland' && !gameState.autoSoftLand && lander.aglUnits < 12 && !lander.inOrbit) {
-        spec.secondary.push({ label: 'Land for me', key: 'G', act: 'autoland' });
-      }
       if (lander.aglUnits < 6) spec.secondary.push({ label: 'Ping', key: 'F', act: 'ping' });
       if (a11Run.active) {
         // Armstrong's landing: no autopilot, the slope map is your eyes
@@ -185,7 +181,7 @@ function contextSpec(ctx) {
       break;
     }
     case 'rover-air':
-      spec.holds = [{ key: 'yawLeft', label: '⟲<br>ROLL' }, { key: 'yawRight', label: 'ROLL<br>⟳' }, { key: 'boost', label: 'TURBO', big: true }];
+      spec.holds = [{ key: 'boost', label: 'TURBO', big: true }];
       spec.joy = 'move';
       spec.hints = [['W/S', 'Flip'], ['A/D', 'Spin'], ['Q/Z', 'Roll'], ['SHIFT', 'Boost'], ['', 'Land wheels-down!']];
       spec.readouts = ['air', 'height', 'speed'];
