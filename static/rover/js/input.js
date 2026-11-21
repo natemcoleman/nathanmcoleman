@@ -286,7 +286,7 @@ export function bindInputs() {
     unlockRadio();
     setTimeout(() => say('welcome'), 1800);
     if (save.loaded) showToast(welcomeBackText(), 'sage');
-    else showToast(ui.touch ? 'Left thumb to fly · hold ENGINE to climb · tap “Land for me” when low' : 'WASD to fly · SPACE engine · press G to auto-land', 'gold');
+    else showToast(ui.touch ? 'Left thumb to fly · hold THRUST to hover, slide up or down to climb or descend' : 'WASD to fly · SPACE engine · press G to auto-land', 'gold');
   });
 
   document.getElementById('start-open-kit-btn').addEventListener('click', () => {

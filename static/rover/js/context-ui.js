@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { LANDMARKS, MOON_RADIUS, MOON_REAL_KM, SPEED_TO_MS } from './constants.js';
 import { sound } from './audio.js';
-import { csm, gameState, keys, lander, rover } from './state.js';
+import { csm, gameState, keys, lander, rover, touchThrust } from './state.js';
 import { getSurfaceNormalAtPosition, greatCircleKm } from './coords.js';
 import { updateAssistButtonsUI } from './modes.js';
 import { renderSitesList, setGameMode, showToast } from './hud.js';
@@ -28,6 +28,8 @@ export const ui = {
 const joy = { active: false, id: null, cx: 0, cy: 0, x: 0, y: 0, R: 52 };
 const JOY_KEYS = ['forward', 'backward', 'left', 'right', 'lift', 'down'];
 try { ui.touchMode = localStorage.getItem('lro.touchMode') || 'auto'; } catch (_) { /* storage blocked */ }
+
+const THRUST_HOLD = { key: 'thrust', label: 'THRUST<span class="thrust-hint">hold ▲▼</span>', big: true, drag: true };
 
 export function mergeInputs() {
   for (const k in keys) keys[k] = !!(inputSrc.kb[k] || inputSrc.touch[k] || inputSrc.joy[k]);
@@ -144,8 +146,8 @@ function contextSpec(ctx) {
       spec.secondary.unshift({ label: gameState.retroHold ? 'Retro hold ON' : 'Retro hold', key: 'B', act: 'retro', tone: gameState.retroHold ? 'on' : '' });
       const descendOk = gameState.hoverAssist && gameState.autoGyro && !gameState.retroHold;
       const hovering = descendOk && !gameState.autoSoftLand;
-      spec.holds = [{ key: 'boost', label: hovering ? 'RISE' : 'BOOST' }, { key: 'lift', label: 'ENGINE', big: true }];
-      if (descendOk) spec.holds.unshift({ key: 'down', label: 'LOWER' });
+      if (descendOk) spec.holds = [THRUST_HOLD];
+      else spec.holds = [{ key: 'boost', label: 'BOOST' }, { key: 'lift', label: 'ENGINE', big: true }];
       spec.joy = 'move';
       spec.hints = [['WASD', gameState.autoGyro ? 'Fly' : 'Pitch / roll'], ['SPACE', 'Engine']];
       if (hovering) spec.hints.push(['SHIFT', 'Rise'], ['CTRL', 'Lower']);
@@ -161,7 +163,7 @@ function contextSpec(ctx) {
       if (canAlsep) spec.secondary.push({ label: 'Science station', key: 'P', act: 'alsep' });
       if (main.act !== 'dock') spec.secondary.push({ label: 'Fly to Columbia', key: 'K', act: 'dock' });
       spec.secondary.push({ label: 'Ping', key: 'F', act: 'ping' });
-      spec.holds = [{ key: 'lift', label: 'LIFT OFF', big: true }];
+      spec.holds = [gameState.hoverAssist && gameState.autoGyro ? THRUST_HOLD : { key: 'lift', label: 'LIFT OFF', big: true }];
       spec.joy = 'move';
       spec.hints = [['SPACE', 'Lift off'], ['WASD', 'Hop'], ['DRAG', 'Look'], ['TAB', 'Map']];
       spec.readouts = ['slope', 'fuel', 'site', 'power'];
@@ -243,7 +245,47 @@ function makeActionButton(p, cls) {
   return b;
 }
 
+// THRUST: hold to hover, slide your thumb up to climb or down to descend
+function makeThrustButton(h) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'hold-btn big thrust-btn';
+  b.innerHTML = h.label;
+  let startY = 0, id = null;
+  const RANGE = 56;   // px of drag for full climb / descent rate
+  const down = (e) => {
+    e.preventDefault();
+    sound.init();
+    try { b.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+    id = e.pointerId; startY = e.clientY;
+    touchThrust.held = true; touchThrust.axis = 0;
+    b.classList.add('pressed');
+  };
+  const move = (e) => {
+    if (e.pointerId !== id) return;
+    const raw = THREE.MathUtils.clamp((startY - e.clientY) / RANGE, -1, 1);
+    touchThrust.axis = Math.abs(raw) < 0.15 ? 0 : raw;
+    b.style.transform = `translateY(${(-raw * 14).toFixed(1)}px)`;
+    b.classList.toggle('rising', touchThrust.axis > 0);
+    b.classList.toggle('lowering', touchThrust.axis < 0);
+  };
+  const up = () => {
+    id = null;
+    touchThrust.held = false; touchThrust.axis = 0;
+    b.style.transform = '';
+    b.classList.remove('pressed', 'rising', 'lowering');
+  };
+  b.addEventListener('pointerdown', down);
+  b.addEventListener('pointermove', move);
+  b.addEventListener('pointerup', up);
+  b.addEventListener('pointercancel', up);
+  b.addEventListener('lostpointercapture', up);
+  b.addEventListener('contextmenu', (e) => e.preventDefault());
+  return b;
+}
+
 function makeHoldButton(h) {
+  if (h.drag) return makeThrustButton(h);
   const b = document.createElement('button');
   b.type = 'button';
   b.className = `hold-btn${h.big ? ' big' : ''}`;
@@ -287,7 +329,7 @@ function renderContextUI(spec) {
       ui.holdEls.delete(k);
     }
   }
-  want.forEach((h) => {
+  want.forEach((h, idx) => {
     let el = ui.holdEls.get(h.key);
     if (!el) {
       el = makeHoldButton(h);
@@ -296,7 +338,8 @@ function renderContextUI(spec) {
       el.innerHTML = h.label;
       el.classList.toggle('big', !!h.big);
     }
-    hWrap.appendChild(el); // appendChild re-orders existing nodes without dropping pointer capture
+    // Only move a button when its position really changes: moving a node releases the finger holding it
+    if (hWrap.children[idx] !== el) hWrap.insertBefore(el, hWrap.children[idx] || null);
   });
 
   // Thumbstick
@@ -363,6 +406,31 @@ export function updateContextUI() {
     r.v.style.color = color || '';
   }
   applyJoystick(spec.joy);
+  layoutMsgRail();
+}
+
+// Phones in landscape: messages sit between the thumbstick and whatever buttons are showing.
+// The button column changes with the situation, so measure it and keep the messages clear of it.
+let railCheckAt = 0;
+function layoutMsgRail() {
+  const now = performance.now();
+  if (now - railCheckAt < 200) return;
+  railCheckAt = now;
+  const rail = document.getElementById('msg-rail');
+  if (!rail) return;
+  const landscapeTouch = ui.touch && window.matchMedia && matchMedia('(orientation: landscape)').matches;
+  if (!landscapeTouch) { rail.style.right = ''; return; }
+  const vw = window.innerWidth;
+  const buttons = [...document.querySelectorAll('#act-secondary > *, #act-prompt > *, #act-holds > *')]
+    .map((e) => e.getBoundingClientRect()).filter((b) => b.width > 0 && b.height > 0);
+  let right = 118;
+  for (let pass = 0; pass < 2; pass++) {
+    const top = rail.getBoundingClientRect().top;
+    let minLeft = vw - 118;
+    for (const b of buttons) if (b.bottom > top - 6) minLeft = Math.min(minLeft, b.left);
+    right = Math.max(12, Math.round(vw - minLeft + 10));
+    rail.style.right = right + 'px';
+  }
 }
 
 // ---------------- Floating thumbstick ----------------
@@ -517,6 +585,7 @@ export function bindContextUI() {
     inputSrc.touch = {};
     resetJoystick();
     for (const el of ui.holdEls.values()) el.classList.remove('pressed');
+    touchThrust.held = false; touchThrust.axis = 0;
   });
   detectTouchUI();
 }

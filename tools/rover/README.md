@@ -57,15 +57,15 @@ The game runs on Three.js r187. The original r128 is kept next to it so the upgr
 
 ## Mission Control radio
 
-Calls are spoken by the browser's built-in voice, with Quindar beeps and static generated in Web Audio, and always subtitled. Players pick Voice, Subtitles or Off under Menu → Mission Control radio.
+Houston's calls show as subtitles, opened and closed by Quindar beeps over light static. There is no computer voice. Players can turn the radio on or off under Menu → Mission Control radio.
 
-Every call has an id (`landing`, `find.luna9`, `scan.tycho`, …). To replace the synthesized voice with a recording:
+Every call has an id (`landing`, `a11Down`, `find.luna9`, `scan.tycho`, …). To play a real recording for a call:
 
 1. In the browser console on `/rover/`, run `lroRadioLines()` to list every id and its text.
-2. Save the recording as `static/rover/audio/radio/<id>.mp3`.
-3. List the ids that have recordings in `static/rover/audio/radio/manifest.json`: `{ "files": ["landing", "find.luna9"] }`
+2. Save the clip as `static/rover/audio/radio/<id>.mp3` (for example `a11Down.mp3` for "We copy you on the ground…").
+3. List the ids that have clips in `static/rover/audio/radio/manifest.json`: `{ "files": ["a11Down", "landing"] }`
 
-Ids without a recording keep using the synthesized voice. `{cs}` in a line is the callsign (Eagle, or Rover when driving).
+Calls with a clip play it while the subtitle shows; calls without one show the subtitle alone. `{cs}` in a line is the callsign (Eagle, or Rover when driving).
 
 ## Commands
 

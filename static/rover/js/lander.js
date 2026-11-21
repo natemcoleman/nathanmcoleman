@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { LANDER_SCALE, LUNAR_MU, MOON_RADIUS, MOON_REAL_KM, SPEED_TO_MS } from './constants.js';
 import { sound } from './audio.js';
-import { camCtrl, gameState, keys, lander, triggerSeismicEvent } from './state.js';
+import { camCtrl, gameState, keys, lander, touchThrust, triggerSeismicEvent } from './state.js';
 import { getDisplacementScale, getExactSurfaceHit, getSurfaceNormalAtPosition, sampleTerrainAtLatLon, vec3ToLatLon } from './coords.js';
 import { camera, enginePlume, landerGroup, landerMeshRoot, laserBeam, spawnDustBurst, spawnParticle } from './scene.js';
 import { updateAssistButtonsUI } from './modes.js';
@@ -77,6 +77,12 @@ export function updateLanderPhysics(dt) {
   const GRAVITY = LUNAR_MU / (rNow * rNow);
   // In hover, SHIFT climbs and CTRL/C descends at a steady rate instead of boosting
   const hoverHold = gameState.autoGyro && gameState.hoverAssist && !gameState.retroHold && !gameState.autoSoftLand && !lander.isLanded && !rdv.active;
+  // Phones: THRUST held = hover (slide up/down for rate); thumb off = gentle sink
+  const touchHover = ui.touch && gameState.autoGyro && gameState.hoverAssist && !gameState.retroHold && !rdv.active && touchThrust.held;
+  if (touchHover && lander.isLanded && lander.fuel > 0.5) {
+    lander.vel.addScaledVector(lander.up, 0.9);
+    lander.isLanded = false;
+  }
   const isBoosting = keys.boost && !hoverHold && lander.fuel > 0.5;
   const mainEngineOn = (keys.lift || (keys.boost && !hoverHold)) && lander.fuel > 0.5;
   lander.hoverHold = hoverHold;
@@ -126,7 +132,7 @@ export function updateLanderPhysics(dt) {
     const moveFwd = (keys.forward || keys.arrowUp ? 1 : 0) - (keys.backward || keys.arrowDown ? 1 : 0);
     const moveStrafe = (keys.right || keys.arrowRight ? 1 : 0) - (keys.left || keys.arrowLeft ? 1 : 0);
     const yawInput = (keys.yawLeft ? 1 : 0) - (keys.yawRight ? 1 : 0);
-    const manualThrustInput = keys.lift || keys.boost || moveFwd !== 0 || moveStrafe !== 0;
+    const manualThrustInput = keys.lift || keys.boost || touchThrust.held || moveFwd !== 0 || moveStrafe !== 0;
 
     if (manualThrustInput && gameState.autoSoftLand) {
       gameState.autoSoftLand = false;
@@ -157,7 +163,10 @@ export function updateLanderPhysics(dt) {
       thrustMag = Math.max(thrustMag, 0.55);
     } else if (gameState.hoverAssist && !lander.isLanded && lander.fuel > 0.5) {
       // RISE (SHIFT) and LOWER (CTRL/C) turn hover into a rate-of-descent control, slowing near the ground — like Apollo's ROD switch
-      const hoverTarget = keys.boost ? 0.7 : (keys.down ? (lander.aglUnits > 0.8 ? -0.7 : -0.22) : 0);
+      const ax = ui.touch ? touchThrust.axis : (keys.boost ? 1 : (keys.down ? -1 : 0));
+      let hoverTarget = ax > 0 ? 0.9 * ax : (ax < 0 ? (lander.aglUnits > 0.8 ? 0.7 : 0.22) * ax : 0);
+      // Phones, thumb off THRUST: sink gently and settle softly (sped-up gravity would otherwise drop you in a second)
+      if (ui.touch && !touchThrust.held) hoverTarget = lander.aglUnits > 0.8 ? -0.3 : -0.15;
       const hoverErr = hoverTarget - vRad;
       const hoverAccel = THREE.MathUtils.clamp(GRAVITY + hoverErr * 3.2, 0, 6.2);
       lander.vel.addScaledVector(lander.up, hoverAccel * dt);

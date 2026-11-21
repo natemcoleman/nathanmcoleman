@@ -258,7 +258,7 @@ export function updateA11Run(dt) {
   const slopeBtn = document.getElementById('a11-slope-btn');
   slopeBtn.classList.toggle('hidden', overlayState.mode === 2);
   if (overlayState.mode !== 2) hint.textContent = 'Switch on the Slope Map — red is boulders and steep crater walls';
-  else if (!lander.isLanded) hint.textContent = inBoulderField(lander.up) ? 'Below you: BOULDERS. Keep flying west until the ground turns green' : (ui.touch ? 'Over green? Hold LOWER and set down gently' : 'Over green? Hold CTRL to lower and set down gently');
+  else if (!lander.isLanded) hint.textContent = inBoulderField(lander.up) ? 'Below you: BOULDERS. Keep flying west until the ground turns green' : (ui.touch ? 'Over green? Hold THRUST and slide down to set down gently' : 'Over green? Hold CTRL to lower and set down gently');
   // Mission Control fuel calls, as Charlie Duke made them
   [[30, '“30 SECONDS.” — Houston'], [15, '15 SECONDS of fuel — get it down!'], [0, 'FUEL DEPLETED — engine out!']].forEach(([s, msg]) => {
     if (secs <= s && !a11Run.callouts[s]) {

@@ -472,6 +472,41 @@ export const hadleyRun = {
   captureRadius: 0.42
 };
 
+// Real elevation data can put a fixed start point on a crater wall. Search nearby for flat ground:
+// anything under ~6° counts as flat, and the closest flat spot to the planned one wins.
+const _flatN = new THREE.Vector3();
+function slopeAtDir(dir) {
+  getExactSurfaceHit(dir, _flatN);
+  return THREE.MathUtils.radToDeg(Math.acos(THREE.MathUtils.clamp(_flatN.dot(dir.clone().normalize()), -1, 1)));
+}
+function flattestNear(lat, lon, radiusDeg, toVec) {
+  let best = null;
+  for (let ring = 0; ring <= 6; ring++) {
+    const r = (radiusDeg * ring) / 6;
+    const steps = ring === 0 ? 1 : 8 + ring * 4;
+    for (let k = 0; k < steps; k++) {
+      const a = (k / steps) * Math.PI * 2;
+      const la = THREE.MathUtils.clamp(lat + r * Math.cos(a), -89.5, 89.5);
+      const lo = lon + (r * Math.sin(a)) / Math.max(0.05, Math.cos(THREE.MathUtils.degToRad(la)));
+      const slope = slopeAtDir(toVec(la, lo, MOON_RADIUS));
+      const score = Math.max(slope, 6) + r * 10;
+      if (!best || score < best.score) best = { lat: la, lon: lo, slope, score };
+    }
+  }
+  return best;
+}
+// Park the rover on the flattest side of the LM, preferring the side facing the first station
+function flattestBeside(lmPos, lmUp, towards, dist) {
+  let best = null;
+  for (let k = 0; k < 12; k++) {
+    const dir = towards.clone().applyAxisAngle(lmUp, (k / 12) * Math.PI * 2);
+    const p = lmPos.clone().addScaledVector(dir, dist);
+    const score = Math.max(slopeAtDir(p), 6) + (k === 0 ? 0 : 2);
+    if (!best || score < best.score) best = { p, score };
+  }
+  return best.p;
+}
+
 const HADLEY_ORIGIN = { lat: 26.13, lon: 3.63 }; // Real Apollo 15 LM "Falcon" coordinates
 const HADLEY_STATIONS = [
   {
@@ -713,7 +748,8 @@ function startHadleyRilleRun() {
   if (resModal) resModal.classList.add('hidden');
 
   // 1. Place LM "Falcon" flush at real Apollo 15 site (26.13°N, 3.63°E)
-  const lmDir = hadleyLatLonToVec3(HADLEY_ORIGIN.lat, HADLEY_ORIGIN.lon, MOON_RADIUS);
+  const lmSite = flattestNear(HADLEY_ORIGIN.lat, HADLEY_ORIGIN.lon, 0.5, hadleyLatLonToVec3);
+  const lmDir = hadleyLatLonToVec3(lmSite.lat, lmSite.lon, MOON_RADIUS);
   const lmSurfR = getExactSurfaceHit(lmDir, _hrNorm);
   const lmUp = lmDir.clone().normalize();
   const lmOffset = LANDER_FOOT_OFFSET;
@@ -725,8 +761,8 @@ function startHadleyRilleRun() {
   lander.inOrbit = false;
   lander.docked = false;
   lander.aglUnits = 0;
-  lander.lat = HADLEY_ORIGIN.lat;
-  lander.lon = HADLEY_ORIGIN.lon;
+  lander.lat = lmSite.lat;
+  lander.lon = lmSite.lon;
   lander.quat.setFromUnitVectors(new THREE.Vector3(0, 1, 0), _hrNorm).normalize();
   lander.up.copy(lmUp);
   lander.forward.set(0, 0, 1).applyQuaternion(lander.quat);
@@ -754,7 +790,7 @@ function startHadleyRilleRun() {
   const tangentToSt1 = st1Pos.clone().sub(lander.pos);
   tangentToSt1.addScaledVector(lmUp, -tangentToSt1.dot(lmUp)).normalize();
 
-  const roverSpawnDir = lander.pos.clone().addScaledVector(tangentToSt1, 0.24);
+  const roverSpawnDir = flattestBeside(lander.pos, lmUp, tangentToSt1, 0.24);
   const roverSurfR = getExactSurfaceHit(roverSpawnDir, _hrNorm);
   const wheelOff = ROVER_WHEEL_OFFSET;
 
@@ -1243,7 +1279,8 @@ function startSouthPoleIceRun() {
   if (resModal) resModal.classList.add('hidden');
 
   // 1. Land LM flush on the sunlit Shackleton Connecting Ridge
-  const lmDir = iceLatLonToVec3(ICE_ORIGIN.lat, ICE_ORIGIN.lon, MOON_RADIUS);
+  const lmSite = flattestNear(ICE_ORIGIN.lat, ICE_ORIGIN.lon, 0.5, iceLatLonToVec3);
+  const lmDir = iceLatLonToVec3(lmSite.lat, lmSite.lon, MOON_RADIUS);
   const lmSurfR = getExactSurfaceHit(lmDir, _iceNorm);
   const lmUp = lmDir.clone().normalize();
   const lmOffset = LANDER_FOOT_OFFSET;
@@ -1255,8 +1292,8 @@ function startSouthPoleIceRun() {
   lander.inOrbit = false;
   lander.docked = false;
   lander.aglUnits = 0;
-  lander.lat = ICE_ORIGIN.lat;
-  lander.lon = ICE_ORIGIN.lon;
+  lander.lat = lmSite.lat;
+  lander.lon = lmSite.lon;
   lander.quat.setFromUnitVectors(new THREE.Vector3(0, 1, 0), _iceNorm).normalize();
   lander.up.copy(lmUp);
   lander.forward.set(0, 0, 1).applyQuaternion(lander.quat);
@@ -1284,7 +1321,7 @@ function startSouthPoleIceRun() {
   const tangentToSt1 = st1Pos.clone().sub(lander.pos);
   tangentToSt1.addScaledVector(lmUp, -tangentToSt1.dot(lmUp)).normalize();
 
-  const roverSpawnDir = lander.pos.clone().addScaledVector(tangentToSt1, 0.24);
+  const roverSpawnDir = flattestBeside(lander.pos, lmUp, tangentToSt1, 0.24);
   const roverSurfR = getExactSurfaceHit(roverSpawnDir, _iceNorm);
   const wheelOff = ROVER_WHEEL_OFFSET;
 

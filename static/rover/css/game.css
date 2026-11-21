@@ -149,10 +149,28 @@ input[type="range"].lunar-slider::-webkit-slider-thumb {
 }
 .ui-round-label { font: 600 12px 'JetBrains Mono', monospace; }
 
+/* Challenge / docking panels: centred, but never further left than the widest readouts (~430px) */
 #mission-slot {
-  position: fixed; z-index: 20; pointer-events: none; left: 50%; transform: translateX(-50%);
-  top: calc(var(--sa-t) + 8px); width: clamp(280px, calc(100vw - 500px), 470px);
+  --ms-w: clamp(260px, calc(100vw - 690px), 470px);
+  position: fixed; z-index: 20; pointer-events: none;
+  left: max(calc(var(--sa-l) + 450px), calc(50% - var(--ms-w) / 2)); width: var(--ms-w);
+  top: calc(var(--sa-t) + 8px);
   display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+/* Touch screens: stack it under the readouts, clear of the top-right buttons */
+/* Touch screens: stack it under the readouts, ending before the middle of the screen where the craft is */
+body.touch-ui #mission-slot { left: calc(var(--sa-l) + 8px); top: calc(var(--sa-t) + 100px); width: min(380px, calc(50vw - 80px)); align-items: flex-start; }
+/* Short landscape phones: trim challenge panels and the map legend to their essentials */
+@media (max-height: 460px) {
+  body.touch-ui #mission-slot .run-pills, body.touch-ui #hadley-target-hint, body.touch-ui #ice-target-hint { display: none; }
+  body.touch-ui #overlay-legend .legend-note { display: none; }
+  body.touch-ui #mission-slot > div { padding-top: 8px !important; padding-bottom: 8px !important; }
+  body.touch-ui #mission-slot .mt-2 { margin-top: 5px !important; }
+  body.touch-ui #mission-slot .run-tag, body.touch-ui #a11-slope-btn { display: none; }
+  body.touch-ui #a11-hint { font-size: 10px; }
+  /* Long Houston lines: three lines max on short screens (the voice still says it all) */
+  body.touch-ui #radio-caption-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  body.touch-ui #radio-caption { padding: 6px 12px; font-size: 12px; }
 }
 #mission-slot > div { margin-bottom: 0 !important; }
 
@@ -171,10 +189,13 @@ input[type="range"].lunar-slider::-webkit-slider-thumb {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
 }
 /* Desktop: messages sit in the empty bottom-left corner, clear of the action buttons */
-body:not(.touch-ui) #msg-rail { left: calc(var(--sa-l) + 16px); transform: none; align-items: flex-start; bottom: calc(var(--sa-b) + 64px); width: min(460px, calc(100vw - 640px)); min-width: 280px; }
+body:not(.touch-ui) #msg-rail { left: calc(var(--sa-l) + 16px); transform: none; align-items: flex-start; bottom: calc(var(--sa-b) + 76px); width: min(460px, calc(100vw - 640px)); min-width: 280px; }
+body:not(.touch-ui) #ui-bottom-center { left: calc(var(--sa-l) + 16px); transform: none; align-items: flex-start; max-width: calc(100vw - 560px); }
+body:not(.touch-ui) #key-hints { justify-content: flex-start; }
 /* Landscape phones: keep messages between the thumbstick and the action buttons */
 @media (orientation: landscape) {
-  body.touch-ui #msg-rail { left: calc(var(--sa-l) + 170px); right: calc(var(--sa-r) + 280px); width: auto; min-width: 0; transform: none; }
+  body.touch-ui #msg-rail { left: calc(var(--sa-l) + 170px); right: calc(var(--sa-r) + 118px); width: auto; min-width: 0; transform: none; }
+  body.touch-ui #ui-actions { max-width: min(46vw, calc(50vw - 40px)); }
 }
 
 #ui-bottom-center {
@@ -299,8 +320,9 @@ body.touch-ui .only-desktop, body:not(.touch-ui) .only-touch { display: none; }
 @media (orientation: portrait) { body.touch-ui #rotate-hint { display: block; } }
 
 /* Portrait / narrow phones: mission HUD under the top bar, messages above the thumb zone */
-@media (max-width: 699px) {
-  #mission-slot { top: calc(var(--sa-t) + 104px); width: calc(100vw - 16px); }
+@media (max-width: 699px) and (orientation: portrait) {
+  #mission-slot, body.touch-ui #mission-slot { left: calc(var(--sa-l) + 8px); top: calc(var(--sa-t) + 104px); width: calc(100vw - 16px); }
+  #readouts { flex-wrap: wrap; row-gap: 4px; }
   #ui-top-left { max-width: calc(100vw - 130px); }
   #msg-rail { width: calc(100vw - 24px); bottom: calc(var(--sa-b) + 196px); }
   body.touch-ui #ui-bottom-center { bottom: calc(var(--sa-b) + 196px); }
@@ -340,3 +362,10 @@ body.touch-ui #readouts .ro-l { font-size: 12px; }
 @keyframes radio-blink { 50% { opacity: 0.25; } }
 body.touch-ui #radio-caption { font-size: 13px; }
 #radio-caption.hidden { display: none; }
+
+/* Phone THRUST: hold to hover, slide up to climb, down to descend */
+.thrust-btn { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; transition: transform 0.06s linear, border-color 0.12s, box-shadow 0.12s; touch-action: none; }
+.thrust-btn .thrust-hint { font: 600 8px 'JetBrains Mono', monospace; letter-spacing: 0.04em; color: #94a3b8; white-space: nowrap; }
+.thrust-btn.pressed { box-shadow: 0 0 0 3px rgba(244, 213, 141, 0.25); }
+.thrust-btn.rising { border-color: #7ec4a0 !important; box-shadow: 0 -10px 18px -6px rgba(126, 196, 160, 0.55); }
+.thrust-btn.lowering { border-color: #7dd3fc !important; box-shadow: 0 10px 18px -6px rgba(125, 211, 252, 0.55); }

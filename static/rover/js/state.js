@@ -191,3 +191,6 @@ export function triggerSeismicEvent(intensity, origin) {
   seismic.intensity = Math.min(1, Math.max(seismic.intensity, shake));
   if (origin) recordSeismicArrival(intensity, origin);
 }
+
+// Phone THRUST button: held = hover; drag up/down (axis -1..1) = climb/descend rate
+export const touchThrust = { held: false, axis: 0 };

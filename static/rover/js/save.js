@@ -44,7 +44,7 @@ function defaultSave() {
     settings: {
       music: true,
       sound: true,
-      radio: 'voice',   // Mission Control: 'voice' | 'text' (subtitles only) | 'off'
+      radio: 'on',      // Mission Control subtitles (+ recorded clips): 'on' | 'off'
       overlay: 0,
       orbitRing: true,
       relief: 5,

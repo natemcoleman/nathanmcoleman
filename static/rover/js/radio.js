@@ -1,8 +1,8 @@
 // =========================================================================
 // 22. MISSION CONTROL RADIO — Quindar tones, static, spoken calls, subtitles
 // =========================================================================
-// Every call has an id (e.g. 'landing', 'find.luna9'). Voices come from the
-// browser's speech synthesis. To use a recorded voice instead, put the file in
+// Every call has an id (e.g. 'landing', 'find.luna9') and always shows as a subtitle.
+// There is no synthesized voice. To play a real recording for a call, put the file in
 // audio/radio/<id>.mp3 and list the id in audio/radio/manifest.json:
 //   { "files": ["landing", "find.luna9"] }
 // Type lroRadioLines() in the browser console for every line's id and text.
@@ -14,7 +14,7 @@ import { FINDS } from './finds.js';
 import { latLonToVec3 } from './coords.js';
 import { a11Run, a11FuelSeconds, power } from './apollo11.js';
 
-const MODES = ['voice', 'text', 'off'];
+const MODES = ['on', 'off'];   // on = subtitles, plus recorded clips where they exist
 const QUINDAR_IN = 2525;   // Hz, Apollo "intro" tone that keyed the ground transmitters
 const QUINDAR_OUT = 2475;  // Hz, "outro" tone
 const TONE_SEC = 0.25;
@@ -65,12 +65,12 @@ function allLines() {
 }
 
 export const radio = {
-  mode: 'voice',
+  mode: 'on',
   queue: [],
   busy: false,
   lastAt: {},          // id -> time of last play (cooldowns)
   recorded: new Set(), // ids with a recorded file
-  voice: null,
+  audio: null,        // recorded clip playing now
   unlocked: false,
   staticNodes: null,
 };
@@ -78,7 +78,7 @@ export const radio = {
 // ---------- Settings ----------
 export function applyRadioSetting() {
   const m = save.data && save.data.settings && save.data.settings.radio;
-  radio.mode = MODES.includes(m) ? m : 'voice';
+  radio.mode = m === 'off' ? 'off' : 'on';   // older saves said 'voice' or 'text'
   syncRadioButton();
 }
 function cycleRadioMode() {
@@ -87,38 +87,15 @@ function cycleRadioMode() {
   scheduleSave();
   syncRadioButton();
   if (radio.mode === 'off') stopRadio();
-  else say('check', { text: radio.mode === 'voice' ? 'Houston, radio check. Loud and clear.' : 'Houston, radio check. Subtitles only.' });
+  else say('check', { text: 'Houston, radio check. Loud and clear.' });
 }
 function syncRadioButton() {
   const el = document.getElementById('radio-mode-state');
-  if (el) el.textContent = { voice: 'VOICE', text: 'SUBTITLES', off: 'OFF' }[radio.mode];
+  if (el) el.textContent = radio.mode === 'off' ? 'OFF' : 'ON';
 }
 
-// ---------- Voice ----------
-function pickVoice() {
-  if (!('speechSynthesis' in window)) return;
-  const voices = speechSynthesis.getVoices().filter((v) => /^en(-|_|$)/i.test(v.lang));
-  if (!voices.length) return;
-  // Plain US/UK voices read best through the radio effect
-  const prefs = [/Google US English/i, /Microsoft (Guy|Davis|Andrew|Christopher|Eric)/i, /\b(Alex|Aaron|Daniel|Fred|Tom)\b/i, /en-US/i, /en-GB/i];
-  for (const re of prefs) {
-    const v = voices.find((x) => re.test(x.name) || re.test(x.lang));
-    if (v) { radio.voice = v; return; }
-  }
-  radio.voice = voices[0];
-}
-// iOS only allows speech that starts from a tap, so the first (silent) line is spoken inside one
-export function unlockRadio() {
-  if (radio.unlocked) return;
-  radio.unlocked = true;
-  if ('speechSynthesis' in window) {
-    try {
-      const u = new SpeechSynthesisUtterance(' ');
-      u.volume = 0;
-      speechSynthesis.speak(u);
-    } catch (_) { /* ignore */ }
-  }
-}
+// Kept so callers don't change: recorded clips play after the first tap without special unlocking
+export function unlockRadio() {}
 
 // ---------- Sound: Quindar beeps and static ----------
 function audioOn() { return sound.ctx && !sound.muted && sound.ctx.state === 'running'; }
@@ -255,35 +232,14 @@ function readingTime(text) { return 1200 + text.split(/\s+/).length * 330; }
 
 function speakItem(item) {
   const fallback = () => wait(readingTime(item.text));
-  if (radio.mode !== 'voice' || sound.muted) return fallback();
-  if (radio.recorded.has(item.id)) return playRecorded(item).catch(fallback);
-  if (!('speechSynthesis' in window)) return fallback();
-  // No installed voices (some Linux/Android setups): subtitles only
-  if (!radio.voice) pickVoice();
-  if (!radio.voice && !speechSynthesis.getVoices().length) return fallback();
-  const started = performance.now();
-  return new Promise((resolve) => {
-    const u = new SpeechSynthesisUtterance(item.text);
-    if (radio.voice) u.voice = radio.voice;
-    u.lang = radio.voice ? radio.voice.lang : 'en-US';
-    u.rate = 1.06;
-    u.pitch = 0.82;
-    u.volume = 0.95;
-    let done = false;
-    const finish = () => { if (!done) { done = true; clearTimeout(guard); resolve(); } };
-    // If speech fails, leave the subtitle up long enough to read
-    const failed = () => { const left = readingTime(item.text) - (performance.now() - started); setTimeout(finish, Math.max(0, left)); };
-    // Some browsers never fire 'end' (no voices, background tab): don't let the radio hang
-    const guard = setTimeout(finish, readingTime(item.text) + 4000);
-    u.onend = finish;
-    u.onerror = failed;
-    try { speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (_) { finish(); }
-  });
+  if (!sound.muted && radio.recorded.has(item.id)) return playRecorded(item).catch(fallback);
+  return fallback();
 }
 
 function playRecorded(item) {
   return new Promise((resolve, reject) => {
     const a = new Audio(`audio/radio/${item.id}.mp3`);
+    radio.audio = a;
     a.volume = 0.95;
     a.onended = resolve;
     a.onerror = reject;
@@ -293,7 +249,7 @@ function playRecorded(item) {
 
 export function stopRadio() {
   radio.queue.length = 0;
-  try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (_) { /* ignore */ }
+  if (radio.audio) { try { radio.audio.pause(); } catch (_) { /* ignore */ } radio.audio = null; }
   hideCaption();
 }
 
@@ -349,14 +305,10 @@ window.lroRadioLines = () => Object.entries(allLines()).map(([id, l]) => ({ id, 
 
 export function initRadio() {
   applyRadioSetting();
-  if ('speechSynthesis' in window) {
-    pickVoice();
-    speechSynthesis.addEventListener && speechSynthesis.addEventListener('voiceschanged', pickVoice);
-  }
   fetch('audio/radio/manifest.json', { cache: 'no-cache' })
     .then((r) => (r.ok ? r.json() : null))
     .then((m) => { if (m && Array.isArray(m.files)) m.files.forEach((id) => radio.recorded.add(id)); })
-    .catch(() => { /* no recordings: synthesized voice */ });
+    .catch(() => { /* no recordings yet: subtitles only */ });
   const btn = document.getElementById('radio-mode-btn');
   if (btn) btn.addEventListener('click', () => { sound.init(); unlockRadio(); cycleRadioMode(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) stopRadio(); });

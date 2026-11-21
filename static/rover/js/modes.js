@@ -183,8 +183,7 @@ export function setAutoSoftLand(enabled) {
   }
   gameState.autoSoftLand = enabled;
   if (enabled) {
-    gameState.autoGyro = true;
-    gameState.hoverAssist = false;
+    gameState.autoGyro = true;   // hover stays on: autopilot takes priority while it flies, hover is back after touchdown
     showToast('Auto-Soft-Land Engaged', 'gold');
   }
   updateAssistButtonsUI();

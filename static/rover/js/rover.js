@@ -210,8 +210,11 @@ export function updateRoverPhysics(dt) {
     const effectiveThrottle = isBoosting && throttle === 0 && !brake ? 1 : throttle;
 
     if (effectiveThrottle !== 0 && !brake) {
+      const before = vFwd;
       vFwd += effectiveThrottle * driveAccel * dt;
-      vFwd = THREE.MathUtils.clamp(vFwd, -maxSpd * 0.55, maxSpd);
+      // Over the limit (e.g. just let go of turbo): coast down to it instead of snapping
+      if (vFwd > maxSpd) vFwd = before > maxSpd ? Math.max(maxSpd, before - 3.2 * dt) : maxSpd;
+      else if (vFwd < -maxSpd * 0.55) vFwd = before < -maxSpd * 0.55 ? Math.min(-maxSpd * 0.55, before + 3.2 * dt) : -maxSpd * 0.55;
     } else {
       const drag = brake ? 7.5 : 1.35;
       vFwd *= Math.exp(-drag * dt);
@@ -299,12 +302,38 @@ export function updateRoverPhysics(dt) {
       const ROLL_TORQUE = 13.0;
       const MAX_ROVER_ANG = 10.5;
 
-      if (throttle !== 0) rover.angVel.x += throttle * PITCH_TORQUE * dt;
-      if (steerInput !== 0) rover.angVel.y += steerInput * SPIN_TORQUE * dt;
-      if (rollInput !== 0) rover.angVel.z += rollInput * ROLL_TORQUE * dt;
+      // Keys already held when the wheels left the ground (driving over a crest with W down)
+      // don't count as stunt input: press them again in the air to flip or spin.
+      const latch = rover.airLatch || (rover.airLatch = { t: 0, s: 0, r: 0 });
+      if (rover.stunt.airTime === 0) { latch.t = throttle; latch.s = steerInput; latch.r = rollInput; }
+      if (throttle !== latch.t) latch.t = 0;
+      if (steerInput !== latch.s) latch.s = 0;
+      if (rollInput !== latch.r) latch.r = 0;
+      const pitchIn = throttle !== 0 && throttle !== latch.t ? throttle : 0;
+      const spinIn = steerInput !== 0 && steerInput !== latch.s ? steerInput : 0;
+      const rollIn = rollInput !== 0 && rollInput !== latch.r ? rollInput : 0;
+      if (pitchIn !== 0) rover.angVel.x += pitchIn * PITCH_TORQUE * dt;
+      if (spinIn !== 0) rover.angVel.y += spinIn * SPIN_TORQUE * dt;
+      if (rollIn !== 0) rover.angVel.z += rollIn * ROLL_TORQUE * dt;
 
       // Light rotational drag so flips & spins carry momentum cleanly through the jump
       rover.angVel.multiplyScalar(Math.exp(-0.85 * dt));
+
+      // Stability assist: with no stunt input, ease the chassis back towards wheels-down
+      if (pitchIn === 0 && spinIn === 0 && rollIn === 0) {
+        rover.angVel.multiplyScalar(Math.exp(-2.6 * dt));
+        const lvlFwd = rover.forward.clone();
+        _shipFwd.set(0, 0, 1).applyQuaternion(rover.quat);
+        if (Math.abs(_shipFwd.dot(rover.up)) < 0.95) lvlFwd.copy(_shipFwd);
+        lvlFwd.addScaledVector(rover.up, -lvlFwd.dot(rover.up));
+        if (lvlFwd.lengthSq() > 1e-6) {
+          lvlFwd.normalize();
+          _basisX.crossVectors(rover.up, lvlFwd).normalize();
+          _rotMat.makeBasis(_basisX, rover.up, lvlFwd);
+          _targetQ.setFromRotationMatrix(_rotMat).normalize();
+          rover.quat.slerp(_targetQ, Math.min(1, dt * 2.4)).normalize();
+        }
+      }
       if (rover.angVel.length() > MAX_ROVER_ANG) {
         rover.angVel.setLength(MAX_ROVER_ANG);
       }
@@ -375,7 +404,7 @@ export function updateRoverPhysics(dt) {
 
   // Preserve upward crest momentum so fast boosted hills launch the rover cleanly into 1/6g flight!
   const vUpNormal = rover.vel.dot(_terrainNorm);
-  const crestLaunching = vUpNormal > 0.24 && curR >= contactR - 0.001;
+  const crestLaunching = vUpNormal > 0.34 && curR >= contactR - 0.001;   // small bumps keep the wheels down
 
   if (curR <= contactR + 0.004 && !crestLaunching) {
     const vIntoGround = -vUpNormal;
@@ -385,7 +414,7 @@ export function updateRoverPhysics(dt) {
     }
     _roverUp.set(0, 1, 0).applyQuaternion(rover.quat).normalize();
     const uprightDot = _roverUp.dot(_terrainNorm);
-    const wheelsDown = uprightDot >= 0.62; // Within ~52° of local slope normal
+    const wheelsDown = uprightDot >= 0.42; // Within ~65° of the slope: the suspension soaks up sloppy landings
 
     rover.pos.setLength(contactR);
 
@@ -487,7 +516,7 @@ export function updateRoverPhysics(dt) {
   } else if (curR > contactR + 0.012 || crestLaunching) {
     // Impart a natural launch pitch/spin kick when popping off a crater rim or hill crest
     if (wasGrounded && !rover.isTumbling) {
-      rover.angVel.x += THREE.MathUtils.clamp(-vUpNormal * 1.15, -2.4, 0.6);
+      rover.angVel.x += THREE.MathUtils.clamp(-vUpNormal * 0.5, -1.0, 0.4);
       rover.angVel.y += rover.steerAngle * Math.min(2.5, rover.speed) * 0.9;
     }
     rover.isGrounded = false;

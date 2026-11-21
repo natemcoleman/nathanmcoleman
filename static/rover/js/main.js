@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { sound } from './audio.js';
 import { beaconMap, gameState, lander, rover, seismic } from './state.js';
 import { silentlyProbeSelfHostedTextures } from './nasa-maps.js';
@@ -44,6 +45,12 @@ function animate(now) {
   }
 
   // Advance CSM "Columbia" + Lander in sub-steps (time warp only during rendezvous coast phases)
+  // Ease time warp up and down instead of jumping (sudden ×1 → ×40 changes feel like violent accelerations)
+  if (rdv.active && rdv.warpTarget != null) {
+    const k = rdv.warpTarget > rdv.warp ? 0.9 : 5;
+    rdv.warp += (rdv.warpTarget - rdv.warp) * Math.min(1, dt * k);
+    if (Math.abs(rdv.warpTarget - rdv.warp) < 0.05) rdv.warp = rdv.warpTarget;
+  }
   const warp = (gameState.started && rdv.active) ? rdv.warp : 1;
   const simDt = dt * warp;
   const nSub = Math.max(1, Math.ceil(simDt / 0.025));
@@ -55,7 +62,12 @@ function animate(now) {
   }
 
   const pulse = 1.0 + Math.sin(now * 0.0032) * 0.15;
-  beaconMap.forEach(({ ring, diamond, lm }) => {
+  beaconMap.forEach(({ group, pillar, ring, diamond, lm }) => {
+    // Beacons are sized for orbit; near the ground the flat ring slices through terrain and the pillar fills the view
+    const near = THREE.MathUtils.clamp((camera.position.distanceTo(group.position) - 3) / 9, 0, 1);
+    ring.material.opacity = 0.78 * near;
+    ring.visible = near > 0.02;
+    pillar.material.opacity = 0.14 + 0.46 * near;
     diamond.rotation.y += dt * 1.25;
     diamond.position.y = 5.3 + Math.sin(now * 0.0024 + lm.lat) * 0.4;
     const s = gameState.targetLandmarkId === lm.id ? pulse * 1.22 : 0.96 + Math.sin(now * 0.002) * 0.07;

@@ -419,6 +419,8 @@ function rdvStart() {
   say('rendezvous');
   rdv.active = true;
   rdv.warp = 1;
+  rdv.warpTarget = 1;
+  rdv.aimDir = null;
   rdv.attHold = true;
   rdv.thrust = 0;
   lander.docked = false;
@@ -446,7 +448,7 @@ function rdvSetPhase(p) {
   rdv.timer = 0;
   rdv.prevVr = 0;
   rdv.prevDiff = 0;
-  if (p === 'approach' || p === 'manual' || p === 'docked') rdv.warp = 1;
+  if (p === 'approach' || p === 'manual' || p === 'docked') { rdv.warp = 1; rdv.warpTarget = 1; }
   camCtrl.landerCamOffset = null;
   updateAssistButtonsUI();
 }
@@ -456,6 +458,8 @@ export function rdvEnd(silent) {
   rdv.active = false;
   rdv.phase = 'idle';
   rdv.warp = 1;
+  rdv.warpTarget = 1;
+  rdv.aimDir = null;
   lander.docked = false;
   camCtrl.chaseYaw = 0;
   camCtrl.landerHeading = null;
@@ -481,7 +485,17 @@ export function aimLanderAlong(dir, ref, rate, dt) {
   _basisX.crossVectors(_rTmp, _rTmp2).normalize();
   _rotMat.makeBasis(_basisX, _rTmp, _rTmp2);
   _targetQ.setFromRotationMatrix(_rotMat).normalize();
-  lander.quat.slerp(_targetQ, Math.min(1, dt * rate)).normalize();
+  let t = Math.min(1, dt * rate);
+  // During a rendezvous, never slew faster than ~90° per second of real (on-screen) time,
+  // even under time warp: big attitude changes swing round smoothly instead of snapping
+  if (rdv.active) {
+    const q = lander.quat;
+    const dot = Math.min(1, Math.abs(q.x * _targetQ.x + q.y * _targetQ.y + q.z * _targetQ.z + q.w * _targetQ.w));
+    const ang = 2 * Math.acos(dot);
+    const maxStep = (Math.PI / 2) * dt / Math.max(1, rdv.warp);
+    if (ang * t > maxStep && ang > 1e-6) t = maxStep / ang;
+  }
+  lander.quat.slerp(_targetQ, t).normalize();
 }
 
 function fmtSec(t) {
@@ -525,11 +539,14 @@ function updateRendezvousNewtonian(dt) {
     const aT = clearance > 0.6 ? THREE.MathUtils.clamp((vc1 - vt) * 0.9, -3, 4.5) : 0;
     const aN = THREE.MathUtils.clamp(-vn * 1.6, -2.5, 2.5);
     _rA.copy(_rHat).multiplyScalar(aR).addScaledVector(_rT, aT).addScaledVector(_rN, aN);
-    if (_rA.length() > 9) _rA.setLength(9);
+    if (_rA.length() > 5.5) _rA.setLength(5.5);   // ~3.4 lunar g: brisk but not violent
     v.addScaledVector(_rA, dt).addScaledVector(_rHat, -g * dt);
     lander.pos.addScaledVector(v, dt);
     rdv.thrust = Math.min(1, _rA.length() / 7);
-    aimLanderAlong(_rA.lengthSq() > 0.04 ? _rA : _rHat, _rT, 4.0, dt);
+    // Point along a smoothed thrust direction so guidance corrections don't whip the LM around
+    if (!rdv.aimDir) rdv.aimDir = _rHat.clone();
+    rdv.aimDir.lerp(_rA.lengthSq() > 0.04 ? _rTmp.copy(_rA).normalize() : _rHat, Math.min(1, dt * 1.5)).normalize();
+    aimLanderAlong(rdv.aimDir, _rT, 1.8, dt);
     rdv.info = `Powered ascent → ${toKm(rdv.r1 - MOON_RADIUS).toFixed(0)} km parking orbit · ${(vt * SPEED_TO_MS).toFixed(0)} / ${(vc1 * SPEED_TO_MS).toFixed(0)} m/s`;
     const done = Math.abs(r - rdv.r1) < 0.35 && Math.abs(vr) < 0.1 && Math.abs(vt - vc1) < 0.12 && Math.abs(vn) < 0.1;
     if ((done && rdv.timer > 2) || rdv.timer > 150) {
@@ -550,13 +567,16 @@ function updateRendezvousNewtonian(dt) {
   _rT.crossVectors(_rH, _rHat).normalize();           // LM prograde
   const vr = v.dot(_rHat);
   const vt = v.dot(_rT);
+  // Coasting: hold attitude level with the horizon, nose along the orbit (otherwise the LM stays fixed
+  // in space while orbiting under time warp, and looks like it's tumbling)
+  if (rdv.phase !== 'approach') aimLanderAlong(_rHat, _rT, 3.0, dt);
 
   if (rdv.phase === 'plane') {
     const incDeg = THREE.MathUtils.radToDeg(Math.acos(THREE.MathUtils.clamp(_rH.dot(_rS), -1, 1)));
     const nodeDist = _rHat.dot(_rS);  // 0 when crossing Columbia's orbital plane
     const omega = vt / rr;
     const tNode = Math.abs(Math.asin(THREE.MathUtils.clamp(nodeDist, -1, 1))) / Math.max(1e-4, omega);
-    rdv.warp = incDeg < 0.6 ? 1 : THREE.MathUtils.clamp(tNode / 2.0, 1, 25);
+    rdv.warpTarget = incDeg < 0.6 ? 1 : THREE.MathUtils.clamp(tNode / 2.0, 1, 25);
     rdv.info = `Plane mismatch ${incDeg.toFixed(1)}° · node in ${fmtSec(tNode)}`;
     const crossed = rdv.timer > dt * 1.5 && Math.sign(nodeDist) !== Math.sign(rdv.prevDiff || nodeDist);
     rdv.prevDiff = nodeDist;
@@ -584,7 +604,7 @@ function updateRendezvousNewtonian(dt) {
     const diff = (((theta - thetaReq) % TWO_PI) + TWO_PI) % TWO_PI;
     const wait = diff / Math.max(1e-5, rate);
     const vPeri = Math.sqrt(LUNAR_MU * (2 / rr - 1 / a));
-    rdv.warp = THREE.MathUtils.clamp(wait / 2.5, 1, 60);
+    rdv.warpTarget = THREE.MathUtils.clamp(wait / 2.5, 1, 40);
     rdv.info = `Phasing · Columbia leads ${THREE.MathUtils.radToDeg(theta).toFixed(1)}° (need ${THREE.MathUtils.radToDeg(thetaReq).toFixed(1)}°) · TIG ${fmtSec(wait)} · Δv ${((vPeri - vt) * SPEED_TO_MS).toFixed(0)} m/s`;
     const wrapped = rdv.timer > dt * 1.5 && rdv.prevDiff < 0.6 && diff > TWO_PI - 0.6;
     rdv.prevDiff = diff;
@@ -602,7 +622,7 @@ function updateRendezvousNewtonian(dt) {
 
   if (rdv.phase === 'coast') {
     const remaining = rdv.transferT - rdv.timer;
-    rdv.warp = THREE.MathUtils.clamp(remaining / 2.5, 1, 20);
+    rdv.warpTarget = THREE.MathUtils.clamp(remaining / 2.5, 1, 20);
     rdv.info = `Hohmann transfer coast · apolune ${toKm(csm.pos.length() - MOON_RADIUS).toFixed(0)} km in ${fmtSec(Math.max(0, remaining))} · range ${toKm(lander.pos.distanceTo(csm.pos)).toFixed(0)} km`;
     const atApo = rdv.prevVr > 0 && vr <= 0 && rdv.timer > rdv.transferT * 0.5;
     rdv.prevVr = vr;
@@ -625,11 +645,11 @@ function updateRendezvousNewtonian(dt) {
   // Velocity relative to the (rotating) hold point, not Columbia's centre
   omegaCross(_rOm.copy(_rF).multiplyScalar(lmOriginStandoff), _rOm);
   const vRel = _rA.copy(v).sub(csm.vel).sub(_rOm);
-  const vMax = d > 8 ? 7 : 3.5;
+  const vMax = d > 8 ? 3.2 : 1.8;   // ~430 / 240 m/s closing: fast enough to be quick, slow enough to follow
   const vDesMag = Math.min(vMax, Math.sqrt(2 * 2.0 * d) * 0.7, 0.55 * d); // braking-limited, linear near the hold point
   const vDes = _rN.copy(_rTmp2).multiplyScalar(d > 1e-6 ? vDesMag / d : 0);
   const aCmd = vDes.sub(vRel).multiplyScalar(1.6);
-  if (aCmd.length() > 3) aCmd.setLength(3);
+  if (aCmd.length() > 1.4) aCmd.setLength(1.4);
   // Undo the gravity applied above and replace it with Columbia's (relative frame stays inertial-consistent)
   const rc = csm.pos.length();
   v.addScaledVector(_rHat, g * dt).addScaledVector(csm.pos, -LUNAR_MU / (rc * rc * rc) * dt);
@@ -643,8 +663,12 @@ function updateRendezvousNewtonian(dt) {
   }
   rdv.thrust = Math.min(0.45, aCmd.length() / 4);
   // Swing the LM into docking attitude on the way in
-  _rQ.multiplyQuaternions(_rFrameQ, DOCK_Q0);
-  lander.quat.slerp(_rQ, Math.min(1, dt * 2.2)).normalize();
+  if (d < 6) {
+    _rQ.multiplyQuaternions(_rFrameQ, DOCK_Q0);
+    lander.quat.slerp(_rQ, Math.min(1, dt * 1.2)).normalize();
+  } else {
+    aimLanderAlong(_rHat, _rT, 2.0, dt);   // level flight until close
+  }
   const relSpd = vRel.length();
   rdv.info = d > 3
     ? `Terminal phase · braking gates · range ${toKm(d).toFixed(1)} km · ${(relSpd * SPEED_TO_MS).toFixed(0)} m/s relative`
