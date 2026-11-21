@@ -10,9 +10,9 @@
   var ASSET_BASE = (document.currentScript && document.currentScript.src || '').replace(/[^/]*$/, '');
 
   // Face colors, assigned clockwise from the top cluster, plus color-blind glyphs.
-  var PALETTE = ['#e5484d', '#30a46c', '#f76b15', '#f5c400', '#8e4ec6', '#3e63dd'];
+  var PALETTE = ['#d01e3c', '#30a46c', '#f97a10', '#f5c400', '#8e4ec6', '#3e63dd'];
   var GLYPHS = ['circle', 'triangle', 'square', 'diamond', 'plus', 'star'];
-  var FEW_COLORS = ['#3e63dd', '#f76b15', '#30a46c']; // blue, orange, green for 2- and 3-color boards
+  var FEW_COLORS = ['#3e63dd', '#f97a10', '#30a46c']; // blue, orange, green for 2- and 3-color boards
   function colorFor(p, id) { return p.colorCount <= 3 ? FEW_COLORS[id % 3] : PALETTE[id % PALETTE.length]; }
   var DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];

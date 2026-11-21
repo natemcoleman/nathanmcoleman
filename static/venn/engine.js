@@ -550,6 +550,19 @@
         6: { label: 'Hard', layout: 2, moves: 3 },
         0: { label: 'Hard', layout: 2, moves: 3 }
       }
+    },
+    {
+      // 2 turns Monday to Thursday, 3 turns Friday to Sunday, all on 2 rings.
+      from: '2026-11-23',
+      days: {
+        1: { label: 'Medium', layout: 2, moves: 2 },
+        2: { label: 'Medium', layout: 2, moves: 2 },
+        3: { label: 'Medium', layout: 2, moves: 2 },
+        4: { label: 'Medium', layout: 2, moves: 2 },
+        5: { label: 'Hard', layout: 2, moves: 3 },
+        6: { label: 'Hard', layout: 2, moves: 3 },
+        0: { label: 'Hard', layout: 2, moves: 3 }
+      }
     }
   ];
 

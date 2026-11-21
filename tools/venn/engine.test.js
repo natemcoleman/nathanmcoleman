@@ -221,8 +221,8 @@ test('hint penalties: full hint 2, which-circle hint 1', () => {
 });
 
 test('free play offers the levels in the current schedule', () => {
-  assert.deepStrictEqual(E.practiceLevels(), ['Easy', 'Medium', 'Hard']);
-  assert.strictEqual(E.practicePuzzle('Easy', 's').config.moves, 1);
+  assert.deepStrictEqual(E.practiceLevels(), ['Medium', 'Hard']);
+  assert.strictEqual(E.practicePuzzle('Medium', 's').config.moves, 2);
   assert.strictEqual(E.practicePuzzle('Hard', 's').config.moves, 3);
   assert.strictEqual(E.practicePuzzle('Expert', 's').config.moves, 3, 'old links fall back to the hardest level');
 });

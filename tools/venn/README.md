@@ -49,6 +49,8 @@ The second schedule (from 2026-10-14, Venn #1) is the easier one after early fee
 
 The third schedule (from 2026-10-15) uses 2 rings every day: 1 turn Mon–Tue, 2 Wed–Fri, 3 Sat–Sun.
 
+The fourth schedule (from 2026-11-23) uses 2 rings every day: 2 turns Mon–Thu (Medium), 3 Fri–Sun (Hard).
+
 For example, to make Fridays a new layout starting 2026-12-04: add the layout to
 `LAYOUTS` under a new key, copy the latest schedule into a new entry with
 `from: '2026-12-04'`, change day `5`, then run `node tools/venn/solve.js 2026-12-04 2028-12-31`.
