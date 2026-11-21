@@ -76,9 +76,9 @@ export function updateLanderPhysics(dt) {
   // True Newtonian inverse-square lunar gravity: g(r) = MU / r^2
   const GRAVITY = LUNAR_MU / (rNow * rNow);
   // In hover, SHIFT climbs and CTRL/C descends at a steady rate instead of boosting
-  const hoverHold = gameState.autoGyro && gameState.hoverAssist && !gameState.retroHold && !gameState.autoSoftLand && !lander.isLanded && !rdv.active;
+  const hoverHold = gameState.autoGyro && gameState.hoverAssist && !gameState.retroHold && !gameState.progradeHold && !gameState.autoSoftLand && !lander.isLanded && !rdv.active;
   // Phones: THRUST held = hover (slide up/down for rate); thumb off = gentle sink
-  const touchHover = ui.touch && gameState.autoGyro && gameState.hoverAssist && !gameState.retroHold && !rdv.active && touchThrust.held;
+  const touchHover = ui.touch && gameState.autoGyro && gameState.hoverAssist && !gameState.retroHold && !gameState.progradeHold && !rdv.active && touchThrust.held;
   if (touchHover && lander.isLanded && lander.fuel > 0.5) {
     lander.vel.addScaledVector(lander.up, 0.9);
     lander.isLanded = false;
@@ -118,7 +118,25 @@ export function updateLanderPhysics(dt) {
       }
     }
   }
-  if (gameState.retroHold && !lander.isLanded) {
+  if (gameState.progradeHold && !lander.isLanded) {
+    // PROGRADE HOLD: engine points along the direction of travel → ENGINE adds speed
+    // (raise an orbit, head for Earth). Any steering input hands control back.
+    const moveInput = keys.forward || keys.backward || keys.left || keys.right || keys.arrowUp || keys.arrowDown || keys.arrowLeft || keys.arrowRight;
+    if (moveInput) {
+      gameState.progradeHold = false;
+    } else {
+      const spd = lander.vel.length();
+      if (spd > 0.05) aimLanderAlong(_tmpAxis.copy(lander.vel).multiplyScalar(1 / spd), camCtrl.landerHeading || lander.forward, 5.0, dt);
+      lander.angVel.multiplyScalar(Math.exp(-8 * dt));
+      if (mainEngineOn) {
+        _shipUp.set(0, 1, 0).applyQuaternion(lander.quat).normalize();
+        lander.vel.addScaledVector(_shipUp, (isBoosting ? 10.5 : 5.0) * stageMul * dt);
+        lander.fuel = Math.max(0, lander.fuel - fuelMul() * (isBoosting ? 2.4 : 1.1) * dt);
+        thrustMag = Math.max(thrustMag, isBoosting ? 1.0 : 0.85);
+      }
+    }
+  }
+  if ((gameState.retroHold || gameState.progradeHold) && !lander.isLanded) {
     // handled above
   } else if (gameState.autoGyro) {
     // MODE A: AUTO-GYRO ON (Stabilized SAS Upright + Orbital-Capable Burn)
@@ -381,7 +399,7 @@ export function updateLanderPhysics(dt) {
 
   computeLanderOrbitalElements();
 
-  if (lander.isLanded) gameState.retroHold = false;
+  if (lander.isLanded) { gameState.retroHold = false; gameState.progradeHold = false; }
   if (a11Run.active) {
     // No refuelling during "30 Seconds of Fuel"
   } else if (lander.isLanded) {

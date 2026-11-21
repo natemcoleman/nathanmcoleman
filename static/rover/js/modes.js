@@ -24,6 +24,7 @@ export function warpLanderToLandmark(lm, switchToFlight = true) {
   camCtrl.landerCamOffset = null;
   camCtrl.landerHeading = null;
   gameState.retroHold = false;
+  gameState.progradeHold = false;
   if (a11Run.active) stopA11Run(true);
   if (hadleyRun.active) stopHadleyRilleRun(true);
   if (iceRun.active) stopSouthPoleIceRun(true);

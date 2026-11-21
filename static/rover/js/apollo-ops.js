@@ -13,7 +13,7 @@ import { hadleyRun, iceRun, stopHadleyRilleRun, stopSouthPoleIceRun } from './ch
 import { inputSrc, toggleMap, ui } from './context-ui.js';
 import { markFirst, save, scheduleSave, updateProgressCounts } from './save.js';
 import { finds, openJournal, pingFinds, seatFindMarkers } from './finds.js';
-import { inBoulderField, toggleRetroHold } from './apollo11.js';
+import { inBoulderField, toggleProgradeHold, toggleRetroHold } from './apollo11.js';
 import { a11RunActive, say } from './radio.js';
 import { pointLight, setSRGB } from './three-compat.js';
 
@@ -63,6 +63,7 @@ export function handleAction(action) {
   else if (action === 'overlay') cycleOverlay();
   else if (action === 'ping') pingFinds();
   else if (action === 'retro') toggleRetroHold();
+  else if (action === 'prograde') toggleProgradeHold();
   else if (action === 'slopemap') applyOverlayMode(2, false);
   else if (action === 'journal') openJournal();
 }

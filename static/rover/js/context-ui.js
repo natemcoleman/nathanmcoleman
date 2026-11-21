@@ -144,7 +144,9 @@ function contextSpec(ctx) {
         spec.secondary = [];
       }
       spec.secondary.unshift({ label: gameState.retroHold ? 'Retro hold ON' : 'Retro hold', key: 'B', act: 'retro', tone: gameState.retroHold ? 'on' : '' });
-      const descendOk = gameState.hoverAssist && gameState.autoGyro && !gameState.retroHold;
+      // Prograde (speed up along your path) matters high up — orbit raising, heading out to Earth
+      if ((lander.aglUnits > 2.9 || gameState.progradeHold) && !a11Run.active) spec.secondary.splice(1, 0, { label: gameState.progradeHold ? 'Prograde hold ON' : 'Prograde hold', key: 'N', act: 'prograde', tone: gameState.progradeHold ? 'on' : '' });
+      const descendOk = gameState.hoverAssist && gameState.autoGyro && !gameState.retroHold && !gameState.progradeHold;
       const hovering = descendOk && !gameState.autoSoftLand;
       if (descendOk) spec.holds = [THRUST_HOLD];
       else spec.holds = [{ key: 'boost', label: 'BOOST' }, { key: 'lift', label: 'ENGINE', big: true }];

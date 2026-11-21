@@ -19,6 +19,21 @@ import { say, unlockRadio } from './radio.js';
 //     APOLLO 11 "30 SECONDS OF FUEL" CHALLENGE
 // =========================================================================
 
+// ---------------- Prograde hold (the opposite of retro: speed up along your path) ----------------
+export function toggleProgradeHold() {
+  if (gameState.mode !== 'lander' || rdv.active || lander.crashed) return;
+  if (lander.isLanded && !gameState.progradeHold) {
+    showToast('Prograde hold is for speeding up in flight — lift off first', 'warn');
+    return;
+  }
+  gameState.progradeHold = !gameState.progradeHold;
+  if (gameState.progradeHold) { gameState.autoSoftLand = false; gameState.retroHold = false; }
+  showToast(gameState.progradeHold
+    ? (ui.touch ? 'PROGRADE HOLD — engine points along your motion. Hold ENGINE to speed up' : 'PROGRADE HOLD — engine points along your motion. Hold SPACE to speed up')
+    : 'Prograde hold off', gameState.progradeHold ? 'sage' : 'gold');
+  sound.playPing(gameState.progradeHold ? 760 : 480, 0.1);
+}
+
 // ---------------- Retrograde hold ----------------
 export function toggleRetroHold() {
   if (gameState.mode !== 'lander' || rdv.active || lander.crashed) return;
@@ -27,7 +42,7 @@ export function toggleRetroHold() {
     return;
   }
   gameState.retroHold = !gameState.retroHold;
-  if (gameState.retroHold) gameState.autoSoftLand = false;
+  if (gameState.retroHold) { gameState.autoSoftLand = false; gameState.progradeHold = false; }
   showToast(gameState.retroHold
     ? (ui.touch ? 'RETRO HOLD — engine points against your motion. Hold ENGINE to brake' : 'RETRO HOLD — engine points against your motion. Hold SPACE to brake')
     : 'Retro hold off', gameState.retroHold ? 'sage' : 'gold');
@@ -191,6 +206,7 @@ function startA11Run() {
   gameState.hoverAssist = true;
   gameState.autoSoftLand = false;
   gameState.retroHold = false;
+  gameState.progradeHold = false;
   camCtrl.landerHeading = west.clone();
   camCtrl.landerCamOffset = null;
   camCtrl.chaseYaw = 0;

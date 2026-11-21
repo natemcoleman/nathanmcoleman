@@ -101,6 +101,9 @@ export function bindInputs() {
       case 'KeyB':
         if (gameState.started) handleAction('retro');
         break;
+      case 'KeyN':
+        if (gameState.started) handleAction('prograde');
+        break;
       case 'KeyJ':
         if (gameState.started) handleAction('journal');
         break;
