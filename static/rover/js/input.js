@@ -27,7 +27,33 @@ function armCtrlGuard(on) {
   else window.removeEventListener('beforeunload', ctrlGuard);
 }
 
+// Phones: no double-tap or pinch zoom (iOS ignores user-scalable=no), and undo any zoom that slips through
+function blockPageZoom() {
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', (e) => {
+    const now = performance.now();
+    const t = e.target;
+    const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+    if (!typing && now - lastTouchEnd < 320) e.preventDefault();
+    lastTouchEnd = now;
+  }, { passive: false });
+  document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
+  for (const ev of ['gesturestart', 'gesturechange']) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
+  const vv = window.visualViewport;
+  const meta = document.querySelector('meta[name="viewport"]');
+  if (vv && meta) {
+    vv.addEventListener('resize', () => {
+      if (vv.scale > 1.01) {
+        const c = meta.getAttribute('content');
+        meta.setAttribute('content', c.replace(/maximum-scale=[^,]*/, 'maximum-scale=1.01'));
+        requestAnimationFrame(() => meta.setAttribute('content', c));
+      }
+    });
+  }
+}
+
 export function bindInputs() {
+  blockPageZoom();
   window.addEventListener('keyup', (e) => { if (e.code === 'ControlLeft' || e.code === 'ControlRight' || !e.ctrlKey) armCtrlGuard(false); });
   window.addEventListener('blur', () => armCtrlGuard(false));
   const keyMap = {

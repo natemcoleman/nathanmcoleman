@@ -166,6 +166,16 @@ export function updateOrbitalRingVisualizer() {
     return;
   }
 
+  // Only show the orbit path and AP/PE/impact labels high up (>200 km), where orbits matter;
+  // a little hysteresis stops it flickering around the threshold
+  const altKm = ((lander.pos.length() - MOON_RADIUS) / MOON_RADIUS) * MOON_REAL_KM;
+  orbitRingState.high = altKm > (orbitRingState.high ? 190 : 200);
+  if (!orbitRingState.high) {
+    orbitRingState.group.visible = false;
+    if (hud) hud.classList.add('hidden');
+    return;
+  }
+
   const rVec = lander.pos;
   const vVec = lander.vel;
   const r = rVec.length();

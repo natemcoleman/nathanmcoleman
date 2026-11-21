@@ -13,6 +13,8 @@ html, body {
   -webkit-user-select: none;
   touch-action: none;
 }
+/* Scrollable panels (menu, journal, dossier…) may scroll, but never double-tap zoom */
+.overflow-y-auto, .overflow-auto, .overflow-y-scroll { touch-action: pan-y; }
 
 .font-mono-tech {
   font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
