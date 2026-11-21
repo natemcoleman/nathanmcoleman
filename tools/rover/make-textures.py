@@ -4,7 +4,13 @@ Put lroc_color_poles_4k.tif and ldem_16_uint.tif in static/rover/, then run:
     python tools/rover/make-textures.py
 Needs numpy and Pillow. Writes the JPG/PNG maps and textures.json next to the game.
 The elevation PNGs pack 16 bits as R = high byte, G = low byte.
+
+Earth (optional): save NASA's Blue Marble day map as static/rover/earth_day_source.jpg
+(Visible Earth: "Blue Marble Next Generation") and a cloud map as
+static/rover/earth_clouds_source.jpg (Visible Earth: "Blue Marble clouds"). The script makes
+4K/2K web copies and adds them to textures.json. The *_source files aren't committed.
 """
+import glob
 import json, os
 import numpy as np
 from PIL import Image
@@ -35,6 +41,27 @@ manifest = {
             "minKm": round((lo_v - 20000) / 2000, 4), "maxKm": round((hi_v - 20000) / 2000, 4)},
     "credit": "NASA Scientific Visualization Studio (SVS 4720), LROC/ASU, LOLA/GSFC",
 }
+def first(pattern):
+    hits = sorted(glob.glob(pattern))
+    return hits[0] if hits else None
+
+earth = {}
+day_src = first('earth_day_source.*')
+if day_src:
+    day = Image.open(day_src).convert('RGB')
+    day.resize((4096, 2048), Image.LANCZOS).save('earth_day_4k.jpg', quality=86, optimize=True, progressive=True)
+    day.resize((2048, 1024), Image.LANCZOS).save('earth_day_2k.jpg', quality=86, optimize=True, progressive=True)
+    earth['day'] = {"hi": "earth_day_4k.jpg", "lo": "earth_day_2k.jpg"}
+cloud_src = first('earth_clouds_source.*')
+if cloud_src:
+    cl = Image.open(cloud_src).convert('L')
+    cl.resize((2048, 1024), Image.LANCZOS).save('earth_clouds_2k.jpg', quality=82, optimize=True)
+    cl.resize((1024, 512), Image.LANCZOS).save('earth_clouds_1k.jpg', quality=82, optimize=True)
+    earth['clouds'] = {"hi": "earth_clouds_2k.jpg", "lo": "earth_clouds_1k.jpg"}
+if earth:
+    manifest['earth'] = earth
+    manifest['credit'] += '; Earth: NASA Visible Earth (Blue Marble)'
+
 with open('textures.json', 'w') as f:
     json.dump(manifest, f, indent=2)
 print(manifest)

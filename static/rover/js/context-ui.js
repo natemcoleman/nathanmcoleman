@@ -8,6 +8,7 @@ import { renderSitesList, setGameMode, showToast } from './hud.js';
 import { ALSEP_MAX, PROX_RANGE, SLOPE_HAZARD_DEG, alsepStations, handleAction, overlayState, rdv, seismo } from './apollo-ops.js';
 import { renderRecords, startFresh, updateProgressCounts } from './save.js';
 import { a11FuelSeconds, a11Run, inBoulderField, vehicleThermal } from './apollo11.js';
+import { earthRun } from './earth.js';
 
 // =========================================================================
 // 18. CONTEXT-AWARE HUD: ONLY THE CONTROLS THAT MATTER RIGHT NOW
@@ -50,6 +51,7 @@ function detectTouchUI() {
 // ---------------- What is the player doing right now? ----------------
 function getUIContext() {
   if (!gameState.started) return 'briefing';
+  if (earthRun.active) return 'earth';
   if (gameState.mode === 'orbital') return 'orbital';
   if (gameState.mode === 'rover' && rover.deployed) {
     if (rover.crashed) return 'crashed';
@@ -213,8 +215,25 @@ function contextSpec(ctx) {
       break;
     case 'docked':
       spec.waypoint = false;
-      spec.prompt = { label: 'Undock', key: 'K', act: 'dock', tone: 'sage' };
-      spec.hints = [['K', 'Undock'], ['TAB', 'Map'], ['WHEEL', 'Zoom']];
+      spec.prompt = { label: 'Head home to Earth', key: 'Y', act: 'gohome', tone: 'sage' };
+      spec.secondary = [{ label: 'Undock', key: 'K', act: 'dock' }];
+      spec.hints = [['Y', 'Head home'], ['K', 'Undock'], ['TAB', 'Map'], ['WHEEL', 'Zoom']];
+      break;
+    case 'earth':
+      spec.waypoint = false;
+      spec.readouts = [];
+      if (earthRun.phase === 'tei') {
+        spec.holds = [{ key: 'lift', label: 'BURN', big: true }];
+        spec.secondary = [{ label: 'Stay at the Moon', act: 'earthabort' }];
+        spec.hints = [['SPACE', 'Burn (hold)']];
+      } else if (earthRun.phase === 'entry') {
+        spec.joy = 'move';
+        spec.hints = [['W', 'Pull up (shallower)'], ['S', 'Dip (steeper)']];
+      } else if (earthRun.phase === 'done') {
+        spec.prompt = { label: 'Back to the Moon', act: 'earthmoon', tone: 'sage' };
+      } else {
+        spec.hints = [['', 'Coasting home…']];
+      }
       break;
     case 'crashed':
       spec.hints = [['', 'Stand by — new vehicle inbound']];

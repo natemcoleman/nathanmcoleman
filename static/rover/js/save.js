@@ -36,7 +36,9 @@ function defaultSave() {
       bestTrick: null,   // { label, difficulty, air }
       longestAir: 0,     // seconds, clean landings only
       dockings: 0,
-      a11Best: null      // seconds of fuel left on the best Apollo 11 landing
+      a11Best: null,     // seconds of fuel left on the best Apollo 11 landing
+      earthReturns: 0,   // splashdowns
+      earthBest: null    // best % of re-entry inside the corridor
     },
     firsts: {},          // milestones: landing, rover, scan, alsep, stage, docking (journal-ready)
     journal: {},         // Field Journal: id -> { t, by }

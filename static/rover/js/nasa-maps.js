@@ -3,7 +3,7 @@ import { ELEV_GRID_H, ELEV_GRID_W } from './constants.js';
 import { sound } from './audio.js';
 import { terrainState } from './state.js';
 import { applyTerrainRelief } from './coords.js';
-import { moonMaterial, renderer } from './scene.js';
+import { earthGroup, moonMaterial, renderer } from './scene.js';
 import { showToast } from './hud.js';
 import { refreshMoonMap } from './apollo-ops.js';
 import { setSRGB } from './three-compat.js';
@@ -363,6 +363,7 @@ export async function silentlyProbeSelfHostedTextures() {
     if (r.ok) manifest = await r.json();
   } catch (_) { /* no manifest */ }
   const q = pickTextureQuality();
+  if (manifest && manifest.earth) loadEarthMaps(manifest.earth, q.color);
   let colorOk = false;
   try {
     const url = manifest && manifest.color ? (manifest.color[q.color] || manifest.color.hi || manifest.color.lo) : './textures/lroc_color_2k.jpg';
@@ -381,4 +382,41 @@ export async function silentlyProbeSelfHostedTextures() {
     }
   } catch (_) { /* stay on procedural DEM */ }
   badge.textContent = colorOk ? 'NASA LRO maps loaded' : 'LRO Procedural 2K Ready (Drop NASA Maps Anytime)';
+}
+
+// NASA Earth (Blue Marble day map + clouds), listed under "earth" in textures.json.
+// Without it the Earth keeps its built-in painted look.
+function loadImage(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(`Could not load ${url}`));
+    img.src = url;
+  });
+}
+export async function loadEarthMaps(spec, quality) {
+  const mesh = earthGroup && earthGroup.userData.earthMesh;
+  if (!spec || !mesh) return;
+  try {
+    const day = spec.day && (spec.day[quality] || spec.day.hi || spec.day.lo);
+    if (day) {
+      const tex = setSRGB(new THREE.Texture(await loadImage(day)));
+      tex.anisotropy = 4;
+      tex.needsUpdate = true;
+      mesh.material.map = tex;
+      mesh.material.needsUpdate = true;
+    }
+    const clouds = spec.clouds && (spec.clouds[quality] || spec.clouds.hi || spec.clouds.lo);
+    if (clouds && !mesh.userData.clouds) {
+      const ct = new THREE.Texture(await loadImage(clouds));
+      ct.needsUpdate = true;
+      const layer = new THREE.Mesh(
+        new THREE.SphereGeometry(42.35, 48, 32),
+        new THREE.MeshStandardMaterial({ color: 0xffffff, alphaMap: ct, transparent: true, depthWrite: false, roughness: 1 })
+      );
+      mesh.add(layer);
+      mesh.userData.clouds = layer;
+    }
+  } catch (_) { /* keep the painted Earth */ }
 }

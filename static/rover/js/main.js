@@ -9,7 +9,7 @@ import { updateCamera } from './camera.js';
 import { updateLidarScan } from './scan.js';
 import { renderSitesList, updateTelemetryHUD } from './hud.js';
 import { bindInputs } from './input.js';
-import { hadleyRun, iceRun, initHadleyRilleRun, initOrbitalRingVisualizer, initSouthPoleIceRun, updateHadleyRilleRun, updateOrbitalRingVisualizer, updateSouthPoleIceRun } from './challenges.js';
+import { hadleyRun, iceRun, initHadleyRilleRun, initOrbitalRingVisualizer, initSouthPoleIceRun, orbitRingState, updateHadleyRilleRun, updateOrbitalRingVisualizer, updateSouthPoleIceRun } from './challenges.js';
 import { initSeismograph, maybeRebuildOverlay, rdv, updateAlsep, updateDockHUD, updateExplosions, updateFallingStages, updateSeismograph } from './apollo-ops.js';
 import { mergeInputs, updateContextUI } from './context-ui.js';
 import { applySave, loadSave } from './save.js';
@@ -20,6 +20,8 @@ import './coords.js';
 import './procedural-moon.js';
 import './modes.js';
 import { initRadio, updateRadio } from './radio.js';
+import { bindEarth, earthRun, updateEarthCamera, updateEarthRun } from './earth.js';
+import { bindTutorial, updateTutorial } from './tutorial.js';
 
 // =========================================================================
 // 17. MAIN ANIMATION LOOP
@@ -55,8 +57,9 @@ function animate(now) {
   const simDt = dt * warp;
   const nSub = Math.max(1, Math.ceil(simDt / 0.025));
   const subDt = simDt / nSub;
-  const flyLander = gameState.started && (gameState.mode === 'lander' || rdv.active || lander.crashed);
-  for (let i = 0; i < nSub; i++) {
+  const flyLander = gameState.started && !earthRun.active && (gameState.mode === 'lander' || rdv.active || lander.crashed);
+  if (earthRun.active) updateEarthRun(dt);   // Columbia flies home on her own script
+  else for (let i = 0; i < nSub; i++) {
     updateOrbitalStage(subDt);
     if (flyLander) updateLanderPhysics(subDt);
   }
@@ -98,12 +101,16 @@ function animate(now) {
   updateAlsep(dt);
   updateSeismograph(dt);
   updateFinds(dt, now);
-  if (gameState.started) { updateA11Run(dt); updatePower(dt); updateRadio(); }
+  if (gameState.started) { updateA11Run(dt); updatePower(dt); updateRadio(); updateTutorial(); }
   maybeRebuildOverlay(now);
 
   updateParticles(dt);
   updateCamera(dt);
-  updateOrbitalRingVisualizer();
+  if (earthRun.active) {
+    updateEarthCamera(dt);
+    if (orbitRingState.group) orbitRingState.group.visible = false;
+    document.getElementById('orbit-ring-hud').classList.add('hidden');
+  } else updateOrbitalRingVisualizer();
 
   // Seismic camera shake applied around the render only (never accumulates into camera state)
   let shakeX = 0, shakeY = 0, shakeZ = 0;
@@ -133,6 +140,8 @@ window.onload = function () {
   bindJournal();
   bindA11();
   initRadio();
+  bindTutorial();
+  bindEarth();
   silentlyProbeSelfHostedTextures();
   lastTime = performance.now();
   requestAnimationFrame(animate);

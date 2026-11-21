@@ -13,6 +13,7 @@ import { applyOverlayMode, landerFootOffset, overlayState, rdv, rdvEnd } from '.
 import { ui } from './context-ui.js';
 import { save, scheduleSave } from './save.js';
 import { say, unlockRadio } from './radio.js';
+import { stopTutorial } from './tutorial.js';
 
 // =========================================================================
 // 21. RETRO HOLD, SURFACE TEMPERATURE & SOLAR BATTERY,
@@ -173,6 +174,7 @@ function ensureWestCrater() {
 }
 
 function startA11Run() {
+  stopTutorial();
   sound.init();
   unlockRadio();
   setTimeout(() => say('a11Start'), 900);

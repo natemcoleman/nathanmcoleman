@@ -11,6 +11,7 @@ import { rdv, rdvEnd, restoreFullLander } from './apollo-ops.js';
 import { save, scheduleSave } from './save.js';
 import { a11Run, stopA11Run } from './apollo11.js';
 import { say } from './radio.js';
+import { stopTutorial } from './tutorial.js';
 
 // =========================================================================
 // 15. ORBIT RING PREDICTOR & ROVER CHALLENGE RUNS
@@ -739,6 +740,7 @@ function completeHadleyRilleRun() {
  * places the 3 geological sample beacons flush on the NASA LOLA terrain, and starts the clock.
  */
 function startHadleyRilleRun() {
+  stopTutorial();
   setTimeout(() => say('hadleyStart'), 900);
   sound.init();
   if (a11Run.active) stopA11Run(true);
@@ -1271,6 +1273,7 @@ function finishSouthPoleIceRun(frozenOut = false) {
  * and activates the live thermal shadow-survival loop.
  */
 function startSouthPoleIceRun() {
+  stopTutorial();
   setTimeout(() => say('iceStart'), 900);
   sound.init();
   if (a11Run.active) stopA11Run(true);

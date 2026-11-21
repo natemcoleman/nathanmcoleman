@@ -12,7 +12,7 @@ Everything the page serves lives in `static/rover/`. There is no bundler: the br
 | `static/rover/css/game.css` | Hand-written game styles (HUD panels, buttons, phone layout) |
 | `static/rover/css/tailwind.css` | Generated Tailwind utilities. Don't edit; run `npm run rover:css` |
 | `static/rover/vendor/` | Three.js r187 and r128 (ES module builds, minified) and geotiff.js. Re-download with `npm run rover:vendor` |
-| `static/rover/textures.json` + maps | NASA color and 16-bit elevation maps the game loads on startup |
+| `static/rover/textures.json` + maps | NASA Moon color and 16-bit elevation maps the game loads on startup, plus optional NASA Earth maps (`earth` entry) |
 | `tools/rover/make-textures.py` | Rebuilds the web maps from the NASA TIFFs (`python tools/rover/make-textures.py`, needs numpy + Pillow) |
 | `tools/rover/build-css.mjs` | Builds `tailwind.css` from the classes used in the HTML and JS |
 | `tools/rover/fetch-vendor.mjs` | Downloads the libraries into `vendor/` |
@@ -45,7 +45,9 @@ One module per part of the game. Each module imports exactly what it uses, so th
 | `save.js` | Progress saving (browser `localStorage`, versioned) |
 | `finds.js` | Hidden finds, Ping, and the Field Journal |
 | `apollo11.js` | Retro hold, surface temperature and solar battery, the "30 Seconds of Fuel" challenge |
-| `radio.js` | Mission Control radio: Quindar tones, static, spoken calls and subtitles |
+| `radio.js` | Mission Control radio: Quindar tones, static and subtitles (recorded clips optional) |
+| `tutorial.js` | Guided first mission for new players (land → rover → Ping → first find); skippable, replay from the menu |
+| `earth.js` | Return to Earth: once docked with Columbia, Trans-Earth injection burn, coast, re-entry corridor, splashdown |
 
 ## Three.js version
 

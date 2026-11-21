@@ -144,6 +144,41 @@
 
     <!-- TOP-CENTER (portrait: under the top bar): challenge / rendezvous HUDs + orbit predictor pill -->
     <div id="mission-slot">
+      <!-- Guided first mission -->
+      <div id="tut-hud" class="hidden pointer-events-auto w-full max-w-[470px] mb-2">
+        <div class="hud-panel rounded-2xl px-3.5 py-2.5 border border-[#7ec4a0]/55">
+          <div class="flex items-center justify-between gap-2">
+            <span id="tut-step" class="text-[10px] font-mono-tech font-semibold text-[#7ec4a0] tracking-wider">FIRST MISSION · 1/4</span>
+            <span class="flex items-center gap-1.5"><span id="tut-pip-0" class="tut-pip"></span><span id="tut-pip-1" class="tut-pip"></span><span id="tut-pip-2" class="tut-pip"></span><span id="tut-pip-3" class="tut-pip"></span>
+              <button id="tut-skip-btn" class="ml-2 px-2 py-0.5 rounded-md text-[10px] font-mono-tech bg-[#111827] border border-slate-700 text-slate-300 cursor-pointer">SKIP</button></span>
+          </div>
+          <div id="tut-title" class="text-[15px] font-bold text-white mt-1">Land the Eagle</div>
+          <div id="tut-text" class="text-[12px] text-slate-300 leading-snug mt-0.5"></div>
+        </div>
+      </div>
+      <!-- Return to Earth -->
+      <div id="earth-hud" class="hidden pointer-events-auto w-full max-w-[470px] mb-2">
+        <div class="hud-panel rounded-2xl px-3.5 py-2.5 border border-[#7dd3fc]/55">
+          <div class="flex items-center justify-between gap-2">
+            <span class="flex items-center gap-2 min-w-0"><span class="run-tag px-2 py-0.5 rounded-full text-[10px] font-mono-tech bg-[#7dd3fc]/15 text-[#7dd3fc] border border-[#7dd3fc]/45">COLUMBIA</span>
+              <span id="earth-phase" class="text-[13px] font-bold text-white truncate">TRANS-EARTH INJECTION</span></span>
+            <button id="earth-abort-btn" class="px-2 py-0.5 rounded-md text-[10px] font-mono-tech bg-[#111827] border border-slate-700 text-slate-300 cursor-pointer">STAY</button>
+          </div>
+          <div id="earth-bar-row" class="mt-2">
+            <div class="h-2 rounded-full bg-[#0b1220] border border-slate-800 overflow-hidden"><div id="earth-bar" class="h-full bg-[#7dd3fc]" style="width:0%"></div></div>
+            <div id="earth-bar-label" class="text-[10px] font-mono-tech text-slate-400 mt-1">BURN 0%</div>
+          </div>
+          <div id="earth-corridor" class="hidden mt-2">
+            <div class="flex justify-between text-[9px] font-mono-tech text-slate-500"><span>STEEP · BURN UP</span><span>FLIGHT-PATH <span id="earth-fpa" class="text-white">−6.5°</span></span><span>SHALLOW · SKIP</span></div>
+            <div class="earth-gauge mt-1"><div id="earth-band" class="earth-band"></div><div id="earth-marker" class="earth-marker"></div></div>
+            <div class="grid grid-cols-2 gap-2 mt-1.5 text-[9px] font-mono-tech text-slate-500">
+              <div>HEAT<div class="h-1.5 rounded-full bg-[#0b1220] overflow-hidden mt-0.5"><div id="earth-heat" class="h-full bg-[#f97316]" style="width:0%"></div></div></div>
+              <div>SKIP-OUT<div class="h-1.5 rounded-full bg-[#0b1220] overflow-hidden mt-0.5"><div id="earth-skip" class="h-full bg-[#a78bfa]" style="width:0%"></div></div></div>
+            </div>
+          </div>
+          <div id="earth-hint" class="text-[11px] text-slate-300 mt-1.5"></div>
+        </div>
+      </div>
       <div id="find-card" class="hidden pointer-events-auto w-full hud-panel rounded-2xl px-3.5 py-2.5 border border-[#7ec4a0]/60">
         <div class="flex items-center justify-between gap-2">
           <div class="min-w-0">
@@ -480,6 +515,7 @@
 
     <div class="menu-section">Challenges</div>
     <button id="hadley-run-btn" data-close-menu class="menu-item"><span class="text-[#f4d58d]">Apollo 15 · Hadley Rille Run</span><span id="hadley-best-badge" class="menu-kb">START ▸</span></button>
+    <button id="tut-replay-btn" data-close-menu class="menu-item"><span>Replay guided first mission</span><span class="menu-kb">▸</span></button>
     <button id="a11-run-btn" data-close-menu class="menu-item"><span class="text-[#f4d58d]">Apollo 11 · 30 Seconds of Fuel</span><span id="a11-best-badge" class="menu-kb">START ▸</span></button>
     <button id="ice-run-btn" data-close-menu class="menu-item"><span class="text-[#7dd3fc]">Artemis III · South Pole Ice</span><span id="ice-best-badge" class="menu-kb">START ▸</span></button>
 
@@ -521,6 +557,7 @@
           <div><kbd>W A S D</kbd> move / tilt</div><div><kbd>Space</kbd> engine · <kbd>Shift</kbd> boost</div><div>Hovering: <kbd>Shift</kbd> rise · <kbd>Ctrl</kbd> lower</div><div><kbd>Q</kbd>/<kbd>Z</kbd> turn</div>
           <div><kbd>B</kbd> retro hold — engine against your motion</div>
           <div><kbd>N</kbd> prograde hold — engine along your motion</div>
+          <div><kbd>Y</kbd> head home to Earth (docked with Columbia)</div>
           <div><kbd>G</kbd> auto-land · <kbd>T</kbd> auto-gyro · <kbd>H</kbd> hover</div><div><kbd>X</kbd> stage separation · <kbd>P</kbd> science station</div></div>
         <div class="help-group"><div class="help-title">Lunar Rover</div>
           <div><kbd>W</kbd>/<kbd>S</kbd> drive · <kbd>A</kbd>/<kbd>D</kbd> steer</div><div><kbd>Shift</kbd> turbo · <kbd>Space</kbd> brake / self-right</div>
@@ -689,6 +726,22 @@
       <div class="mt-5 flex items-center justify-end gap-2.5">
         <button id="a11-freeroam-btn" class="px-4 py-2.5 rounded-xl text-xs font-mono-tech font-medium bg-[#111827] hover:bg-[#1e293b] text-slate-200 border border-slate-700 cursor-pointer">Free Roam</button>
         <button id="a11-retry-btn" class="px-5 py-2.5 rounded-xl text-xs font-mono-tech font-semibold bg-[#f4d58d] text-[#050811] hover:bg-[#f8e1aa] cursor-pointer">Try Again</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="earth-result-modal" class="hidden fixed inset-0 z-40 flex items-center justify-center p-4 bg-[#050811]/78 backdrop-blur-sm">
+    <div class="hud-panel max-w-lg w-full rounded-3xl p-6 border border-[#7dd3fc]/55 max-h-[92vh] overflow-y-auto custom-scroll">
+      <span id="earth-result-medal" class="px-3 py-1 rounded-full text-[11px] font-mono-tech font-semibold bg-[#7dd3fc]/15 text-[#7dd3fc] border border-[#7dd3fc]/45">BULLSEYE ENTRY</span>
+      <h2 id="earth-result-title" class="text-2xl font-bold text-white mt-3">Splashdown!</h2>
+      <div id="earth-result-stats" class="mt-2 text-[13px] font-mono-tech text-slate-300"></div>
+      <p id="earth-result-body" class="text-[14px] text-slate-300 mt-4 leading-relaxed">
+        Columbia hit the atmosphere at about 11 km/s and came down in the Pacific on 24 July 1969, about 24 km from the recovery ship <strong class="text-white">USS Hornet</strong>. Only the command module ever came home: Eagle stayed behind in lunar orbit, and the descent stage is still at Tranquility Base.
+      </p>
+      <div class="mt-5 flex flex-wrap items-center justify-end gap-2.5">
+        <button id="earth-journal-btn" class="px-4 py-2.5 rounded-xl text-xs font-mono-tech font-medium bg-[#111827] hover:bg-[#1e293b] text-slate-200 border border-slate-700 cursor-pointer">Field Journal</button>
+        <button id="earth-retry-btn" class="hidden px-4 py-2.5 rounded-xl text-xs font-mono-tech font-medium bg-[#111827] hover:bg-[#1e293b] text-slate-200 border border-slate-700 cursor-pointer">Try entry again</button>
+        <button id="earth-moon-btn" class="px-5 py-2.5 rounded-xl text-xs font-mono-tech font-semibold bg-[#7dd3fc] text-[#050811] hover:bg-[#a5e3fd] cursor-pointer">Back to the Moon</button>
       </div>
     </div>
   </div>

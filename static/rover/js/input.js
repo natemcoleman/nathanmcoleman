@@ -13,6 +13,7 @@ import { bindContextUI, closeMenu, inputSrc, toggleDetails, ui } from './context
 import { save, scheduleSave, welcomeBackText } from './save.js';
 import { closeJournal } from './finds.js';
 import { say, unlockRadio } from './radio.js';
+import { maybeStartTutorial } from './tutorial.js';
 
 // =========================================================================
 // 14. INPUT BINDINGS (KEYBOARD, MOUSE, TOUCH & DRAG-DROP)
@@ -103,6 +104,9 @@ export function bindInputs() {
         break;
       case 'KeyN':
         if (gameState.started) handleAction('prograde');
+        break;
+      case 'KeyY':
+        if (gameState.started) handleAction('gohome');
         break;
       case 'KeyJ':
         if (gameState.started) handleAction('journal');
@@ -314,6 +318,7 @@ export function bindInputs() {
     sound.playPing(660, 0.16);
     unlockRadio();
     setTimeout(() => say('welcome'), 1800);
+    maybeStartTutorial();
     if (save.loaded) showToast(welcomeBackText(), 'sage');
     else showToast(ui.touch ? 'Left thumb to fly · hold THRUST to hover, slide up or down to climb or descend' : 'WASD to fly · SPACE engine · press G to auto-land', 'gold');
   });

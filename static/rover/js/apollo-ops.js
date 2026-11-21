@@ -16,6 +16,7 @@ import { finds, openJournal, pingFinds, seatFindMarkers } from './finds.js';
 import { inBoulderField, toggleProgradeHold, toggleRetroHold } from './apollo11.js';
 import { a11RunActive, say } from './radio.js';
 import { pointLight, setSRGB } from './three-compat.js';
+import { backToMoon, earthAction } from './earth.js';
 
 // =========================================================================
 // 16. APOLLO OPERATIONS: STAGING, CRASHES, CSM RENDEZVOUS & DOCKING,
@@ -64,6 +65,8 @@ export function handleAction(action) {
   else if (action === 'ping') pingFinds();
   else if (action === 'retro') toggleRetroHold();
   else if (action === 'prograde') toggleProgradeHold();
+  else if (action === 'gohome' || action === 'earthabort') earthAction(action);
+  else if (action === 'earthmoon') backToMoon();
   else if (action === 'slopemap') applyOverlayMode(2, false);
   else if (action === 'journal') openJournal();
 }

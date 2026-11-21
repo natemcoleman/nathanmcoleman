@@ -31,6 +31,7 @@ export const gameState = {
   autoSoftLand: false,
   retroHold: false,    // SAS retrograde hold (engine against direction of travel)
   progradeHold: false, // SAS prograde hold (engine along direction of travel)
+  splashedDown: false, // made it back to Earth this session (Field Journal moment)
   gridVisible: false,
   sunAngleDeg: 42,
   sunAutoCycle: false,

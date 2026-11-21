@@ -47,6 +47,16 @@ const LINES = {
   hadleyDone:   { text: 'Rover, Houston. Good run along Hadley Rille. Dave Scott would be proud.', prio: 2 },
   iceStart:     { text: 'Rover, Houston. You are cleared into the shadows. It is minus two hundred down there, so watch your heater battery.', prio: 2 },
   iceDone:      { text: 'Rover, Houston. We copy water ice. That is drinking water, air and rocket fuel for the next crew.', prio: 2 },
+  teiGo:        { text: 'Columbia, Houston. You are go for TEI. Light the engine and come on home.', prio: 3 },
+  teiDone:      { text: 'Columbia, Houston. Good burn. On Apollo 8, the first words after this burn were: please be informed, there is a Santa Claus.', prio: 3 },
+  entry:        { text: 'Columbia, Houston. Entry interface. Keep her in the corridor: too steep and you burn, too shallow and you skip.', prio: 3 },
+  splashdown:   { text: 'Columbia, Houston. We see you on the main chutes. Welcome home, and congratulations on a perfect mission.', prio: 3 },
+  entryFail:    { text: 'Columbia, Houston. We have lost the signal. Let us run that entry again.', prio: 3 },
+  'tut.land':   { text: 'Eagle, Houston. First things first: bring her down gently. Green ground is flat ground.', prio: 3 },
+  'tut.rover':  { text: 'Eagle, Houston. Nice landing. Get the rover out and stretch its legs.', prio: 3 },
+  'tut.ping':   { text: 'Rover, Houston. There is history hidden all over this Moon. Ping and see what turns up.', prio: 3 },
+  'tut.find':   { text: 'Rover, Houston. The warmer the signal, the closer you are. Go get it.', prio: 3 },
+  tutDone:      { text: 'Rover, Houston. That is the whole job. The Moon is yours now: land anywhere, find everything.', prio: 3 },
 };
 // Lines built from the game's own data (on first use: finds.js and this module import each other)
 let dataLinesBuilt = false;

@@ -371,3 +371,12 @@ body.touch-ui #radio-caption { font-size: 13px; }
 .thrust-btn.pressed { box-shadow: 0 0 0 3px rgba(244, 213, 141, 0.25); }
 .thrust-btn.rising { border-color: #7ec4a0 !important; box-shadow: 0 -10px 18px -6px rgba(126, 196, 160, 0.55); }
 .thrust-btn.lowering { border-color: #7dd3fc !important; box-shadow: 0 10px 18px -6px rgba(125, 211, 252, 0.55); }
+
+/* Guided first mission */
+.tut-pip { width: 7px; height: 7px; border-radius: 50%; background: #1e293b; border: 1px solid #334155; display: inline-block; }
+.tut-pip.now { background: #f4d58d; border-color: #f4d58d; }
+.tut-pip.done { background: #7ec4a0; border-color: #7ec4a0; }
+/* Re-entry corridor gauge */
+.earth-gauge { position: relative; height: 14px; border-radius: 7px; background: linear-gradient(90deg, rgba(249,115,22,0.35), rgba(11,18,32,0.9) 30%, rgba(11,18,32,0.9) 70%, rgba(167,139,250,0.35)); border: 1px solid #1e293b; }
+.earth-band { position: absolute; top: 1px; bottom: 1px; border-radius: 6px; background: rgba(126,196,160,0.35); border: 1px solid rgba(126,196,160,0.8); }
+.earth-marker { position: absolute; top: -3px; width: 4px; height: 18px; margin-left: -2px; border-radius: 2px; background: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.8); transition: left 0.08s linear; }

@@ -177,7 +177,11 @@ export const FINDS = [
   { id: 'rendezvous', cat: 'moment', name: 'Lunar orbit rendezvous', mode: 'cond',
     hint: 'Meet the ship that’s waiting overhead.',
     hook: 'The trick that made Apollo possible.',
-    body: 'Apollo sent only a small lander down and back up to meet the mother ship in orbit. Engineer John Houbolt fought for this risky plan — it saved so much weight that it made the 1960s landings possible.' }
+    body: 'Apollo sent only a small lander down and back up to meet the mother ship in orbit. Engineer John Houbolt fought for this risky plan — it saved so much weight that it made the 1960s landings possible.' },
+  { id: 'homecoming', cat: 'moment', name: 'Splashdown', mode: 'cond',
+    hint: 'The Moon was only half the trip. Columbia can take you the rest of the way.',
+    hook: 'Home, after a quarter of a million miles.',
+    body: 'Only the command module ever came home. Apollo 11 left the Moon with a burn behind the far side, coasted for about two and a half days, and hit the atmosphere at about 11 km/s. The crew had to stay inside a narrow corridor: too steep and the heat shield fails, too shallow and the capsule skips back into space. Columbia splashed down in the Pacific on 24 July 1969, about 24 km from the recovery ship USS Hornet.' },
 ];
 FINDS.forEach((f) => {
   if (f.mode !== 'cond') f.unit = latLonToVec3(f.lat, f.lon, 1.0);
@@ -305,7 +309,8 @@ const MOMENTS = {
   farside: (c) => Math.abs(c.craft.lon) > 100,
   eternalshadow: (c) => c.craft.lat < -87.5 && c.agl < 1.5,
   firstorbit: () => lander.inOrbit && !lander.isLanded,
-  rendezvous: () => rdv.active && rdv.phase === 'docked'
+  rendezvous: () => rdv.active && rdv.phase === 'docked',
+  homecoming: () => !!gameState.splashedDown
 };
 
 function checkDiscoveries() {

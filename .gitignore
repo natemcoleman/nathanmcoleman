@@ -7,3 +7,5 @@ node_modules/
 
 # Original NASA source maps for /rover/ (web copies are generated from these)
 static/rover/*.tif
+# Full-size NASA Earth downloads for /rover/ (web copies are generated from these)
+static/rover/*_source.*
