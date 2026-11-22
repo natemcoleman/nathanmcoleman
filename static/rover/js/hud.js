@@ -12,7 +12,11 @@ import { ui } from './context-ui.js';
 // 13. HUD UPDATES, MODALS, TOASTS & SITES DRAWER
 // =========================================================================
 let toastTimer = null;
-export function showToast(msg, tone = 'gold') {
+// 'all' = every tip and status message; 'essential' = only warnings and messages marked important
+export const hudPrefs = { popups: 'all' };
+
+export function showToast(msg, tone = 'gold', opts = null) {
+  if (hudPrefs.popups === 'essential' && tone !== 'warn' && !(opts && opts.important)) return;
   const box = document.getElementById('toast-box');
   box.textContent = msg;
   const borderCls = (tone === 'sage' || tone === 'success')

@@ -82,7 +82,7 @@ function createEarthInSky() {
   const earthTex = new THREE.CanvasTexture(c);
   setSRGB(earthTex);
   const earthMesh = new THREE.Mesh(
-    new THREE.SphereGeometry(42, 32, 24),
+    new THREE.SphereGeometry(42, 96, 64),
     new THREE.MeshStandardMaterial({ map: earthTex, roughness: 0.72, metalness: 0.05 })
   );
   earthGroup.add(earthMesh);

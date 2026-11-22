@@ -45,7 +45,11 @@ def first(pattern):
     hits = sorted(glob.glob(pattern))
     return hits[0] if hits else None
 
-earth = {}
+# Keep whatever Earth maps are already listed unless new sources are provided
+try:
+    earth = dict(json.load(open('textures.json')).get('earth', {}))
+except (OSError, ValueError):
+    earth = {}
 day_src = first('earth_day_source.*')
 if day_src:
     day = Image.open(day_src).convert('RGB')
@@ -60,7 +64,8 @@ if cloud_src:
     earth['clouds'] = {"hi": "earth_clouds_2k.jpg", "lo": "earth_clouds_1k.jpg"}
 if earth:
     manifest['earth'] = earth
-    manifest['credit'] += '; Earth: NASA Visible Earth (Blue Marble)'
+    if 'Earth' not in manifest['credit']:
+        manifest['credit'] += '; Earth: NASA Visible Earth (Blue Marble)'
 
 with open('textures.json', 'w') as f:
     json.dump(manifest, f, indent=2)

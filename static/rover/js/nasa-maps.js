@@ -405,6 +405,12 @@ export async function loadEarthMaps(spec, quality) {
       tex.anisotropy = 4;
       tex.needsUpdate = true;
       mesh.material.map = tex;
+      // The game's sunlight is aimed for the Moon, so you often see Earth's night side: a faint glow
+      // from the same map keeps the continents readable without washing out the day side
+      mesh.material.emissiveMap = tex;
+      mesh.material.emissive = new THREE.Color(0x8c96aa);
+      mesh.material.emissiveIntensity = 0.42;
+      mesh.material.roughness = 0.85;
       mesh.material.needsUpdate = true;
     }
     const clouds = spec.clouds && (spec.clouds[quality] || spec.clouds.hi || spec.clouds.lo);

@@ -5,7 +5,7 @@ import { gameState, terrainState } from './state.js';
 import { applyTerrainRelief } from './coords.js';
 import { refreshBeaconColors, scene, updateSunDirection } from './scene.js';
 import { stuntStars } from './rover.js';
-import { renderSitesList } from './hud.js';
+import { hudPrefs, renderSitesList } from './hud.js';
 import { formatHadleyTime, hadleyRun, iceRun, orbitRingState, syncOrbitRingToggleUI } from './challenges.js';
 import { ALSEP_MAX, alsepStations, applyOverlayMode, createAlsepStation, makeDescentStageClone, overlayState, parkedStages, rdv, reseatSurfaceAssets } from './apollo-ops.js';
 import { FINDS, foundCount } from './finds.js';
@@ -47,6 +47,8 @@ function defaultSave() {
       music: true,
       sound: true,
       radio: 'on',      // Mission Control subtitles (+ recorded clips): 'on' | 'off'
+      hover: true,      // hover assist
+      popups: 'all',    // 'all' tips and messages, or 'essential' (warnings only) — set after the first mission
       overlay: 0,
       orbitRing: true,
       relief: 5,
@@ -127,6 +129,8 @@ export function applySave() {
   gameState.sunAutoCycle = !!d.settings.sunCycle;
   document.getElementById('sun-cycle-check').checked = gameState.sunAutoCycle;
   orbitRingState.enabled = d.settings.orbitRing !== false;
+  gameState.hoverAssist = d.settings.hover !== false;
+  hudPrefs.popups = d.settings.popups === 'essential' ? 'essential' : 'all';
   syncOrbitRingToggleUI();
   sound.musicMuted = d.settings.music === false;
   sound.muted = d.settings.sound === false;
@@ -173,6 +177,8 @@ function collectSave() {
   d.settings.sound = !sound.muted;
   d.settings.overlay = overlayState.mode;
   d.settings.orbitRing = orbitRingState.enabled;
+  d.settings.hover = gameState.hoverAssist;
+  d.settings.popups = hudPrefs.popups;
   d.settings.relief = terrainState.reliefExaggeration;
   d.settings.sunAngle = Math.round(gameState.sunAngleDeg);
   d.settings.sunCycle = gameState.sunAutoCycle;

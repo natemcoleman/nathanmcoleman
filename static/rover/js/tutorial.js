@@ -3,9 +3,10 @@
 // =========================================================================
 import { gameState, lander } from './state.js';
 import { save, scheduleSave, markFirst } from './save.js';
-import { showToast } from './hud.js';
+import { hudPrefs, showToast } from './hud.js';
 import { sound } from './audio.js';
-import { say } from './radio.js';
+import { applyRadioSetting, say, stopRadio } from './radio.js';
+import { setHoverAssist } from './modes.js';
 import { ui } from './context-ui.js';
 import { finds } from './finds.js';
 
@@ -63,22 +64,36 @@ function beginStep() {
   tutorial.foundAtStep = Object.keys(save.data.journal || {}).length;
 }
 
+// After the first mission the training wheels come off: radio, hover assist and routine tips go quiet
+// (warnings, discoveries and challenge panels still show). All of it can be turned back on in the menu.
+function goQuiet() {
+  save.data.settings.radio = 'off';
+  applyRadioSetting();
+  stopRadio();
+  if (gameState.hoverAssist) setHoverAssist(false);
+  hudPrefs.popups = 'essential';
+  syncPopupsButton();
+  scheduleSave();
+}
+
 export function stopTutorial(reason) {
   if (!tutorial.active) return;
   tutorial.active = false;
   $('tut-hud').classList.add('hidden');
   if (!save.data.firsts.tutorial) { save.data.firsts.tutorial = Date.now(); scheduleSave(); }
-  if (reason === 'skip') showToast('Guided mission skipped — replay it any time from the menu', 'gold');
+  if (reason === 'skip') {
+    goQuiet();
+    showToast('Guided mission skipped. Radio, hover assist and tips are off — turn them on in the menu', 'gold', { important: true });
+  }
 }
 
 function finish() {
   tutorial.active = false;
   $('tut-hud').classList.add('hidden');
   markFirst('tutorial');
-  scheduleSave();
   sound.playScanComplete();
-  say('tutDone', { text: 'Rover, Houston. That is the whole job. The Moon is yours now: land anywhere, find everything.' });
-  showToast('First mission complete — the Moon is yours. Open the Field Journal to see what else is out there.', 'sage');
+  goQuiet();
+  showToast('First mission complete — the Moon is yours. Radio, hover assist and tips are now off (menu to turn back on)', 'sage', { important: true });
 }
 
 function render() {
@@ -108,9 +123,22 @@ export function updateTutorial() {
   }
 }
 
+export function syncPopupsButton() {
+  const el = $('popups-state');
+  if (el) el.textContent = hudPrefs.popups === 'all' ? 'ALL' : 'WARNINGS';
+}
+
 export function bindTutorial() {
   const skip = $('tut-skip-btn');
   if (skip) skip.addEventListener('click', () => stopTutorial('skip'));
+  syncPopupsButton();
+  const pop = $('popups-toggle-btn');
+  if (pop) pop.addEventListener('click', () => {
+    hudPrefs.popups = hudPrefs.popups === 'all' ? 'essential' : 'all';
+    syncPopupsButton();
+    scheduleSave();
+    showToast(hudPrefs.popups === 'all' ? 'Tips and messages on' : 'Tips off — warnings only', 'gold', { important: true });
+  });
   const replay = $('tut-replay-btn');
   if (replay) replay.addEventListener('click', () => { if (gameState.started) startTutorial(); });
 }

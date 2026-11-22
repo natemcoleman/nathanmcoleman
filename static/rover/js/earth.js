@@ -64,7 +64,7 @@ export function startEarthRun() {
   if (csmOrbitLine) csmOrbitLine.visible = false;
   if (csmGroup.userData.halo) csmGroup.userData.halo.visible = false;
   $('earth-hud').classList.remove('hidden');
-  showToast(ui.touch ? 'Eagle jettisoned. Hold BURN to fire Columbia’s engine for home' : 'Eagle jettisoned. Hold SPACE to fire Columbia’s engine for home', 'sage');
+  showToast(ui.touch ? 'Eagle jettisoned. Hold BURN to fire Columbia’s engine for home' : 'Eagle jettisoned. Hold SPACE to fire Columbia’s engine for home', 'sage', { important: true });
   callHome('teiGo');
   sound.playStageSep();
   render();
@@ -134,7 +134,7 @@ export function updateEarthRun(dt) {
       r.phase = 'coast';
       r.t = 0;
       callHome('teiDone');
-      showToast('TEI complete — Columbia is on her way home', 'sage');
+      showToast('TEI complete — Columbia is on her way home', 'sage', { important: true });
       sound.playScanComplete();
     }
   } else if (r.phase === 'coast') {
@@ -169,7 +169,7 @@ export function updateEarthRun(dt) {
     r.glow.scale.setScalar((0.5 + 0.9 * Math.sin(Math.PI * Math.min(1, s * 1.2))) * flicker);
     if (r.heat >= 1) endEntry(false, 'Too steep: the heat shield couldn’t take it.');
     else if (r.skip >= 1) endEntry(false, 'Too shallow: Columbia skipped off the atmosphere back into space.');
-    else if (s >= 1) { r.phase = 'chutes'; r.t = 0; r.glow.visible = false; showToast('Drogues… main chutes out!', 'sage'); sound.playPing(660, 0.2); }
+    else if (s >= 1) { r.phase = 'chutes'; r.t = 0; r.glow.visible = false; showToast('Drogues… main chutes out!', 'sage', { important: true }); sound.playPing(660, 0.2); }
   } else if (r.phase === 'chutes') {
     if (r.t > 2.2) endEntry(true);
   }
@@ -188,7 +188,7 @@ function startEntry() {
   r.entryAxis.crossVectors(_v, r.fwd).normalize();
   if (r.entryAxis.lengthSq() < 0.5) r.entryAxis.set(0, 1, 0);
   callHome('entry');
-  showToast(ui.touch ? 'ENTRY INTERFACE — thumbstick up/down to keep the angle in the green' : 'ENTRY INTERFACE — W/S to keep the flight-path angle in the green', 'gold');
+  showToast(ui.touch ? 'ENTRY INTERFACE — thumbstick up/down to keep the angle in the green' : 'ENTRY INTERFACE — W/S to keep the flight-path angle in the green', 'gold', { important: true });
 }
 
 function endEntry(success, why = '') {
@@ -242,7 +242,7 @@ export function backToMoon() {
   csm.angle = 0.32;
   updateOrbitalStage(0);
   warpLanderToLandmark(LANDMARKS[0], true);
-  showToast('New mission: a fresh Eagle over the Sea of Tranquility', 'sage');
+  showToast('New mission: a fresh Eagle over the Sea of Tranquility', 'sage', { important: true });
 }
 
 function abortHome() {
@@ -257,7 +257,7 @@ function abortHome() {
   if (csmGroup.userData.halo) csmGroup.userData.halo.visible = true;
   gameState.hoverAssist = true;
   warpLanderToLandmark(LANDMARKS[0], true);
-  showToast('Staying at the Moon — a fresh Eagle is ready over Tranquility', 'gold');
+  showToast('Staying at the Moon — a fresh Eagle is ready over Tranquility', 'gold', { important: true });
 }
 
 export function earthAction(act) {

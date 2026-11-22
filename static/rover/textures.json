@@ -10,5 +10,11 @@
     "minKm": -8.6571,
     "maxKm": 10.4949
   },
-  "credit": "NASA Scientific Visualization Studio (SVS 4720), LROC/ASU, LOLA/GSFC"
+  "credit": "NASA Scientific Visualization Studio (SVS 4720), LROC/ASU, LOLA/GSFC; Earth: NASA Visible Earth (Blue Marble)",
+  "earth": {
+    "day": {
+      "hi": "earth_day_hi.jpg",
+      "lo": "earth_day_2k.jpg"
+    }
+  }
 }
