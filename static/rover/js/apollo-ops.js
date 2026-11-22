@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ELEV_GRID_H, ELEV_GRID_W, LANDER_FOOT_OFFSET, LANDER_SCALE, LANDMARKS, LUNAR_MU, MOON_RADIUS, MOON_REAL_KM, ROVER_WHEEL_OFFSET, SPEED_TO_MS } from './constants.js';
+import { CSM_ORBIT_RADIUS, ELEV_GRID_H, ELEV_GRID_W, LANDER_FOOT_OFFSET, LANDER_SCALE, LANDMARKS, LUNAR_MU, MOON_RADIUS, MOON_REAL_KM, ROVER_WHEEL_OFFSET, SPEED_TO_MS } from './constants.js';
 import { sound } from './audio.js';
 import { camCtrl, csm, gameState, keys, lander, rover, terrainState, triggerSeismicEvent } from './state.js';
 import { getDisplacementScale, getExactSurfaceHit, getSurfaceNormalAtPosition, getSurfaceRadiusAtLatLon, getSurfaceRadiusAtPosition, latLonToVec3, sampleTerrainAtLatLon, vec3ToLatLon } from './coords.js';
@@ -29,6 +29,11 @@ export const ROVER_CRASH_SPEED = 5.2;      // Rover destroyed on enormous falls
 const ASCENT_FOOT_OFFSET = -0.003;  // Ascent stage rests on its cabin floor
 const CSM_PROBE_TIP = 2.04 * LANDER_SCALE * 1.65; // CSM docking probe tip ahead of CSM center
 const LM_DROGUE_Y = 0.058;          // LM docking drogue height above lander origin
+// Rendezvous propulsion. A full ascent tank is worth RDV_DV_FULL (u/s of Δv): about 3,200 m/s,
+// roughly 1.6× a real LM ascent stage (~3,500 m/s), so ordinary rendezvous never run dry but big plane changes do.
+export const RDV_DV_FULL = 26;
+const RDV_ENGINE_ACC = 2.75;        // ascent engine acceleration cap (u/s²) — burns take visible time
+const RDV_RCS_ACC = 0.7;            // terminal-approach thruster cap
 const DOCK_STANDOFF = 0.9;          // Auto-approach hold point ahead of the probe
 const DOCK_M_PER_UNIT = 47;         // Vehicle-scale metres per world unit for prox-ops readouts
 const RCS_ACCEL = 0.04;             // Translation RCS (u/s²)
@@ -398,6 +403,7 @@ function anyPerp(v, out) {
 }
 
 function rdvKey() {
+  if (rdv.pendingPlan) { closeRdvPlan(); return; }
   if (!rdv.active) { rdvStart(); return; }
   if (rdv.phase === 'docked') {
     rdv.phase = 'manual';
@@ -412,11 +418,151 @@ function rdvKey() {
   rdvEnd(false);
 }
 
+// ---------------- Launch planning: can we reach Columbia from here, and when should we lift off? ----------------
+// Measured from the guidance itself (see tools/rover tests): a powered ascent takes about RDV_ASC_TIME s of game time,
+// carries the LM RDV_ASC_ANGLE radians downrange and burns about RDV_DV_ASCENT u/s.
+const RDV_ASC_TIME = 7.3;
+const RDV_ASC_ANGLE = 0.51;
+const RDV_DV_ASCENT = 14.5;
+const RDV_DV_MARGIN = 2.5;          // Hohmann transfer + terminal approach + reserve
+const RDV_WINDOW_MARGIN = 0.08;     // aim to reach the transfer point just before the ideal moment (rad)
+
+// Plane through this point that is closest to Columbia's orbital plane (normal = Columbia's normal, levelled)
+function ascentPlaneNormal(pos, out) {
+  _rTmp.copy(pos).normalize();
+  out.copy(_rS).addScaledVector(_rTmp, -_rS.dot(_rTmp));
+  if (out.lengthSq() < 1e-6) anyPerp(_rTmp, out); else out.normalize();
+  return out;
+}
+
+function csmDirAt(angle, out) {
+  const inc = Math.sin(csm.inclination);
+  return out.set(Math.cos(angle), Math.sin(angle) * inc, -Math.sin(angle)).normalize();
+}
+
+// Signed angle from a to b about axis (−π…π)
+function angleAbout(a, b, axis) {
+  return Math.atan2(_rTmp2.crossVectors(a, b).dot(axis), a.dot(b));
+}
+
+const TWO_PI = Math.PI * 2;
+const mod2pi = (x) => ((x % TWO_PI) + TWO_PI) % TWO_PI;
+
+export function planRendezvous() {
+  csmFrame();
+  const scale = getDisplacementScale();
+  const r1 = THREE.MathUtils.clamp(MOON_RADIUS + scale * 0.5 + 1.6, 105, 111.5);
+  const p = lander.pos.clone().normalize();
+  const N = ascentPlaneNormal(lander.pos, new THREE.Vector3());
+  const offPlane = Math.asin(THREE.MathUtils.clamp(Math.abs(p.dot(_rS)), 0, 1));   // angular distance from Columbia's plane
+  const vc1 = Math.sqrt(LUNAR_MU / r1);
+  const dvPlane = offPlane > THREE.MathUtils.degToRad(0.6) ? 2 * vc1 * Math.sin(offPlane / 2) : 0;
+  const fromSurface = lander.isLanded;
+  const dvNeed = (fromSurface ? RDV_DV_ASCENT : RDV_DV_ASCENT * 0.6) + dvPlane + RDV_DV_MARGIN;
+  const dvHave = (fromSurface && !lander.ascentOnly) ? RDV_DV_FULL : rdvDvLeft();
+  // Largest plane offset this tank can fix, and which way to go to get under Columbia's orbit
+  const spare = dvHave - (dvNeed - dvPlane);
+  const maxOff = spare <= 0 ? 0 : 2 * Math.asin(Math.min(1, spare / (2 * vc1)));
+  const towardSouth = p.dot(_rS) * _rS.y > 0;
+
+  // Timing: where will the LM reach Columbia's plane, and where will Columbia be then?
+  const pIns = p.clone().applyAxisAngle(N, RDV_ASC_ANGLE);
+  const tIns = new THREE.Vector3().crossVectors(N, pIns).normalize();
+  let alpha = 0;
+  if (dvPlane > 0) { alpha = Math.atan2(-pIns.dot(_rS), tIns.dot(_rS)); if (alpha < 0) alpha += Math.PI; }
+  const n1 = Math.sqrt(LUNAR_MU / (r1 * r1 * r1));
+  const tPre = RDV_ASC_TIME + alpha / n1 + dvPlane / RDV_ENGINE_ACC / 2;
+  const xNode = pIns.clone().applyAxisAngle(N, alpha);
+  const cThen = csmDirAt(csm.angle + csm.omega * tPre, new THREE.Vector3());
+  const lead = angleAbout(xNode, cThen, _rS);
+  const r2 = CSM_ORBIT_RADIUS;
+  const aT = (r1 + r2) / 2;
+  const tH = Math.PI * Math.sqrt(aT * aT * aT / LUNAR_MU);
+  const leadReq = Math.PI - csm.omega * tH;
+  const rate = n1 - csm.omega;
+  const diff = mod2pi(lead - leadReq);
+  const orbitWait = diff / rate;                                    // catching up in orbit (LM gains slowly)
+  const surfaceWait = mod2pi(RDV_WINDOW_MARGIN - diff) / csm.omega; // waiting on the ground (Columbia comes round fast)
+  const leadNow = mod2pi(angleAbout(p, _rTmp.copy(csm.pos).normalize(), _rS));
+  const leadAtLiftoff = mod2pi(leadNow + csm.omega * surfaceWait);
+  return {
+    r1, offPlaneDeg: THREE.MathUtils.radToDeg(offPlane), maxOffDeg: THREE.MathUtils.radToDeg(maxOff),
+    dvPlane, dvNeed, dvHave, ok: dvNeed <= dvHave, towardSouth,
+    moveKm: Math.max(0, offPlane - maxOff + THREE.MathUtils.degToRad(1.5)) * MOON_REAL_KM,
+    orbitWait, surfaceWait, leadNowDeg: THREE.MathUtils.radToDeg(leadNow), leadAtLiftoffDeg: THREE.MathUtils.radToDeg(leadAtLiftoff),
+    goodNow: orbitWait < 25 || surfaceWait < 2 || orbitWait <= surfaceWait + 10,
+  };
+}
+
+const ms = (dv) => `${Math.round(dv * SPEED_TO_MS).toLocaleString()} m/s`;
+const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, '0')}`;
+
+function rdvPlanModal(plan) {
+  const m = document.getElementById('rdv-plan-modal');
+  const $ = (id) => document.getElementById(id);
+  const show = (id, on) => $(id).classList.toggle('hidden', !on);
+  if (!plan.ok) {
+    $('rdv-plan-badge').textContent = 'OUT OF REACH';
+    $('rdv-plan-title').textContent = 'Columbia’s orbit is too far away';
+    $('rdv-plan-stats').innerHTML =
+      `You are ${plan.offPlaneDeg.toFixed(0)}° from Columbia’s orbital plane · plane change ${ms(plan.dvPlane)}<br>` +
+      `Rendezvous needs ${ms(plan.dvNeed)} · your ascent stage has ${ms(plan.dvHave)}`;
+    $('rdv-plan-body').innerHTML = plan.maxOffDeg > 0.5
+      ? `Columbia orbits close to the equator. Tilting an orbit is one of the most expensive moves in spaceflight, which is why real missions placed the command module’s orbit right over the landing site. Your tank can fix about <strong class="text-white">${plan.maxOffDeg.toFixed(0)}°</strong>. Fly about <strong class="text-white">${Math.round(plan.moveKm / 10) * 10} km ${plan.towardSouth ? 'south' : 'north'}</strong>, toward the equator, and try again — or warp to a site near the equator.`
+      : `There isn’t enough propellant left to reach orbit and catch Columbia. Warp to a site for a fresh Lunar Module.`;
+    show('rdv-plan-wait', false); show('rdv-plan-now', false); show('rdv-plan-map', true);
+    $('rdv-plan-cancel').textContent = 'OK';
+  } else {
+    $('rdv-plan-badge').textContent = 'LAUNCH WINDOW';
+    $('rdv-plan-title').textContent = `Columbia overhead in ${mmss(plan.surfaceWait)}`;
+    $('rdv-plan-stats').innerHTML =
+      `Columbia is ${plan.leadNowDeg.toFixed(0)}° ahead · ideal at liftoff: ${plan.leadAtLiftoffDeg.toFixed(0)}°` +
+      (plan.dvPlane > 0 ? `<br>Plane change ${plan.offPlaneDeg.toFixed(1)}° · ${ms(plan.dvPlane)}` : '') +
+      `<br>Δv needed ${ms(plan.dvNeed)} of ${ms(plan.dvHave)}`;
+    $('rdv-plan-body').innerHTML =
+      `Apollo crews didn’t launch whenever they liked: they lifted off when Columbia was the right distance ahead, so one short transfer brought them together. ` +
+      `Waiting on the ground works fast because Columbia laps the Moon once a minute here. Launch now and you’ll spend about <strong class="text-white">${mmss(plan.orbitWait)}</strong> slowly catching up in orbit instead (sped up).`;
+    $('rdv-plan-wait').textContent = `Wait for window (${mmss(plan.surfaceWait)})`;
+    show('rdv-plan-wait', true); show('rdv-plan-now', true); show('rdv-plan-map', false);
+    $('rdv-plan-cancel').textContent = 'Cancel';
+  }
+  rdv.pendingPlan = plan;
+  m.classList.remove('hidden');
+}
+
+function closeRdvPlan() {
+  document.getElementById('rdv-plan-modal').classList.add('hidden');
+  rdv.pendingPlan = null;
+}
+
+export function bindRdvPlan() {
+  const $ = (id) => document.getElementById(id);
+  $('rdv-plan-cancel').addEventListener('click', closeRdvPlan);
+  $('rdv-plan-now').addEventListener('click', () => { closeRdvPlan(); armRendezvous('now'); });
+  $('rdv-plan-wait').addEventListener('click', () => { const pl = rdv.pendingPlan; closeRdvPlan(); armRendezvous('wait', pl); });
+  $('rdv-plan-map').addEventListener('click', () => { closeRdvPlan(); toggleMap(); });
+}
+
 function rdvStart() {
   if (gameState.mode !== 'lander' || lander.crashed) {
     showToast('Rendezvous with Columbia is flown from the Lunar Module — board the LM first', 'warn');
     return;
   }
+  // Straight to terminal approach only when already up in orbit near Columbia (not hovering under her)
+  const vOrb = Math.sqrt(LUNAR_MU / lander.pos.length());
+  const inOrbit = lander.pos.length() > MOON_RADIUS + 5 && lander.vel.length() > vOrb * 0.75;
+  if (!lander.isLanded && inOrbit && lander.pos.distanceTo(csm.pos) < PROX_RANGE) { armRendezvous('approach'); return; }
+  const plan = planRendezvous();
+  if (!plan.ok) { rdvPlanModal(plan); sound.playPing(420, 0.12); return; }
+  if (!lander.isLanded || plan.goodNow) {
+    if (lander.isLanded) showToast('Good timing — Columbia is in the launch window', 'sage');
+    armRendezvous('now');
+    return;
+  }
+  rdvPlanModal(plan);
+}
+
+function armRendezvous(mode, plan) {
   if (hadleyRun.active) stopHadleyRilleRun(true);
   if (iceRun.active) stopSouthPoleIceRun(true);
   gameState.autoSoftLand = false;
@@ -425,6 +571,7 @@ function rdvStart() {
   rdv.warp = 1;
   rdv.warpTarget = 1;
   rdv.aimDir = null;
+  rdv.ascN = null;
   rdv.attHold = true;
   rdv.thrust = 0;
   lander.docked = false;
@@ -432,14 +579,15 @@ function rdvStart() {
   const scale = getDisplacementScale();
   rdv.r1 = THREE.MathUtils.clamp(MOON_RADIUS + scale * 0.5 + 1.6, 105, 111.5);
 
-  if (!lander.isLanded && lander.pos.distanceTo(csm.pos) < PROX_RANGE) {
+  if (mode === 'approach') {
     rdvSetPhase('approach');
     showToast((ui.touch ? 'Columbia in range — guidance is flying the approach' : 'Columbia in range — terminal approach guidance engaged · [K] abort'), 'sage');
+  } else if (mode === 'wait') {
+    rdvSetPhase('window');
+    rdv.windowT = plan.surfaceWait;
+    showToast(`Holding on the surface for the launch window · liftoff in ${mmss(plan.surfaceWait)}`, 'sage');
   } else {
-    if (lander.isLanded && !lander.ascentOnly) performStageSeparation(true);
-    lander.isLanded = false;
-    rdvSetPhase('ascent');
-    showToast((ui.touch ? 'Guidance armed — climbing to orbit, then a Hohmann transfer to Columbia' : 'RENDEZVOUS GUIDANCE ARMED — Powered ascent to parking orbit, then Hohmann transfer to Columbia · [K] abort'), 'sage');
+    beginAscent();
   }
   document.getElementById('dock-hud').classList.remove('hidden');
   sound.playPing(700, 0.14);
@@ -447,11 +595,20 @@ function rdvStart() {
   updateAssistButtonsUI();
 }
 
+function beginAscent() {
+  if (lander.isLanded && !lander.ascentOnly) performStageSeparation(true);
+  lander.isLanded = false;
+  rdv.ascN = null;
+  rdvSetPhase('ascent');
+  showToast((ui.touch ? 'Liftoff — climbing to orbit, then a transfer to Columbia' : 'LIFTOFF — Powered ascent to parking orbit, then Hohmann transfer to Columbia · [K] abort'), 'sage');
+}
+
 function rdvSetPhase(p) {
   rdv.phase = p;
   rdv.timer = 0;
   rdv.prevVr = 0;
   rdv.prevDiff = 0;
+  rdv.burning = false;
   if (p === 'approach' || p === 'manual' || p === 'docked') { rdv.warp = 1; rdv.warpTarget = 1; }
   camCtrl.landerCamOffset = null;
   updateAssistButtonsUI();
@@ -502,6 +659,34 @@ export function aimLanderAlong(dir, ref, rate, dt) {
   lander.quat.slerp(_targetQ, t).normalize();
 }
 
+// Spend ascent propellant for a Δv (u/s). Returns false when the tank is empty.
+function spendDv(dv) {
+  lander.fuel = Math.max(0, lander.fuel - Math.abs(dv) * 100 / RDV_DV_FULL);
+  if (lander.fuel <= 0 && rdv.active && rdv.phase !== 'manual' && rdv.phase !== 'docked') {
+    rdvEnd(true);
+    showToast('OUT OF PROPELLANT — the ascent stage is coasting. Guidance off', 'warn');
+    return false;
+  }
+  return true;
+}
+export const rdvDvLeft = () => lander.fuel / 100 * RDV_DV_FULL;
+
+// Finite burn toward a target velocity at the engine's acceleration. Returns the Δv still to go.
+function burnToward(target, dt) {
+  _rBurn.copy(target).sub(lander.vel);
+  const left = _rBurn.length();
+  const step = Math.min(left, RDV_ENGINE_ACC * dt);
+  if (step > 0) {
+    lander.vel.addScaledVector(_rBurn, step / left);
+    rdv.thrust = 1;
+    if (!spendDv(step)) return 0;
+    // Point the engine along the burn
+    aimLanderAlong(_rBurn, _rHat, 2.5, dt);
+  }
+  return left - step;
+}
+const _rBurn = new THREE.Vector3();
+
 function fmtSec(t) {
   if (!Number.isFinite(t)) return '--';
   if (t >= 60) return `${Math.floor(t / 60)}m ${Math.round(t % 60)}s`;
@@ -514,6 +699,7 @@ export function updateRendezvous(dt) {
   rdv.thrust = 0;
   csmFrame();
   const p = rdv.phase;
+  if (p === 'window') { updateLaunchWindow(dt); return; }   // still sitting on the pad: normal landed state
   if (p === 'manual' || p === 'docked') {
     updateProxOps(dt);
   } else {
@@ -521,6 +707,18 @@ export function updateRendezvous(dt) {
   }
   finalizeRendezvousFrame(dt);
 }
+
+// Sitting on the pad while Columbia comes round (time sped up)
+function updateLaunchWindow(dt) {
+  rdv.windowT -= dt;
+  lander.vel.set(0, 0, 0);
+  rdv.warpTarget = THREE.MathUtils.clamp(rdv.windowT / 0.8, 1, 30);
+  csmFrame();
+  const lead = mod2pi(angleAbout(_rTmp.copy(lander.pos).normalize(), _rTmp3.copy(csm.pos).normalize(), _rS));
+  rdv.info = `Launch window · liftoff in ${fmtSec(Math.max(0, rdv.windowT))} · Columbia ${THREE.MathUtils.radToDeg(lead).toFixed(0)}° ahead`;
+  if (rdv.windowT <= 0) { rdv.warp = 1; rdv.warpTarget = 1; beginAscent(); }
+}
+const _rTmp3 = new THREE.Vector3();
 
 function updateRendezvousNewtonian(dt) {
   const r = Math.max(10, lander.pos.length());
@@ -530,9 +728,10 @@ function updateRendezvousNewtonian(dt) {
   _rA.set(0, 0, 0);
 
   if (rdv.phase === 'ascent') {
-    // Target plane: closest plane through the LM that matches Columbia's orbit
-    _rN.copy(_rS).addScaledVector(_rHat, -_rS.dot(_rHat));
-    if (_rN.lengthSq() < 1e-4) anyPerp(_rHat, _rN); else _rN.normalize();
+    // Target plane: locked at liftoff to the plane through the site closest to Columbia's orbit.
+    // (Recomputing it every frame made the target plane swing as the LM climbed, so the ascent never settled.)
+    if (!rdv.ascN) rdv.ascN = ascentPlaneNormal(lander.pos, new THREE.Vector3());
+    _rN.copy(rdv.ascN);
     _rT.crossVectors(_rN, _rHat).normalize();
     const vr = v.dot(_rHat), vt = v.dot(_rT), vn = v.dot(_rN);
     const surfR = getExactSurfaceHit(lander.pos, null);
@@ -543,17 +742,19 @@ function updateRendezvousNewtonian(dt) {
     const aT = clearance > 0.6 ? THREE.MathUtils.clamp((vc1 - vt) * 0.9, -3, 4.5) : 0;
     const aN = THREE.MathUtils.clamp(-vn * 1.6, -2.5, 2.5);
     _rA.copy(_rHat).multiplyScalar(aR).addScaledVector(_rT, aT).addScaledVector(_rN, aN);
-    if (_rA.length() > 5.5) _rA.setLength(5.5);   // ~3.4 lunar g: brisk but not violent
+    if (_rA.length() > RDV_ENGINE_ACC) _rA.setLength(RDV_ENGINE_ACC);   // ~1.7 lunar g
     v.addScaledVector(_rA, dt).addScaledVector(_rHat, -g * dt);
+    if (!spendDv(_rA.length() * dt)) return;
     lander.pos.addScaledVector(v, dt);
-    rdv.thrust = Math.min(1, _rA.length() / 7);
+    rdv.thrust = Math.min(1, _rA.length() / RDV_ENGINE_ACC);
     // Point along a smoothed thrust direction so guidance corrections don't whip the LM around
     if (!rdv.aimDir) rdv.aimDir = _rHat.clone();
     rdv.aimDir.lerp(_rA.lengthSq() > 0.04 ? _rTmp.copy(_rA).normalize() : _rHat, Math.min(1, dt * 1.5)).normalize();
     aimLanderAlong(rdv.aimDir, _rT, 1.8, dt);
     rdv.info = `Powered ascent → ${toKm(rdv.r1 - MOON_RADIUS).toFixed(0)} km parking orbit · ${(vt * SPEED_TO_MS).toFixed(0)} / ${(vc1 * SPEED_TO_MS).toFixed(0)} m/s`;
-    const done = Math.abs(r - rdv.r1) < 0.35 && Math.abs(vr) < 0.1 && Math.abs(vt - vc1) < 0.12 && Math.abs(vn) < 0.1;
-    if ((done && rdv.timer > 2) || rdv.timer > 150) {
+    const done = Math.abs(r - rdv.r1) < 0.5 && Math.abs(vr) < 0.2 && Math.abs(vt - vc1) < 0.2 && Math.abs(vn) < 0.15;
+    if ((done && rdv.timer > 2) || rdv.timer > 60) {
+      rdv.ascentTime = rdv.timer;
       v.copy(_rT).multiplyScalar(Math.sqrt(LUNAR_MU / r));
       rdvSetPhase('plane');
       showToast('PARKING ORBIT ACHIEVED — Coasting to the node for plane alignment', 'sage');
@@ -580,18 +781,33 @@ function updateRendezvousNewtonian(dt) {
     const nodeDist = _rHat.dot(_rS);  // 0 when crossing Columbia's orbital plane
     const omega = vt / rr;
     const tNode = Math.abs(Math.asin(THREE.MathUtils.clamp(nodeDist, -1, 1))) / Math.max(1e-4, omega);
-    rdv.warpTarget = incDeg < 0.6 ? 1 : THREE.MathUtils.clamp(tNode / 2.0, 1, 25);
-    rdv.info = `Plane mismatch ${incDeg.toFixed(1)}° · node in ${fmtSec(tNode)}`;
+    // Plane change Δv = 2 v sin(Δi/2); the burn is centred on the node, so it starts half a burn early
+    const dvPlane = 2 * vt * Math.sin(THREE.MathUtils.degToRad(incDeg) / 2);
+    const tLead = dvPlane / RDV_ENGINE_ACC / 2;
+    if (rdv.burning) {
+      _rT.crossVectors(_rS, _rHat).normalize();
+      const left = burnToward(_rTmp.copy(_rT).multiplyScalar(Math.sqrt(LUNAR_MU / rr)), dt);
+      rdv.warpTarget = 1;
+      rdv.info = `Plane change burn · ${(left * SPEED_TO_MS).toFixed(0)} m/s to go`;
+      if (!rdv.active) return;
+      if (left < 0.01) {
+        rdv.burning = false;
+        rdvSetPhase('phasing');
+        showToast(`PLANE CHANGE BURN — ${rdv.planeDeg.toFixed(1)}° corrected · now coplanar with Columbia`, 'sage');
+        sound.playPing(760, 0.12);
+      }
+      return;
+    }
+    rdv.warpTarget = incDeg < 0.6 ? 1 : THREE.MathUtils.clamp((tNode - tLead) / 1.0, 1, 60);
+    rdv.info = `Plane mismatch ${incDeg.toFixed(1)}° · burn ${(dvPlane * SPEED_TO_MS).toFixed(0)} m/s at the node in ${fmtSec(Math.max(0, tNode - tLead))}`;
     const crossed = rdv.timer > dt * 1.5 && Math.sign(nodeDist) !== Math.sign(rdv.prevDiff || nodeDist);
     rdv.prevDiff = nodeDist;
-    if (incDeg < 0.6 || crossed || Math.abs(nodeDist) < 0.0015) {
-      // Plane-change burn at the node: rotate velocity into Columbia's plane
-      _rT.crossVectors(_rS, _rHat).normalize();
-      v.copy(_rT).multiplyScalar(Math.sqrt(LUNAR_MU / rr));
-      rdv.thrust = 1;
-      rdvSetPhase('phasing');
-      if (incDeg >= 0.6) showToast(`PLANE CHANGE BURN — ${incDeg.toFixed(1)}° corrected · now coplanar with Columbia`, 'sage');
-      sound.playPing(760, 0.12);
+    if (incDeg < 0.6) { rdvSetPhase('phasing'); return; }
+    if (crossed || tNode <= tLead || Math.abs(nodeDist) < 0.0015) {
+      rdv.burning = true;
+      rdv.planeDeg = incDeg;
+      rdv.warp = 1;
+      sound.playPing(700, 0.12);
     }
     return;
   }
@@ -604,15 +820,19 @@ function updateRendezvousNewtonian(dt) {
     const tH = Math.PI * Math.sqrt((a * a * a) / LUNAR_MU);
     const thetaReq = Math.PI - csm.omega * tH;
     const rate = Math.sqrt(LUNAR_MU / (rr * rr * rr)) - csm.omega;
-    const TWO_PI = Math.PI * 2;
     const diff = (((theta - thetaReq) % TWO_PI) + TWO_PI) % TWO_PI;
     const wait = diff / Math.max(1e-5, rate);
     const vPeri = Math.sqrt(LUNAR_MU * (2 / rr - 1 / a));
-    rdv.warpTarget = THREE.MathUtils.clamp(wait / 2.5, 1, 40);
+    rdv.warpTarget = THREE.MathUtils.clamp(wait / 1.0, 1, 150);
     rdv.info = `Phasing · Columbia leads ${THREE.MathUtils.radToDeg(theta).toFixed(1)}° (need ${THREE.MathUtils.radToDeg(thetaReq).toFixed(1)}°) · TIG ${fmtSec(wait)} · Δv ${((vPeri - vt) * SPEED_TO_MS).toFixed(0)} m/s`;
     const wrapped = rdv.timer > dt * 1.5 && rdv.prevDiff < 0.6 && diff > TWO_PI - 0.6;
+    // Arrived just after the ideal moment (a degree or two late): burn now instead of waiting a whole lap
+    const justMissed = rdv.timer < dt * 2.5 && diff > TWO_PI - 0.09;
+    if (rdv.timer < dt * 1.5) rdv.dbgDiff = diff > Math.PI ? diff - TWO_PI : diff;   // timing error on arrival (tests)
     rdv.prevDiff = diff;
-    if (diff < rate * dt * 1.5 + 1e-4 || wrapped) {
+    if (diff < rate * dt * 1.5 + 1e-4 || wrapped || justMissed) {
+      spendDv(vPeri - vt);
+      if (!rdv.active) return;
       v.copy(_rT).multiplyScalar(vPeri);
       rdv.transferA = a;
       rdv.transferT = tH;
@@ -626,11 +846,13 @@ function updateRendezvousNewtonian(dt) {
 
   if (rdv.phase === 'coast') {
     const remaining = rdv.transferT - rdv.timer;
-    rdv.warpTarget = THREE.MathUtils.clamp(remaining / 2.5, 1, 20);
+    rdv.warpTarget = THREE.MathUtils.clamp(remaining / 1.0, 1, 40);
     rdv.info = `Hohmann transfer coast · apolune ${toKm(csm.pos.length() - MOON_RADIUS).toFixed(0)} km in ${fmtSec(Math.max(0, remaining))} · range ${toKm(lander.pos.distanceTo(csm.pos)).toFixed(0)} km`;
     const atApo = rdv.prevVr > 0 && vr <= 0 && rdv.timer > rdv.transferT * 0.5;
     rdv.prevVr = vr;
     if (atApo || rdv.timer > rdv.transferT * 1.2) {
+      spendDv(Math.sqrt(LUNAR_MU / rr) - vt);
+      if (!rdv.active) return;
       v.copy(_rT).multiplyScalar(Math.sqrt(LUNAR_MU / rr));
       rdv.thrust = 1;
       rdvSetPhase('approach');
@@ -653,11 +875,12 @@ function updateRendezvousNewtonian(dt) {
   const vDesMag = Math.min(vMax, Math.sqrt(2 * 2.0 * d) * 0.7, 0.55 * d); // braking-limited, linear near the hold point
   const vDes = _rN.copy(_rTmp2).multiplyScalar(d > 1e-6 ? vDesMag / d : 0);
   const aCmd = vDes.sub(vRel).multiplyScalar(1.6);
-  if (aCmd.length() > 1.4) aCmd.setLength(1.4);
+  if (aCmd.length() > RDV_RCS_ACC) aCmd.setLength(RDV_RCS_ACC);
   // Undo the gravity applied above and replace it with Columbia's (relative frame stays inertial-consistent)
   const rc = csm.pos.length();
   v.addScaledVector(_rHat, g * dt).addScaledVector(csm.pos, -LUNAR_MU / (rc * rc * rc) * dt);
   v.addScaledVector(aCmd, dt);
+  if (!spendDv(aCmd.length() * dt)) return;
   // Terrain keep-out for long-range approaches
   const minR = MOON_RADIUS + getDisplacementScale() * 0.6 + 1.5;
   if (rr < minR) {
@@ -665,7 +888,7 @@ function updateRendezvousNewtonian(dt) {
     const vIn = v.dot(_rHat);
     if (vIn < 0) v.addScaledVector(_rHat, -vIn * Math.min(1, 6 * dt));
   }
-  rdv.thrust = Math.min(0.45, aCmd.length() / 4);
+  rdv.thrust = Math.min(0.45, aCmd.length() / (RDV_RCS_ACC * 3));
   // Swing the LM into docking attitude on the way in
   if (d < 6) {
     _rQ.multiplyQuaternions(_rFrameQ, DOCK_Q0);
@@ -865,6 +1088,7 @@ export function updateDockingCamera(dt) {
 }
 
 const RDV_LABELS = {
+  window: 'WAITING FOR LAUNCH WINDOW',
   ascent: 'POWERED ASCENT',
   plane: 'PLANE ALIGNMENT COAST',
   phasing: 'PHASING ORBIT',
@@ -891,6 +1115,8 @@ export function updateDockHUD() {
   const prox = rdv.phase === 'manual' || rdv.phase === 'docked';
   const dot = document.getElementById('dock-dot');
   if (prox) {
+    set('dock-lateral-lbl', 'LATERAL');
+    set('dock-align-lbl', 'ALIGN');
     const rangeM = Math.max(0, rdv.along) * DOCK_M_PER_UNIT;
     const closeM = rdv.closing * DOCK_M_PER_UNIT;
     set('dock-range', `${rangeM.toFixed(1)} m`);
@@ -908,8 +1134,11 @@ export function updateDockHUD() {
     const rel = _rTmp.copy(lander.vel).sub(csm.vel).sub(_rOm).length();
     set('dock-range', d > 3 ? `${toKm(d).toFixed(0)} km` : `${(d * DOCK_M_PER_UNIT).toFixed(0)} m`);
     set('dock-closing', d > 3 ? `${(rel * SPEED_TO_MS).toFixed(0)} m/s` : `${(rel * DOCK_M_PER_UNIT).toFixed(1)} m/s`);
-    set('dock-lateral', '--');
-    set('dock-align', '--');
+    // Far from Columbia: show propellant instead of docking alignment
+    set('dock-lateral-lbl', 'Δv LEFT');
+    set('dock-align-lbl', 'FUEL');
+    set('dock-lateral', `${Math.round(rdvDvLeft() * SPEED_TO_MS)} m/s`, lander.fuel < 15 ? '#f8c4b4' : '');
+    set('dock-align', `${Math.round(lander.fuel)}%`, lander.fuel < 15 ? '#f8c4b4' : '');
     dot.setAttribute('cx', '0');
     dot.setAttribute('cy', '0');
     dot.setAttribute('fill', '#475569');

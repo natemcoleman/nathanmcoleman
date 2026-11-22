@@ -10,7 +10,7 @@ import { updateLidarScan } from './scan.js';
 import { renderSitesList, updateTelemetryHUD } from './hud.js';
 import { bindInputs } from './input.js';
 import { hadleyRun, iceRun, initHadleyRilleRun, initOrbitalRingVisualizer, initSouthPoleIceRun, orbitRingState, updateHadleyRilleRun, updateOrbitalRingVisualizer, updateSouthPoleIceRun } from './challenges.js';
-import { initSeismograph, maybeRebuildOverlay, rdv, updateAlsep, updateDockHUD, updateExplosions, updateFallingStages, updateSeismograph } from './apollo-ops.js';
+import { bindRdvPlan, initSeismograph, maybeRebuildOverlay, rdv, updateAlsep, updateDockHUD, updateExplosions, updateFallingStages, updateSeismograph } from './apollo-ops.js';
 import { mergeInputs, updateContextUI } from './context-ui.js';
 import { applySave, loadSave } from './save.js';
 import { bindJournal, initFinds, updateFinds } from './finds.js';
@@ -50,7 +50,7 @@ function animate(now) {
   // Advance CSM "Columbia" + Lander in sub-steps (time warp only during rendezvous coast phases)
   // Ease time warp up and down instead of jumping (sudden ×1 → ×40 changes feel like violent accelerations)
   if (rdv.active && rdv.warpTarget != null) {
-    const k = rdv.warpTarget > rdv.warp ? 0.9 : 5;
+    const k = rdv.warpTarget > rdv.warp ? 1.6 : 5;
     rdv.warp += (rdv.warpTarget - rdv.warp) * Math.min(1, dt * k);
     if (Math.abs(rdv.warpTarget - rdv.warp) < 0.05) rdv.warp = rdv.warpTarget;
   }
@@ -144,6 +144,7 @@ window.onload = function () {
   initRadio();
   bindTutorial();
   bindEarth();
+  bindRdvPlan();
   silentlyProbeSelfHostedTextures();
   initVR();
   lastTime = performance.now();
