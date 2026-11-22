@@ -235,7 +235,7 @@ function finishA11Run(success) {
   const fuelLeft = a11FuelSeconds();
   const td = (lander.touchdownSpeed || 0) * SPEED_TO_MS * 0.1;
   stopA11Run(true);
-  say(success ? 'a11Down' : 'a11Fail');
+  if (success) { say('eagleLanded', null, { force: true }); say('a11Down'); } else say('a11Fail');
   const medalEl = document.getElementById('a11-medal');
   const pill = (bg, fg, bd) => `px-3 py-1 rounded-full text-[11px] font-mono-tech font-semibold ${bg} ${fg} ${bd}`;
   let newBest = false;

@@ -41,6 +41,7 @@ const LINES = {
   a11Start:     { text: 'Eagle, Houston. You are go for landing. We are go on that 1202 alarm. Fly it by hand.', prio: 3 },
   a11Sixty:     { text: 'Sixty seconds.', prio: 3 },
   a11Thirty:    { text: 'Thirty seconds.', prio: 3 },
+  eagleLanded:  { text: 'Houston, Tranquility Base here. The Eagle has landed.', prio: 3, cool: 120, who: 'ARMSTRONG' },
   a11Down:      { text: 'Roger, Tranquility. We copy you on the ground. You got a bunch of guys about to turn blue. We are breathing again. Thanks a lot.', prio: 3 },
   a11Fail:      { text: 'Eagle, Houston. Abort. That one got away from us. Reset and try again.', prio: 3 },
   hadleyStart:  { text: 'Rover, Houston. The rille run is on. Hit every checkpoint. Clock is running.', prio: 2 },
@@ -163,9 +164,11 @@ function duckMusic(on) {
 }
 
 // ---------- Subtitles ----------
-function showCaption(text) {
+function showCaption(text, who = 'HOUSTON') {
   const box = document.getElementById('radio-caption');
   if (!box) return;
+  const w = document.getElementById('radio-caption-who');
+  if (w) w.textContent = who;
   document.getElementById('radio-caption-text').textContent = text;
   box.classList.remove('hidden');
   box.classList.add('on');
@@ -188,8 +191,9 @@ function fill(text, vars) {
 }
 
 // Queue a call by id. vars fill {placeholders}; vars.text overrides the catalog text.
-export function say(id, vars = null) {
-  if (radio.mode === 'off' || !gameState.started) return false;
+// opts.force: historic recordings play even with the radio switched off
+export function say(id, vars = null, opts = null) {
+  if ((radio.mode === 'off' && !(opts && opts.force && radio.recorded.has(id))) || !gameState.started) return false;
   const line = allLines()[id] || (vars && vars.text ? { text: vars.text, prio: 2 } : null);
   if (!line) return false;
   const now = performance.now() / 1000;
@@ -198,7 +202,7 @@ export function say(id, vars = null) {
   radio.lastAt[id] = now;
   // Higher priority jumps the queue; low-priority chatter is dropped when the line is busy
   if (line.prio <= 1 && (radio.busy || radio.queue.length)) return false;
-  radio.queue.push({ id, text: fill(line.text, vars), prio: line.prio || 1, t: now });
+  radio.queue.push({ id, text: fill(line.text, vars), who: line.who || 'HOUSTON', prio: line.prio || 1, t: now });
   // Keep at most 4 waiting: drop the oldest of the least important
   while (radio.queue.length > 4) {
     let drop = 0;
@@ -227,7 +231,7 @@ async function playNext() {
   staticOn();
   beep(QUINDAR_IN);
   await wait(TONE_SEC * 1000 + 120);
-  showCaption(item.text);
+  showCaption(item.text, item.who);
   await speakItem(item);
   hideCaption();
   beep(QUINDAR_OUT);
@@ -279,7 +283,8 @@ export function radioLanding(first) {
     const km = Math.acos(Math.min(1, Math.max(-1, latLonToVec3(lm.lat, lm.lon, 1).dot(lander.up)))) * 1737.4;
     if (km < bestKm) { bestKm = km; best = lm; }
   }
-  if (best) say('landingSite', { site: best.shortName || best.name });
+  if (best && best.id === 'apollo11' && bestKm < 15) { say('eagleLanded', null, { force: true }); say('landingSite', { site: best.shortName }); }
+  else if (best) say('landingSite', { site: best.shortName || best.name });
   else say('landing');
 }
 
