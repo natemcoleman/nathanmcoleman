@@ -22,6 +22,7 @@ import './modes.js';
 import { initRadio, updateRadio } from './radio.js';
 import { bindEarth, earthRun, updateEarthCamera, updateEarthRun } from './earth.js';
 import { bindTutorial, updateTutorial } from './tutorial.js';
+import { initVR, isVR, updateVRInput, updateVRRig, vrCamera } from './vr.js';
 
 // =========================================================================
 // 17. MAIN ANIMATION LOOP
@@ -29,10 +30,10 @@ import { bindTutorial, updateTutorial } from './tutorial.js';
 let lastTime = performance.now();
 
 function animate(now) {
-  requestAnimationFrame(animate);
   const dt = Math.min(0.05, Math.max(0.001, (now - lastTime) / 1000));
   lastTime = now;
   updateContextUI();
+  updateVRInput();
   mergeInputs();
 
   if (gameState.sunAutoCycle) {
@@ -114,14 +115,15 @@ function animate(now) {
 
   // Seismic camera shake applied around the render only (never accumulates into camera state)
   let shakeX = 0, shakeY = 0, shakeZ = 0;
-  if (seismic.intensity > 0.002 && gameState.started) {
+  if (seismic.intensity > 0.002 && gameState.started && !isVR()) {   // no shaking in a headset
     const craftPos = (gameState.mode === 'rover' && rover.deployed) ? rover.pos : lander.pos;
     const amp = seismic.intensity * 0.016 * Math.max(0.5, camera.position.distanceTo(craftPos));
     shakeX = (Math.random() - 0.5) * amp; shakeY = (Math.random() - 0.5) * amp; shakeZ = (Math.random() - 0.5) * amp;
     camera.position.x += shakeX; camera.position.y += shakeY; camera.position.z += shakeZ;
   }
   seismic.intensity *= Math.exp(-6.5 * dt);
-  renderer.render(scene, camera);
+  updateVRRig();
+  renderer.render(scene, vrCamera());
   camera.position.x -= shakeX; camera.position.y -= shakeY; camera.position.z -= shakeZ;
 }
 
@@ -143,6 +145,7 @@ window.onload = function () {
   bindTutorial();
   bindEarth();
   silentlyProbeSelfHostedTextures();
+  initVR();
   lastTime = performance.now();
-  requestAnimationFrame(animate);
+  renderer.setAnimationLoop(animate);   // drives both the normal page and a VR headset
 };

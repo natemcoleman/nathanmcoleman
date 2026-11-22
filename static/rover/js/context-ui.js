@@ -14,7 +14,7 @@ import { earthRun } from './earth.js';
 // 18. CONTEXT-AWARE HUD: ONLY THE CONTROLS THAT MATTER RIGHT NOW
 //     (floating thumbstick, hold buttons, one prompt, key hints, menu)
 // =========================================================================
-export const inputSrc = { kb: {}, touch: {}, joy: {} };   // merged into `keys` every frame
+export const inputSrc = { kb: {}, touch: {}, joy: {}, xr: {} };   // merged into `keys` every frame
 export const ui = {
   ctx: '',
   sig: '',
@@ -33,7 +33,7 @@ try { ui.touchMode = localStorage.getItem('lro.touchMode') || 'auto'; } catch (_
 const THRUST_HOLD = { key: 'thrust', label: 'THRUST<span class="thrust-hint">hold ▲▼</span>', big: true, drag: true };
 
 export function mergeInputs() {
-  for (const k in keys) keys[k] = !!(inputSrc.kb[k] || inputSrc.touch[k] || inputSrc.joy[k]);
+  for (const k in keys) keys[k] = !!(inputSrc.kb[k] || inputSrc.touch[k] || inputSrc.joy[k] || inputSrc.xr[k]);
 }
 
 function detectTouchUI() {

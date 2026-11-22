@@ -7,7 +7,7 @@
 //   entry  keep the flight-path angle inside the re-entry corridor
 //   splash parachutes, splashdown, Field Journal entry
 import * as THREE from 'three';
-import { camera, csmGroup, csmOrbitLine, earthGroup, landerGroup, scene, updateOrbitalStage } from './scene.js';
+import { camera, csmGroup, csmOrbitLine, earthGroup, landerGroup, renderer, scene, updateOrbitalStage } from './scene.js';
 import { csm, gameState, keys, lander } from './state.js';
 import { LANDMARKS } from './constants.js';
 import { rdv, rdvEnd } from './apollo-ops.js';
@@ -488,7 +488,7 @@ export function updateEarthCamera(dt) {
   if (r.phase === 'coast') _look.copy(pos).lerp(E, 0.25 + 0.5 * Math.min(1, r.t / COAST_SEC));
   else if (r.phase === 'tei') _look.copy(pos).addScaledVector(fwd, 1.2);
   else _look.copy(pos).addScaledVector(fwd, 3).addScaledVector(up, -0.6);   // a little down: the planet below
-  if (r.shake > 0) {
+  if (r.shake > 0 && !(renderer.xr && renderer.xr.isPresenting)) {
     camera.position.x += (Math.random() - 0.5) * r.shake;
     camera.position.y += (Math.random() - 0.5) * r.shake;
     camera.position.z += (Math.random() - 0.5) * r.shake;

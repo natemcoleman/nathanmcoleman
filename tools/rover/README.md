@@ -48,6 +48,7 @@ One module per part of the game. Each module imports exactly what it uses, so th
 | `radio.js` | Mission Control radio: Quindar tones, static and subtitles (recorded clips optional) |
 | `tutorial.js` | Guided first mission for new players (land → rover → Ping → first find); skippable, replay from the menu |
 | `earth.js` | Return to Earth: once docked with Columbia, Trans-Earth injection burn, coast, re-entry corridor, splashdown |
+| `vr.js` | WebXR headset mode (Meta Quest browser): "Play in VR" / menu "Enter VR", levelled camera rig, Quest controllers mapped to keys. `?vrpreview` shows the VR view on a normal screen; `?vrscale=0.035` sets game units per real metre |
 
 ## Three.js version
 
@@ -87,3 +88,20 @@ The generated CSS is committed, so the site build (`hugo --gc --minify`) doesn't
 ## Credits
 
 Maps: NASA Scientific Visualization Studio (SVS 4720), LROC/ASU, LOLA/GSFC.
+
+## VR (Meta Quest)
+
+Open `/rover/` in the Quest browser and tap **Play in VR** (start screen) or **Enter VR** (menu). Buttons only appear on WebXR headsets.
+
+| Controller | Does |
+|---|---|
+| Left stick | Fly / drive (WASD) |
+| Right stick | Yaw left/right; pull down = descend while hovering |
+| Right trigger | Engine (SPACE) / rover brake |
+| Left trigger | Climb / boost (SHIFT) / rover turbo |
+| A | The main on-screen action (same as the big prompt button) |
+| B | The first secondary action |
+| X | Ping |
+| Y | Hover assist on/off |
+
+The HTML HUD can't render inside VR. Camera shake is off in VR. The view stays level with the horizon; look around with your head.
