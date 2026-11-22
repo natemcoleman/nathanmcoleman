@@ -15,6 +15,10 @@
     "day": {
       "hi": "earth_day_hi.jpg",
       "lo": "earth_day_2k.jpg"
+    },
+    "clouds": {
+      "hi": "earth_clouds_2k.jpg",
+      "lo": "earth_clouds_1k.jpg"
     }
   }
 }

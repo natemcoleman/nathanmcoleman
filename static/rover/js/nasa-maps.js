@@ -419,10 +419,12 @@ export async function loadEarthMaps(spec, quality) {
       ct.needsUpdate = true;
       const layer = new THREE.Mesh(
         new THREE.SphereGeometry(42.35, 48, 32),
-        new THREE.MeshStandardMaterial({ color: 0xffffff, alphaMap: ct, transparent: true, depthWrite: false, roughness: 1 })
+        // Faint glow to match the Earth's, so clouds stay white rather than grey on the night side
+        new THREE.MeshStandardMaterial({ color: 0xffffff, alphaMap: ct, transparent: true, depthWrite: false, roughness: 1, emissive: 0x9aa3b4, emissiveIntensity: 0.38 })
       );
       mesh.add(layer);
       mesh.userData.clouds = layer;
+      layer.onBeforeRender = () => { layer.rotation.y += 0.00004; };   // clouds drift slowly over the ground
     }
   } catch (_) { /* keep the painted Earth */ }
 }
