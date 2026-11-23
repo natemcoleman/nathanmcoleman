@@ -21,8 +21,15 @@ import { stopTutorial } from './tutorial.js';
 // =========================================================================
 
 // ---------------- Prograde hold (the opposite of retro: speed up along your path) ----------------
+function noAutopilot() {
+  if (!a11Run.active) return false;
+  showToast('No autopilot on this one — Armstrong flew the last part by hand', 'warn');
+  return true;
+}
+
 export function toggleProgradeHold() {
   if (gameState.mode !== 'lander' || rdv.active || lander.crashed) return;
+  if (noAutopilot()) return;
   if (lander.isLanded && !gameState.progradeHold) {
     showToast('Prograde hold is for speeding up in flight — lift off first', 'warn');
     return;
@@ -38,6 +45,7 @@ export function toggleProgradeHold() {
 // ---------------- Retrograde hold ----------------
 export function toggleRetroHold() {
   if (gameState.mode !== 'lander' || rdv.active || lander.crashed) return;
+  if (noAutopilot()) return;
   if (lander.isLanded && !gameState.retroHold) {
     showToast('Retro hold is for braking in flight — lift off first', 'warn');
     return;
@@ -86,14 +94,14 @@ export function updatePower(dt) {
   if (rover.deployed && !iceRun.active) {
     if (power.rover <= 0 && !power.roverWarned) {
       power.roverWarned = true;
-      showToast('LRV battery flat — limp mode. Drive into sunlight to recharge', 'warn');
+      showToast('LRV battery flat — sunlight will recharge it', 'warn');
     } else if (power.rover > 12) power.roverWarned = false;
   }
   if (power.lander <= 5 && !power.landerWarned && gameState.mode === 'lander') {
     power.landerWarned = true;
     showToast('LM battery low — wait for sunlight to recharge', 'warn');
   } else if (power.lander > 15) power.landerWarned = false;
-  const v = gameState.mode === 'rover' && rover.deployed ? 'rover' : 'lander';
+  const v = (gameState.mode === 'rover' || gameState.mode === 'astro') && rover.deployed ? 'rover' : 'lander';
   const r = vehicleThermal(v);
   document.getElementById('tel-temp').textContent = `${r.t > 0 ? '+' : ''}${Math.round(r.t)}°C`;
   document.getElementById('tel-batt').textContent = `${Math.round(r.b)}%`;
@@ -104,14 +112,22 @@ export function vehicleThermal(v) {
   return { t: thermal[v], b: power[v] };
 }
 
+// No limp mode: a flat battery no longer slows the rover (the readout is informational)
 export function roverPowerMul() {
-  return (iceRun.active || power.rover > 0) ? 1 : 0.4;
+  return 1;
 }
 
 // ---------------- Apollo 11: "30 Seconds of Fuel" ----------------
 // West Crater (real: ~190 m, Eagle landed ~550 m west of it) — scaled up here so it's visible at game scale
 const WEST_CRATER = { lat: 0.67, lon: 25.95, r: 0.026, depth: 0.12, rim: 0.05 };
-const A11_HOVER_BURN = 2.5;            // %/s while just hovering → 40 s of hover fuel
+const A11_FUEL_SEC = 28;               // hover-equivalent seconds of fuel at the start (Eagle had about a minute at the 60 s call)
+const A11_HOVER_BURN = 100 / A11_FUEL_SEC;
+const A11_FIELD = 2.0;                  // boulder field radius, in West Crater radii (it was 1.4)
+// Touchdown limits (LM design limits were ~3 m/s down, ~1.2 m/s sideways, 12° tilt). In game units:
+const A11_MAX_VDOWN = 0.25;             // ≈ 3.4 m/s
+const A11_MAX_VSIDE = 0.12;             // ≈ 1.6 m/s
+const A11_MAX_SLOPE = 10;
+const A11_DRIFT_ACC = 0.07;             // wandering sideways push (attitude/slosh disturbances) to keep correcting
 const A11_FUEL_MUL = A11_HOVER_BURN / 0.45;
 export const a11Run = {
   active: false,
@@ -126,8 +142,10 @@ const _wcC = latLonToVec3(WEST_CRATER.lat, WEST_CRATER.lon, 1.0);
 export function inBoulderField(unitDir) {
   // Only the Apollo 11 challenge treats the (greatly enlarged) boulder field as deadly
   if (!terrainState.westCraterCarved || !a11Run.active) return false;
-  return Math.acos(THREE.MathUtils.clamp(unitDir.dot(_wcC), -1, 1)) / WEST_CRATER.r < 1.4;
+  return Math.acos(THREE.MathUtils.clamp(unitDir.dot(_wcC), -1, 1)) / WEST_CRATER.r < A11_FIELD;
 }
+
+export { noAutopilot };
 
 export function fuelMul() {
   return a11Run.active ? A11_FUEL_MUL : 1;
@@ -199,7 +217,7 @@ function startA11Run() {
   lander.right.crossVectors(lander.up, lander.forward).normalize();
   _rotMat.makeBasis(new THREE.Vector3().crossVectors(lander.up, west).normalize(), lander.up, west);
   lander.quat.setFromRotationMatrix(_rotMat).normalize();
-  lander.vel.copy(west).multiplyScalar(0.6).addScaledVector(lander.up, -0.1);
+  lander.vel.copy(west).multiplyScalar(1.0).addScaledVector(lander.up, -0.25);   // already moving fast and sinking
   lander.isLanded = false;
   lander.fuel = 100;
   landerGroup.position.copy(lander.pos);
@@ -219,6 +237,9 @@ function startA11Run() {
   a11Run.elapsed = 0;
   a11Run.landedFor = 0;
   a11Run.callouts = {};
+  a11Run.drift = new THREE.Vector3();
+  a11Run.failReason = null;
+  lander.worstDown = 0; lander.worstSide = 0;
   document.getElementById('a11-hud').classList.remove('hidden');
   sound.playPing(587, 0.14);
   setTimeout(() => sound.playPing(784, 0.18), 120);
@@ -247,15 +268,15 @@ function finishA11Run(success) {
       scheduleSave();
       document.getElementById('a11-best-badge').textContent = `BEST ${fuelLeft.toFixed(0)} s LEFT`;
     }
-    if (fuelLeft >= 20) { medalEl.textContent = 'GOLD · ARMSTRONG-GRADE'; medalEl.className = pill('bg-[#f4d58d]/22', 'text-[#f4d58d]', 'border border-[#f4d58d]/55'); }
-    else if (fuelLeft >= 8) { medalEl.textContent = 'SILVER · THE EAGLE HAS LANDED'; medalEl.className = pill('bg-slate-200/18', 'text-slate-100', 'border border-slate-300/50'); }
+    if (fuelLeft >= 10) { medalEl.textContent = 'GOLD · ARMSTRONG-GRADE'; medalEl.className = pill('bg-[#f4d58d]/22', 'text-[#f4d58d]', 'border border-[#f4d58d]/55'); }
+    else if (fuelLeft >= 4) { medalEl.textContent = 'SILVER · THE EAGLE HAS LANDED'; medalEl.className = pill('bg-slate-200/18', 'text-slate-100', 'border border-slate-300/50'); }
     else { medalEl.textContent = 'BRONZE · RUNNING ON FUMES'; medalEl.className = pill('bg-[#d9826c]/20', 'text-[#f8c4b4]', 'border border-[#d9826c]/50'); }
     document.getElementById('a11-title').textContent = 'Tranquility Base here — the Eagle has landed.';
     sound.playScanComplete();
   } else {
     medalEl.textContent = 'ABORT · EAGLE LOST';
     medalEl.className = pill('bg-[#d9826c]/22', 'text-[#f8c4b4]', 'border border-[#d9826c]/55');
-    document.getElementById('a11-title').textContent = 'Eagle didn’t make it down safely.';
+    document.getElementById('a11-title').textContent = a11Run.failReason || 'Eagle didn’t make it down safely.';
   }
   document.getElementById('a11-fuel-left').textContent = success ? `${fuelLeft.toFixed(1)} s${newBest ? ' ★' : ''}` : '—';
   document.getElementById('a11-td').textContent = success ? `${td.toFixed(1)} m/s` : '—';
@@ -276,9 +297,9 @@ export function updateA11Run(dt) {
   const slopeBtn = document.getElementById('a11-slope-btn');
   slopeBtn.classList.toggle('hidden', overlayState.mode === 2);
   if (overlayState.mode !== 2) hint.textContent = 'Switch on the Slope Map — red is boulders and steep crater walls';
-  else if (!lander.isLanded) hint.textContent = inBoulderField(lander.up) ? 'Below you: BOULDERS. Keep flying west until the ground turns green' : (ui.touch ? 'Over green? Hold THRUST and slide down to set down gently' : 'Over green? Hold CTRL to lower and set down gently');
+  else if (!lander.isLanded) hint.textContent = inBoulderField(lander.up) ? 'Below you: BOULDERS. Keep flying west until the ground turns green' : 'Over green: kill your sideways drift, then come down slowly (under 3 m/s)';
   // Mission Control fuel calls, as Charlie Duke made them
-  [[30, '“30 SECONDS.” — Houston'], [15, '15 SECONDS of fuel — get it down!'], [0, 'FUEL DEPLETED — engine out!']].forEach(([s, msg]) => {
+  [[20, '20 SECONDS of fuel — Houston'], [10, '10 SECONDS — get it down!'], [0, 'FUEL DEPLETED — engine out!']].forEach(([s, msg]) => {
     if (secs <= s && !a11Run.callouts[s]) {
       a11Run.callouts[s] = true;
       showToast(msg, 'warn');
@@ -286,11 +307,34 @@ export function updateA11Run(dt) {
       setTimeout(() => sound.playPing(s ? 880 : 240, 0.25), 220);
     }
   });
-  if (lander.crashed) { finishA11Run(false); return; }
+  if (lander.crashed) { a11Run.failReason = a11Run.failReason || 'Eagle crashed.'; finishA11Run(false); return; }
   if (lander.isLanded) {
+    if (a11Run.landedFor === 0) {
+      // Judge the touchdown against the LM's limits
+      const down = lander.worstDown || 0, side = lander.worstSide || 0;
+      const toMs = (v) => (v * SPEED_TO_MS * 0.1).toFixed(1);
+      if (inBoulderField(lander.up)) a11Run.failReason = 'Landed in the boulder field — a footpad came down on a rock.';
+      else if (down > A11_MAX_VDOWN) a11Run.failReason = `Touchdown too hard: ${toMs(down)} m/s down (limit ${toMs(A11_MAX_VDOWN)}).`;
+      else if (side > A11_MAX_VSIDE) a11Run.failReason = `Still sliding sideways at ${toMs(side)} m/s (limit ${toMs(A11_MAX_VSIDE)}) — a leg could buckle.`;
+      else if (lander.slopeDeg > A11_MAX_SLOPE) a11Run.failReason = `Ground too steep: ${lander.slopeDeg.toFixed(0)}° (limit ${A11_MAX_SLOPE}°).`;
+      if (a11Run.failReason) { finishA11Run(false); return; }
+    }
     a11Run.landedFor += dt;
     if (a11Run.landedFor > 0.6) finishA11Run(true);
-  } else a11Run.landedFor = 0;
+  } else {
+    a11Run.landedFor = 0;
+    if (lander.aglUnits > 0.25) { lander.worstDown = 0; lander.worstSide = 0; }   // clean slate until the next touchdown
+    // A slow, wandering sideways push: you have to keep flying it all the way down
+    if (lander.fuel > 0) {
+      const up = lander.up;
+      a11Run.drift.x += (Math.random() - 0.5) * dt * 0.8;
+      a11Run.drift.y += (Math.random() - 0.5) * dt * 0.8;
+      a11Run.drift.z += (Math.random() - 0.5) * dt * 0.8;
+      a11Run.drift.addScaledVector(up, -a11Run.drift.dot(up)).multiplyScalar(Math.exp(-0.15 * dt));
+      if (a11Run.drift.length() > 1) a11Run.drift.setLength(1);
+      lander.vel.addScaledVector(a11Run.drift, A11_DRIFT_ACC * dt);
+    }
+  }
 }
 
 export function bindA11() {

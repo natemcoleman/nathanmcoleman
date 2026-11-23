@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { astro, updateAstro } from './astro.js';
 import { sound } from './audio.js';
 import { beaconMap, gameState, lander, rover, seismic } from './state.js';
 import { silentlyProbeSelfHostedTextures } from './nasa-maps.js';
@@ -81,6 +82,8 @@ function animate(now) {
   if (gameState.started) {
     if (gameState.mode === 'rover') {
       updateRoverPhysics(dt);
+    } else if (gameState.mode === 'astro') {
+      updateAstro(dt);
     } else if (!flyLander) {
       sound.updateThruster(0, false);
     }
@@ -116,7 +119,7 @@ function animate(now) {
   // Seismic camera shake applied around the render only (never accumulates into camera state)
   let shakeX = 0, shakeY = 0, shakeZ = 0;
   if (seismic.intensity > 0.002 && gameState.started && !isVR()) {   // no shaking in a headset
-    const craftPos = (gameState.mode === 'rover' && rover.deployed) ? rover.pos : lander.pos;
+    const craftPos = gameState.mode === 'astro' ? astro.pos : ((gameState.mode === 'rover' && rover.deployed) ? rover.pos : lander.pos);
     const amp = seismic.intensity * 0.016 * Math.max(0.5, camera.position.distanceTo(craftPos));
     shakeX = (Math.random() - 0.5) * amp; shakeY = (Math.random() - 0.5) * amp; shakeZ = (Math.random() - 0.5) * amp;
     camera.position.x += shakeX; camera.position.y += shakeY; camera.position.z += shakeZ;

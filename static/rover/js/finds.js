@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { astro } from './astro.js';
 import { MOON_RADIUS } from './constants.js';
 import { sound } from './audio.js';
 import { gameState, lander, rover } from './state.js';
@@ -300,6 +301,7 @@ function updateFindMarkers(now) {
 
 // ---------------- Discovery ----------------
 function activeCraftForFinds() {
+  if (gameState.mode === 'astro' && astro.active) return { craft: astro, by: 'astronaut', onGround: astro.onGround, agl: astro.aglUnits };
   if (gameState.mode === 'rover' && rover.deployed) return { craft: rover, by: 'rover', onGround: rover.isGrounded, agl: rover.aglUnits };
   return { craft: lander, by: lander.isLanded ? 'lander' : (lander.aglUnits > 6 ? 'orbit' : 'lander'), onGround: lander.isLanded || lander.aglUnits < 0.3, agl: lander.aglUnits };
 }

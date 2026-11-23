@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { ASTRO_M_PER_UNIT, astro, canStepOut, nearRover } from './astro.js';
 import { LANDMARKS, MOON_RADIUS, MOON_REAL_KM, SPEED_TO_MS } from './constants.js';
 import { sound } from './audio.js';
 import { csm, gameState, keys, lander, rover, touchThrust } from './state.js';
@@ -53,6 +54,7 @@ function getUIContext() {
   if (!gameState.started) return 'briefing';
   if (earthRun.active) return 'earth';
   if (gameState.mode === 'orbital') return 'orbital';
+  if (gameState.mode === 'astro' && astro.active) return 'astro';
   if (gameState.mode === 'rover' && rover.deployed) {
     if (rover.crashed) return 'crashed';
     if (rover.isTumbling && rover.isGrounded) return 'rover-flipped';
@@ -89,7 +91,7 @@ const READOUTS = {
   },
   fuel: () => ['FUEL', `${Math.round(lander.fuel)}%`, lander.fuel < 22 ? '#f8c4b4' : null],
   slope: () => {
-    const craft = gameState.mode === 'rover' ? rover : lander;
+    const craft = gameState.mode === 'astro' ? astro : (gameState.mode === 'rover' ? rover : lander);
     if (inBoulderField(craft.up)) return ['SLOPE', 'BOULDERS', '#f8c4b4'];
     const d = slopeAt(craft);
     return ['SLOPE', `${d.toFixed(0)}°`, slopeTint(d)];
@@ -105,6 +107,12 @@ const READOUTS = {
   },
   speed: () => ['SPEED', `${(rover.speed * 11.5).toFixed(0)} m/s`],
   lm: () => ['TO LM', fmtDist(rover.pos.distanceTo(lander.pos))],
+  jet: () => ['JETPACK', `${Math.round(astro.jet)}%`, astro.jet < 20 ? '#f8c4b4' : (astro.jet < 45 ? '#f4d58d' : null)],
+  aspeed: () => ['SPEED', `${(astro.speed * ASTRO_M_PER_UNIT).toFixed(1)} m/s`],
+  torover: () => {
+    const m = astro.pos.distanceTo(rover.pos) * ASTRO_M_PER_UNIT;
+    return ['TO ROVER', m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`, nearRover() ? '#7ec4a0' : null];
+  },
   air: () => ['AIR', `${rover.stunt.airTime.toFixed(1)}s`, '#f4d58d'],
   height: () => ['HEIGHT', fmtDist(rover.aglUnits)],
   fuelsec: () => {
@@ -112,7 +120,7 @@ const READOUTS = {
     return ['FUEL', `${s.toFixed(0)} s`, s <= 10 ? '#f8c4b4' : (s <= 20 ? '#f4d58d' : null)];
   },
   power: () => {
-    const r = vehicleThermal(gameState.mode === 'rover' && rover.deployed ? 'rover' : 'lander');
+    const r = vehicleThermal((gameState.mode === 'rover' || gameState.mode === 'astro') && rover.deployed ? 'rover' : 'lander');
     const t = Math.round(r.t), b = Math.round(r.b);
     return ['TEMP · BATT', `${t > 0 ? '+' : ''}${t}°C · ${b}%`, b <= 15 ? '#f8c4b4' : (t < -150 ? '#7dd3fc' : (t > 80 ? '#f6a96b' : null))];
   },
@@ -180,6 +188,18 @@ function contextSpec(ctx) {
       spec.hints = [['W/S', 'Drive'], ['A/D', 'Steer'], ['SHIFT', 'Turbo'], ['SPACE', 'Brake'], ['DRAG', 'Look'], ['TAB', 'Map']];
       spec.readouts = ['speed', 'slope', 'lm', 'power'];
       if (alsepStations.length) spec.readouts.push('pse');
+      if (canStepOut()) spec.secondary.push({ label: 'Step out', key: 'V', act: 'eva' });
+      break;
+    }
+    case 'astro': {
+      const near = nearRover();
+      spec.prompt = scan || (near ? { label: 'Board rover', key: 'V', act: 'eva', tone: 'sage' } : null);
+      if (scan && near) spec.secondary.push({ label: 'Board rover', key: 'V', act: 'eva' });
+      spec.secondary.push({ label: 'Ping', key: 'F', act: 'ping' });
+      spec.holds = [{ key: 'boost', label: 'RUN' }, { key: 'lift', label: 'JET', big: true }];
+      spec.joy = 'move';
+      spec.hints = [['WASD', 'Walk'], ['SHIFT', 'Run'], ['SPACE', 'Jetpack'], ['CTRL', 'Drop'], ['V', 'Rover'], ['DRAG', 'Look']];
+      spec.readouts = ['jet', 'aspeed', 'slope', 'torover'];
       break;
     }
     case 'rover-air':
@@ -196,7 +216,7 @@ function contextSpec(ctx) {
       spec.readouts = ['speed'];
       break;
     case 'orbital':
-      spec.prompt = { label: rover.deployed ? 'Back to Rover' : 'Back to LM', key: 'TAB', act: 'map', tone: 'dim' };
+      spec.prompt = { label: astro.active ? 'Back to astronaut' : (rover.deployed ? 'Back to Rover' : 'Back to LM'), key: 'TAB', act: 'map', tone: 'dim' };
       spec.orbitalBar = true;
       spec.waypoint = false;
       spec.hints = [['DRAG', 'Rotate'], ['WHEEL', 'Zoom'], ['CLICK', 'Beacon'], ['TAB', 'Back']];
@@ -546,7 +566,7 @@ export function toggleDetails() {
   document.getElementById('details-panel').classList.toggle('hidden');
 }
 export function toggleMap() {
-  setGameMode(gameState.mode === 'orbital' ? (rover.deployed ? 'rover' : 'lander') : 'orbital');
+  setGameMode(gameState.mode === 'orbital' ? (astro.active ? 'astro' : (rover.deployed ? 'rover' : 'lander')) : 'orbital');
 }
 function syncTouchModeLabel() {
   const el = document.getElementById('touch-mode-state');

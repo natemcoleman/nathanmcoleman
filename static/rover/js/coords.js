@@ -73,11 +73,44 @@ function sampleElevGridUV(u, vTop) {
   return top + (bot - top) * ty;
 }
 
-// Bilinear sampling of CPU LOLA elevation grid matching SphereGeometry UVs
+// Near the poles every line of longitude converges, so the 320 mesh vertices around a ring sit far closer
+// together than the rings themselves. Sampling each one independently drew a fan of thin radial ridges
+// meeting at the pole. Here each sample is averaged along its ring over the same ground distance as the
+// spacing between rings (a tent filter), so polar terrain has even detail in every direction.
+// At the pole itself the window is the whole ring: one well-defined height.
+const ROW_DEG = 180 / MOON_SEG_H;
+const LON_STEP_DEG = 360 / MOON_SEG_W;
+export function polarSmoothedGrid() {
+  // The elevation grid as the Moon mesh sees it (polar rings smoothed), for maps and overlays
+  const W = ELEV_GRID_W, H = ELEV_GRID_H, out = new Float32Array(W * H);
+  for (let y = 0; y < H; y++) {
+    const vTop = y / (H - 1);
+    for (let x = 0; x < W; x++) out[y * W + x] = sampleElevPolarAware(x / (W - 1), vTop);
+  }
+  return out;
+}
+
+function sampleElevPolarAware(u, vTop) {
+  const cosLat = Math.cos((0.5 - THREE.MathUtils.clamp(vTop, 0, 1)) * Math.PI);
+  const windowDeg = Math.min(360, ROW_DEG / Math.max(cosLat, 1e-6));
+  const k = Math.round(windowDeg / LON_STEP_DEG);
+  if (k < 2) return sampleElevGridUV(u, vTop);
+  const n = Math.min(k * 2, 640);
+  let sum = 0, wsum = 0;
+  for (let j = 0; j < n; j++) {
+    const t = (j + 0.5) / n - 0.5;                       // −0.5 … 0.5 across the window
+    const w = windowDeg >= 360 ? 1 : 1 - Math.abs(t) * 2; // tent, or flat for a full ring
+    sum += sampleElevGridUV(u + t * windowDeg / 360, vTop) * w;
+    wsum += w;
+  }
+  return sum / wsum;
+}
+
+// Elevation at a lat/lon, matching the displaced Moon mesh
 export function sampleTerrainAtLatLon(latDeg, lonDeg) {
   const u = (lonDeg + 180) / 360;
   const vTop = (90 - latDeg) / 180;
-  const norm = sampleElevGridUV(u, vTop);
+  const norm = sampleElevPolarAware(u, vTop);
   const elevKm = terrainState.minElevKm + norm * (terrainState.maxElevKm - terrainState.minElevKm);
   return { norm, elevKm };
 }
@@ -205,6 +238,33 @@ export function getSurfaceNormalAtPosition(vec, target = new THREE.Vector3()) {
   return target;
 }
 
+// SphereGeometry duplicates vertices along the 180° seam and at each pole, so computeVertexNormals gives
+// them different normals (a visible seam line and a pinched star at the poles). Average the duplicates.
+function weldSphereNormals(geo) {
+  const nrm = geo.attributes.normal;
+  if (!nrm) return;
+  const W = MOON_SEG_W + 1;
+  const avg = (idxs) => {
+    let x = 0, y = 0, z = 0;
+    for (const i of idxs) { x += nrm.getX(i); y += nrm.getY(i); z += nrm.getZ(i); }
+    const l = Math.hypot(x, y, z) || 1;
+    for (const i of idxs) nrm.setXYZ(i, x / l, y / l, z / l);
+  };
+  for (let row = 0; row <= MOON_SEG_H; row++) {
+    if (row === 0 || row === MOON_SEG_H) {
+      // Pole: use the ring next to it so the pole point shades like its surroundings
+      const ring = row === 0 ? 1 : MOON_SEG_H - 1;
+      let x = 0, y = 0, z = 0;
+      for (let c = 0; c < W; c++) { const i = ring * W + c; x += nrm.getX(i); y += nrm.getY(i); z += nrm.getZ(i); }
+      const l = Math.hypot(x, y, z) || 1;
+      for (let c = 0; c < W; c++) nrm.setXYZ(row * W + c, x / l, y / l, z / l);
+    } else {
+      avg([row * W, row * W + MOON_SEG_W]);
+    }
+  }
+  nrm.needsUpdate = true;
+}
+
 export function applyTerrainRelief(exaggeration) {
   terrainState.reliefExaggeration = exaggeration;
   const scale = getDisplacementScale();
@@ -219,13 +279,14 @@ export function applyTerrainRelief(exaggeration) {
     for (let i = 0; i < count; i++) {
       const u = uvAttr.getX(i);
       const vTop = 1.0 - uvAttr.getY(i);
-      const norm = sampleElevGridUV(u, vTop);
+      const norm = sampleElevPolarAware(u, vTop);
       const r = MOON_RADIUS + (norm - 0.5) * scale;
       const bi = i * 3;
       posAttr.setXYZ(i, moonUnitDirs[bi] * r, moonUnitDirs[bi + 1] * r, moonUnitDirs[bi + 2] * r);
     }
     posAttr.needsUpdate = true;
     geo.computeVertexNormals();
+    weldSphereNormals(geo);
     geo.computeBoundingSphere();
   }
 

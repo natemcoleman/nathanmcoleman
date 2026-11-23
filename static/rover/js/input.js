@@ -9,7 +9,7 @@ import { focusOrbitOnLandmark, setAutoGyro, setAutoSoftLand, setHoverAssist, tog
 import { triggerLidarScan } from './scan.js';
 import { renderSitesList, setGameMode, showToast } from './hud.js';
 import { handleAction, rdv, toggleDockAttitudeHold } from './apollo-ops.js';
-import { bindContextUI, closeMenu, inputSrc, toggleDetails, ui } from './context-ui.js';
+import { bindContextUI, closeMenu, inputSrc, toggleDetails, toggleMap, ui } from './context-ui.js';
 import { save, scheduleSave, welcomeBackText } from './save.js';
 import { closeJournal } from './finds.js';
 import { say, unlockRadio } from './radio.js';
@@ -112,9 +112,13 @@ export function bindInputs() {
         if (gameState.started) handleAction('journal');
         break;
       case 'KeyR':
-        if (gameState.started && (gameState.mode === 'lander' || gameState.mode === 'rover')) {
+        if (gameState.started && gameState.mode === 'astro') handleAction('eva');
+        else if (gameState.started && (gameState.mode === 'lander' || gameState.mode === 'rover')) {
           toggleRoverDeployment();
         }
+        break;
+      case 'KeyV':
+        if (gameState.started && (gameState.mode === 'rover' || gameState.mode === 'astro')) handleAction('eva');
         break;
       case 'KeyH':
         if (gameState.started && gameState.mode === 'lander' && !rdv.active) setHoverAssist(!gameState.hoverAssist);
@@ -129,7 +133,7 @@ export function bindInputs() {
       case 'KeyM':
         if (gameState.started) {
           e.preventDefault();
-          setGameMode(gameState.mode === 'orbital' ? (rover.deployed ? 'rover' : 'lander') : 'orbital');
+          toggleMap();
         }
         break;
       case 'KeyI':
@@ -181,7 +185,7 @@ export function bindInputs() {
     camCtrl.lastX = e.clientX;
     camCtrl.lastY = e.clientY;
 
-    if (gameState.mode === 'rover') {
+    if (gameState.mode === 'rover' || gameState.mode === 'astro') {
       roverCam.userYaw -= dx * 0.0065;
       roverCam.userPitch = THREE.MathUtils.clamp(roverCam.userPitch + dy * 0.005, -0.18, 0.92);
     } else if (gameState.mode === 'lander') {
@@ -216,7 +220,7 @@ export function bindInputs() {
       camCtrl.dockDist = THREE.MathUtils.clamp(camCtrl.dockDist * (1 + Math.sign(e.deltaY) * 0.1), 0.35, 6.0);
     } else if (gameState.mode === 'lander') {
       camCtrl.chaseDist = THREE.MathUtils.clamp(camCtrl.chaseDist + e.deltaY * 0.0025, 0.42, 18.0);
-    } else if (gameState.mode === 'rover') {
+    } else if (gameState.mode === 'rover' || gameState.mode === 'astro') {
       roverCam.zoom = THREE.MathUtils.clamp(roverCam.zoom * (1 + Math.sign(e.deltaY) * 0.1), 0.34, 3.6);
     } else {
       csm.tracking = false;
@@ -248,7 +252,7 @@ export function bindInputs() {
       const dy = e.targetTouches[0].clientY - camCtrl.lastY;
       camCtrl.lastX = e.targetTouches[0].clientX;
       camCtrl.lastY = e.targetTouches[0].clientY;
-      if (gameState.mode === 'rover') {
+      if (gameState.mode === 'rover' || gameState.mode === 'astro') {
         roverCam.userYaw -= dx * 0.008;
         roverCam.userPitch = THREE.MathUtils.clamp(roverCam.userPitch + dy * 0.006, -0.18, 0.92);
       } else if (gameState.mode === 'lander') {
@@ -268,7 +272,7 @@ export function bindInputs() {
       camCtrl.pinchDist = dist;
       if (gameState.mode === 'lander') {
         camCtrl.chaseDist = THREE.MathUtils.clamp(camCtrl.chaseDist + delta * 0.008, 0.42, 18.0);
-      } else if (gameState.mode === 'rover') {
+      } else if (gameState.mode === 'rover' || gameState.mode === 'astro') {
         roverCam.zoom = THREE.MathUtils.clamp(roverCam.zoom + delta * 0.005, 0.34, 3.6);
       } else {
         csm.tracking = false;

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { astro } from './astro.js';
 import { LANDMARKS, SCAN_DURATION_SEC, SCAN_RANGE_UNITS } from './constants.js';
 import { sound } from './audio.js';
 import { beaconMap, gameState, lander, rover } from './state.js';
@@ -13,7 +14,7 @@ import { say } from './radio.js';
 // 12. LIDAR SCAN & LANDMARK DISCOVERY LOOP
 // =========================================================================
 function getActiveCraft() {
-  return gameState.mode === 'rover' ? rover : lander;
+  return gameState.mode === 'astro' ? astro : (gameState.mode === 'rover' ? rover : lander);
 }
 
 function findNearbyLandmark() {
@@ -75,7 +76,7 @@ function completeLidarScan(lm) {
 }
 
 export function updateLidarScan(dt) {
-  const canScan = gameState.mode === 'lander' || gameState.mode === 'rover';
+  const canScan = gameState.mode === 'lander' || gameState.mode === 'rover' || gameState.mode === 'astro';
   const craft = getActiveCraft();
   const nearby = canScan ? findNearbyLandmark() : null;
   const ctaWrap = document.getElementById('scan-cta-wrapper');

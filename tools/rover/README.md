@@ -48,6 +48,7 @@ One module per part of the game. Each module imports exactly what it uses, so th
 | `radio.js` | Mission Control radio: Quindar tones, static and subtitles (recorded clips optional) |
 | `tutorial.js` | Guided first mission for new players (land → rover → Ping → first find); skippable, replay from the menu |
 | `earth.js` | Return to Earth: once docked with Columbia, Trans-Earth injection burn, coast, re-entry corridor, splashdown |
+| `astro.js` | Astronaut on foot (EVA): step out of the rover (V), walk/run, jetpack (SPACE), board again; human-scale readouts (`ASTRO_M_PER_UNIT`); counts for finds, scans and challenge checkpoints |
 | `vr.js` | WebXR headset mode (Meta Quest browser): "Play in VR" / menu "Enter VR", levelled camera rig, Quest controllers mapped to keys. `?vrpreview` shows the VR view on a normal screen; `?vrscale=0.035` sets game units per real metre |
 
 ## Three.js version

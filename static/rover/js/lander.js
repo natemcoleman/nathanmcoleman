@@ -205,7 +205,8 @@ export function updateLanderPhysics(dt) {
         lander.vel.addScaledVector(lander.up, 1.4);
         lander.isLanded = false;
       }
-      const horizAccel = (isBoosting ? 9.2 : 4.2) * stageMul;
+      // Apollo 11 challenge: a real LM had to tilt to move sideways, so sideways thrust is much weaker
+      const horizAccel = (isBoosting ? 9.2 : 4.2) * stageMul * (a11Run.active ? 0.4 : 1);
       lander.vel.addScaledVector(desiredDir, horizAccel * dt);
       lander.fuel = Math.max(0, lander.fuel - fuelMul() * (isBoosting ? 2.1 : 0.85) * dt);
       thrustMag = Math.max(thrustMag, isBoosting ? 1.0 : 0.62);
@@ -234,7 +235,8 @@ export function updateLanderPhysics(dt) {
 
     if (lander.isLanded) {
       lander.vel.multiplyScalar(Math.exp(-8.0 * dt));
-    } else if (gameState.hoverAssist && desiredDir.lengthSq() < 0.01) {
+    } else if (gameState.hoverAssist && desiredDir.lengthSq() < 0.01 && !a11Run.active) {
+      // Hover assist also bleeds off sideways drift for free — except in the Apollo 11 challenge, where you brake yourself
       const curVRad = lander.vel.dot(lander.up);
       const curTan = lander.vel.clone().addScaledVector(lander.up, -curVRad);
       curTan.multiplyScalar(Math.exp(-1.15 * dt));
@@ -334,7 +336,13 @@ export function updateLanderPhysics(dt) {
       return;
     }
 
-    if (!lander.isLanded) lander.touchdownSpeed = Math.max(0, impactSpeed);
+    if (!lander.isLanded) {
+      lander.touchdownSpeed = Math.max(0, impactSpeed);
+      lander.touchdownSideSpeed = lander.vel.clone().addScaledVector(_terrainNorm, -lander.vel.dot(_terrainNorm)).length();
+      // Hardest contact of this landing (a hard hit bounces, so the final settle can look gentle)
+      lander.worstDown = Math.max(lander.worstDown || 0, lander.touchdownSpeed);
+      lander.worstSide = Math.max(lander.worstSide || 0, lander.touchdownSideSpeed);
+    }
     if (!lander.isLanded && (impactSpeed > 0.35 || boulders)) {
       triggerSeismicEvent(Math.min(0.7, impactSpeed * 0.22), lander.pos.clone());
       if (impactSpeed > 2.4 || !uprightLanding) {

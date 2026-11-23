@@ -323,6 +323,7 @@ function createRover() {
   const visor = new THREE.Mesh(new THREE.SphereGeometry(0.095, 10, 8), visorMat);
   visor.position.set(-0.24, 0.54, -0.03);
   roverMeshRoot.add(visor);
+  rover.seatedCrew = [torso, plss, helmet, visor];   // hidden while the astronaut is out walking
 
   // High-Gain Parabolic Dish Antenna & TV Mast
   const antMast = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.62, 6), chassisMat);

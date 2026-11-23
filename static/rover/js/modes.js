@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { endEVA } from './astro.js';
 import { ROVER_WHEEL_OFFSET } from './constants.js';
 import { sound } from './audio.js';
 import { camCtrl, csm, gameState, lander, rover } from './state.js';
@@ -18,6 +19,7 @@ import { say } from './radio.js';
 export function warpLanderToLandmark(lm, switchToFlight = true) {
   if (!lm) return;
   if (rdv.active) rdvEnd(true);
+  endEVA();
   restoreFullLander();
   lander.crashed = false;
   landerGroup.visible = true;

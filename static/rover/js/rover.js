@@ -10,7 +10,7 @@ import { iceRun } from './challenges.js';
 import { ROVER_CRASH_SPEED, crashRover, updateRoverCrash } from './apollo-ops.js';
 import { ui } from './context-ui.js';
 import { save, scheduleSave } from './save.js';
-import { power, roverPowerMul } from './apollo11.js';
+import { roverPowerMul } from './apollo11.js';
 
 // =========================================================================
 // 10. APOLLO LUNAR ROVER 1/6G PHYSICS, STUNTS & TUMBLING
@@ -186,7 +186,7 @@ export function updateRoverPhysics(dt) {
   const steerInput = (keys.left || keys.arrowLeft ? 1 : 0) - (keys.right || keys.arrowRight ? 1 : 0);
   const rollInput = (keys.yawRight ? 1 : 0) - (keys.yawLeft ? 1 : 0);
   const brake = keys.lift;
-  const isBoosting = keys.boost && (iceRun.active || power.rover > 0);
+  const isBoosting = keys.boost;
 
   rover.steerAngle = THREE.MathUtils.lerp(rover.steerAngle, steerInput * 0.52, Math.min(1, dt * 10));
   rover.vel.addScaledVector(rover.up, -GRAVITY * dt);

@@ -1,8 +1,9 @@
 import * as THREE from 'three';
+import { astro, toggleEVA } from './astro.js';
 import { CSM_ORBIT_RADIUS, ELEV_GRID_H, ELEV_GRID_W, LANDER_FOOT_OFFSET, LANDER_SCALE, LANDMARKS, LUNAR_MU, MOON_RADIUS, MOON_REAL_KM, ROVER_WHEEL_OFFSET, SPEED_TO_MS } from './constants.js';
 import { sound } from './audio.js';
 import { camCtrl, csm, gameState, keys, lander, rover, terrainState, triggerSeismicEvent } from './state.js';
-import { getDisplacementScale, getExactSurfaceHit, getSurfaceNormalAtPosition, getSurfaceRadiusAtLatLon, getSurfaceRadiusAtPosition, latLonToVec3, sampleTerrainAtLatLon, vec3ToLatLon } from './coords.js';
+import { getDisplacementScale, getExactSurfaceHit, polarSmoothedGrid, getSurfaceNormalAtPosition, getSurfaceRadiusAtLatLon, getSurfaceRadiusAtPosition, latLonToVec3, sampleTerrainAtLatLon, vec3ToLatLon } from './coords.js';
 import { camera, earthGroup, enginePlume, landerDescentGroup, landerGroup, laserBeam, moonMaterial, roverGroup, scene, spawnDustBurst, spawnParticle } from './scene.js';
 import { setAutoSoftLand, toggleRoverDeployment, updateAssistButtonsUI, warpLanderToLandmark } from './modes.js';
 import { _basisX, _rotMat, _shipFwd, _shipLeft, _shipUp, _targetQ, _terrainNorm, _tmpAxis, _tmpDeltaQ, computeLanderOrbitalElements } from './lander.js';
@@ -56,7 +57,8 @@ export function handleAction(action) {
   if (!gameState.started) return;
   if (action === 'dock') rdvKey();
   else if (action === 'scan') triggerLidarScan();
-  else if (action === 'rover') toggleRoverDeployment();
+  else if (action === 'rover') { if (astro.active) toggleEVA(); else toggleRoverDeployment(); }
+  else if (action === 'eva') toggleEVA();
   else if (action === 'autoland') setAutoSoftLand(!gameState.autoSoftLand);
   else if (action === 'map') toggleMap();
   else if (action === 'atthold') toggleDockAttitudeHold();
@@ -1459,7 +1461,7 @@ function slopeColor(deg, out) {
 
 const _ovP = new THREE.Vector3();
 function buildOverlayTextures() {
-  const W = ELEV_GRID_W, H = ELEV_GRID_H, g = terrainState.elevGrid;
+  const W = ELEV_GRID_W, H = ELEV_GRID_H, g = polarSmoothedGrid();   // same smoothing as the Moon mesh
   const scale = getDisplacementScale();
   if (!overlayState.elevCanvas) {
     overlayState.elevCanvas = document.createElement('canvas');
@@ -1477,12 +1479,14 @@ function buildOverlayTextures() {
   const pxH = (Math.PI * MOON_RADIUS) / H;
   for (let y = 0; y < H; y++) {
     const lat = THREE.MathUtils.degToRad(90 - (y / (H - 1)) * 180);
-    const pxW = (2 * Math.PI * MOON_RADIUS * Math.max(0.04, Math.cos(lat))) / W;
+    const pxW = (2 * Math.PI * MOON_RADIUS * Math.max(1e-3, Math.cos(lat))) / W;
+    // East–west stencil spans the same ground distance as north–south, so polar slopes aren't exaggerated
+    const KX = Math.min(W >> 2, Math.max(K, Math.round(K / Math.max(1e-3, Math.cos(lat)))));
     const ym = Math.max(0, y - K), yp = Math.min(H - 1, y + K);
     for (let x = 0; x < W; x++) {
       const i = y * W + x;
-      const xm = (x - K + W) % W, xp = (x + K) % W;
-      const dzdx = ((g[y * W + xp] - g[y * W + xm]) * scale) / (2 * K * pxW);
+      const xm = (x - KX + W) % W, xp = (x + KX) % W;
+      const dzdx = ((g[y * W + xp] - g[y * W + xm]) * scale) / (2 * KX * pxW);
       const dzdy = ((g[yp * W + x] - g[ym * W + x]) * scale) / (Math.max(1, yp - ym) * pxH);
       const slope = THREE.MathUtils.radToDeg(Math.atan(Math.hypot(dzdx, dzdy)));
       const shade = THREE.MathUtils.clamp(0.88 + (-dzdx + dzdy) * 1.4, 0.55, 1.18);

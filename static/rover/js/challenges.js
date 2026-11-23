@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { astro, endEVA } from './astro.js';
 import { LANDER_FOOT_OFFSET, LUNAR_MU, MOON_RADIUS, MOON_REAL_KM, ROVER_WHEEL_OFFSET } from './constants.js';
 import { sound } from './audio.js';
 import { gameState, lander, rover, roverCam } from './state.js';
@@ -160,7 +161,7 @@ export function updateOrbitalRingVisualizer() {
 
   // Hide when parked on the surface or driving the rover on the ground
   const isAirborne = !lander.isLanded && ((lander.aglUnits || 0) > 0.14 || lander.inOrbit || lander.docked);
-  const inRoverSurfaceMode = gameState.mode === 'rover';
+  const inRoverSurfaceMode = gameState.mode === 'rover' || gameState.mode === 'astro';
   if (!isAirborne || inRoverSurfaceMode) {
     orbitRingState.group.visible = false;
     if (hud) hud.classList.add('hidden');
@@ -457,6 +458,7 @@ export function initOrbitalRingVisualizer() {
     if (e.code === 'KeyV' && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
       const tag = document.activeElement && document.activeElement.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (gameState.mode === 'rover' || gameState.mode === 'astro') return;   // on the surface V means step out / climb in
       toggleOrbitRingVisualizer();
     }
   });
@@ -740,6 +742,7 @@ function completeHadleyRilleRun() {
  * places the 3 geological sample beacons flush on the NASA LOLA terrain, and starts the clock.
  */
 function startHadleyRilleRun() {
+  endEVA();
   stopTutorial();
   setTimeout(() => say('hadleyStart'), 900);
   sound.init();
@@ -875,8 +878,9 @@ export function updateHadleyRilleRun() {
     hadleyRun.labelSprite.scale.set(s * 3.8, s * 0.76, 1);
   }
 
-  // Compute distance & relative compass bearing from the Rover
-  const distUnits = rover.pos.distanceTo(cp.pos);
+  // Compute distance & relative compass bearing from the Rover (or the astronaut on foot)
+  const me = astro.active ? astro.pos : rover.pos;
+  const distUnits = me.distanceTo(cp.pos);
   const distKm = (distUnits / MOON_RADIUS) * MOON_REAL_KM;
   const distEl = document.getElementById('hadley-dist');
   if (distEl) {
@@ -884,14 +888,14 @@ export function updateHadleyRilleRun() {
   }
 
   // Relative bearing arrow (0 deg = straight ahead of rover/camera heading)
-  _hrUp.copy(rover.pos).normalize();
-  _hrToTarget.copy(cp.pos).sub(rover.pos);
+  _hrUp.copy(me).normalize();
+  _hrToTarget.copy(cp.pos).sub(me);
   _hrToTarget.addScaledVector(_hrUp, -_hrToTarget.dot(_hrUp));
   if (_hrToTarget.lengthSq() > 1e-6) {
     _hrToTarget.normalize();
-    const refFwd = roverCam.initialized
+    const refFwd = astro.active ? _hrFwd.copy(astro.heading) : (roverCam.initialized
       ? _hrFwd.copy(roverCam.heading)
-      : _hrFwd.copy(rover.forward);
+      : _hrFwd.copy(rover.forward));
     refFwd.addScaledVector(_hrUp, -refFwd.dot(_hrUp)).normalize();
     _hrRight.crossVectors(refFwd, _hrUp).normalize();
     const fDot = _hrToTarget.dot(refFwd);
@@ -1273,6 +1277,7 @@ function finishSouthPoleIceRun(frozenOut = false) {
  * and activates the live thermal shadow-survival loop.
  */
 function startSouthPoleIceRun() {
+  endEVA();
   stopTutorial();
   setTimeout(() => say('iceStart'), 900);
   sound.init();
@@ -1476,22 +1481,23 @@ export function updateSouthPoleIceRun() {
     iceRun.labelSprite.scale.set(s * 3.9, s * 0.76, 1);
   }
 
-  // Distance & compass bearing arrow
-  const distUnits = rover.pos.distanceTo(cp.pos);
+  // Distance & compass bearing arrow (rover, or the astronaut on foot)
+  const me = astro.active ? astro.pos : rover.pos;
+  const distUnits = me.distanceTo(cp.pos);
   const distKm = (distUnits / MOON_RADIUS) * MOON_REAL_KM;
   const distEl = document.getElementById('ice-dist');
   if (distEl) {
     distEl.textContent = distKm >= 10 ? `${distKm.toFixed(0)} km` : `${distKm.toFixed(1)} km`;
   }
 
-  _iceUp.copy(rover.pos).normalize();
-  _iceToTarget.copy(cp.pos).sub(rover.pos);
+  _iceUp.copy(me).normalize();
+  _iceToTarget.copy(cp.pos).sub(me);
   _iceToTarget.addScaledVector(_iceUp, -_iceToTarget.dot(_iceUp));
   if (_iceToTarget.lengthSq() > 1e-6) {
     _iceToTarget.normalize();
-    const refFwd = roverCam.initialized
+    const refFwd = astro.active ? _iceFwd.copy(astro.heading) : (roverCam.initialized
       ? _iceFwd.copy(roverCam.heading)
-      : _iceFwd.copy(rover.forward);
+      : _iceFwd.copy(rover.forward));
     refFwd.addScaledVector(_iceUp, -refFwd.dot(_iceUp)).normalize();
     _iceRight.crossVectors(refFwd, _iceUp).normalize();
     const fDot = _iceToTarget.dot(refFwd);

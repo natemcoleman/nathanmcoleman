@@ -187,7 +187,7 @@ export const roverCam = {
 // Small camera shake from hard rover landings & tumbles
 export const seismic = { intensity: 0 };
 export function triggerSeismicEvent(intensity, origin) {
-  const craft = (gameState.mode === 'rover' && rover.deployed) ? rover : lander;
+  const craft = gameState.mode === 'astro' ? (globalThis.__lroAstro || rover) : ((gameState.mode === 'rover' && rover.deployed) ? rover : lander);
   const dCraft = origin ? craft.pos.distanceTo(origin) : 0;
   const shake = intensity * Math.exp(-dCraft / 2.5);
   seismic.intensity = Math.min(1, Math.max(seismic.intensity, shake));

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { astro, updateAstroCamera } from './astro.js';
 import { camCtrl, csm, gameState, lander, rover, roverCam } from './state.js';
 import { getSurfaceRadiusAtPosition, latLonToVec3 } from './coords.js';
 import { camera, csmGroup } from './scene.js';
@@ -58,6 +59,8 @@ export function updateCamera(dt) {
     if (camera.position.length() < minCamR) camera.position.setLength(minCamR);
     camera.up.lerp(lander.up, Math.min(1, dt * 6.5)).normalize();
     camera.lookAt(lander.pos.clone().addScaledVector(hd, 0.12));
+  } else if (gameState.mode === 'astro' && astro.active) {
+    updateAstroCamera(dt);
   } else if (gameState.mode === 'rover' && rover.deployed) {
     applySmoothRoverChaseCamera(dt);
     roverCam.wasActive = true;

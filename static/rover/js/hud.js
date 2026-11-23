@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { ASTRO_M_PER_UNIT, astro, endEVA } from './astro.js';
 import { LANDMARKS, MOON_RADIUS, MOON_REAL_KM, SPEED_TO_MS } from './constants.js';
 import { sound } from './audio.js';
 import { camCtrl, csm, gameState, lander, rover } from './state.js';
@@ -87,8 +88,9 @@ export function renderSitesList() {
 }
 
 export function updateTelemetryHUD() {
-  const isRover = gameState.mode === 'rover';
-  const craft = isRover ? rover : lander;
+  const isAstro = gameState.mode === 'astro' && astro.active;
+  const isRover = gameState.mode === 'rover' || isAstro;
+  const craft = isAstro ? astro : (isRover ? rover : lander);
 
   document.getElementById('tel-lat').textContent = formatLat(craft.lat);
   document.getElementById('tel-lon').textContent = formatLon(craft.lon);
@@ -102,7 +104,7 @@ export function updateTelemetryHUD() {
 
   const vRad = craft.vel.dot(craft.up);
   const vTan = craft.vel.clone().addScaledVector(craft.up, -vRad).length();
-  const gSpeedMs = isRover ? (rover.speed * 11.5) : (vTan * SPEED_TO_MS);
+  const gSpeedMs = isAstro ? vTan * ASTRO_M_PER_UNIT : (isRover ? rover.speed * 11.5 : vTan * SPEED_TO_MS);
   document.getElementById('tel-gspeed').textContent = gSpeedMs >= 1000
     ? `${(gSpeedMs / 1000).toFixed(2)} km/s`
     : `${gSpeedMs.toFixed(1)} m/s`;
@@ -119,7 +121,7 @@ export function updateTelemetryHUD() {
 
   if (orbStrip) orbStrip.classList.toggle('hidden', isRover);
   if (isRover) {
-    if (apEl) apEl.textContent = rover.isGrounded ? 'SURFACE' : 'AIRBORNE';
+    if (apEl) apEl.textContent = (isAstro ? astro.onGround : rover.isGrounded) ? 'SURFACE' : 'AIRBORNE';
     if (peEl) peEl.textContent = '1/6 G';
   } else {
     if (apEl) {
@@ -155,6 +157,9 @@ export function updateTelemetryHUD() {
   if (gameState.mode === 'orbital') {
     pill.textContent = 'ORBIT VIEW';
     pill.className = 'text-[10px] font-mono-tech font-semibold px-2 py-0.5 rounded-full bg-[#111827] text-slate-200 border border-slate-700';
+  } else if (isAstro) {
+    pill.textContent = astro.onGround ? 'ON FOOT' : 'JETPACK';
+    pill.className = 'text-[10px] font-mono-tech font-semibold px-2 py-0.5 rounded-full bg-[#7dd3fc]/15 text-[#7dd3fc] border border-[#7dd3fc]/40';
   } else if (isRover) {
     pill.textContent = rover.isGrounded ? 'ROVER DRIVE' : 'LOW-G JUMP';
     pill.className = rover.isGrounded
@@ -254,10 +259,11 @@ export function setGameMode(mode) {
     toggleRoverDeployment();
     return;
   }
+  if (astro.active && mode !== 'astro' && mode !== 'orbital') endEVA();
   gameState.mode = mode;
   csm.tracking = false;
   if (mode === 'orbital') {
-    const craft = rover.deployed ? rover : lander;
+    const craft = astro.active ? astro : (rover.deployed ? rover : lander);
     camCtrl.targetOrbitLatDeg = THREE.MathUtils.clamp(craft.lat, -85, 85);
     camCtrl.targetOrbitLonDeg = craft.lon;
     camCtrl.orbitLatDeg = camCtrl.targetOrbitLatDeg;
