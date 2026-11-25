@@ -21,7 +21,7 @@ const TONE_SEC = 0.25;
 
 // Fixed lines. {cs} is the callsign the ground uses for you right now.
 const LINES = {
-  welcome:      { text: '{cs}, Houston. Radio check. You are go to explore. Pick a spot and bring her down.', prio: 2 },
+  welcome:      { text: '{cs}, Houston. Radio check. You are on the surface and go to explore.', prio: 2 },
   landing:      { text: '{cs}, Houston. We copy you down. Nice landing.', prio: 2, cool: 60 },
   landingSite:  { text: '{cs}, Houston. We copy you down at {site}. Nice landing.', prio: 2, cool: 60 },
   landingFirst: { text: 'Houston copies touchdown. Your first one. We are breathing again down here.', prio: 3 },

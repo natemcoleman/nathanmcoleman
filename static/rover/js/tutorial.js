@@ -12,23 +12,16 @@ import { finds } from './finds.js';
 
 const STEPS = [
   {
-    id: 'land', title: 'Land the Eagle',
-    keys: 'Fly with W A S D. Hover is on: hold CTRL to come down, SHIFT to climb. Aim for the Tranquility Base beacon.',
-    touch: 'Left thumb flies. Hold THRUST and slide down to come down, up to climb. Aim for the Tranquility Base beacon.',
-    radio: 'Eagle, Houston. First things first: bring her down gently. Green ground is flat ground.',
-    done: () => lander.isLanded && gameState.mode === 'lander',
-  },
-  {
     id: 'rover', title: 'Deploy the rover',
     keys: 'Press R (or the Deploy Rover button) to roll the rover out.',
     touch: 'Tap Deploy Rover.',
-    radio: 'Eagle, Houston. Nice landing. Get the rover out and stretch its legs.',
+    radio: 'Eagle, Houston. You are down at Tranquility Base. Get the rover out and stretch its legs.',
     done: () => gameState.mode === 'rover',
   },
   {
     id: 'ping', title: 'Ping for hidden finds',
-    keys: 'Press F to ping. It tells you which way the nearest hidden find is.',
-    touch: 'Tap Ping. It tells you which way the nearest hidden find is.',
+    keys: 'Press F to ping. An arrow points the way to the nearest hidden find.',
+    touch: 'Tap Ping. An arrow points the way to the nearest hidden find.',
     radio: 'Rover, Houston. There is history hidden all over this Moon. Ping and see what turns up.',
     done: (t) => finds.lastPing > t.stepStart,
   },

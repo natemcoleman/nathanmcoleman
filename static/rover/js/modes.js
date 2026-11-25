@@ -16,7 +16,8 @@ import { say } from './radio.js';
 // =========================================================================
 // 8. WARP, ROVER DEPLOYMENT & MODE / ASSIST HELPERS
 // =========================================================================
-export function warpLanderToLandmark(lm, switchToFlight = true) {
+// onGround: start parked on the surface beside the site (the default); false = hovering (Apollo 11 challenge)
+export function warpLanderToLandmark(lm, switchToFlight = true, onGround = true) {
   if (!lm) return;
   if (rdv.active) rdvEnd(true);
   endEVA();
@@ -39,7 +40,7 @@ export function warpLanderToLandmark(lm, switchToFlight = true) {
   const spawnLon = lm.lon;
   const spawnSurfR = getSurfaceRadiusAtLatLon(spawnLat, spawnLon);
 
-  latLonToVec3(spawnLat, spawnLon, spawnSurfR + landerFootOffset() + 0.55, lander.pos);
+  latLonToVec3(spawnLat, spawnLon, spawnSurfR + landerFootOffset() + (onGround ? 0 : 0.55), lander.pos);
   lander.vel.set(0, 0, 0);
   lander.angVel.set(0, 0, 0);
 
@@ -68,10 +69,10 @@ export function warpLanderToLandmark(lm, switchToFlight = true) {
   lander.lat = spawnLat;
   lander.lon = spawnLon;
   lander.elevKm = sampleTerrainAtLatLon(spawnLat, spawnLon).elevKm;
-  lander.aglUnits = 0.55;
+  lander.aglUnits = onGround ? 0 : 0.55;
   lander.fuel = 100.0;
   power.lander = 100;
-  lander.isLanded = false;
+  lander.isLanded = onGround;
   lander.inOrbit = false;
   gameState.autoSoftLand = false;
   camCtrl.chaseYaw = 0;
@@ -81,13 +82,20 @@ export function warpLanderToLandmark(lm, switchToFlight = true) {
   refreshBeaconColors();
   scheduleSave();
 
+  if (onGround) {
+    // Parked: feet on the ground, standing on the local slope
+    const n = getSurfaceNormalAtPosition(lander.pos, new THREE.Vector3());
+    lander.pos.setLength(getSurfaceRadiusAtPosition(lander.pos) + landerFootOffset());
+    lander.quat.copy(new THREE.Quaternion().setFromUnitVectors(lander.up, n).multiply(lander.quat)).normalize();
+    lander.touchdownSpeed = 0;
+  }
   landerGroup.position.copy(lander.pos);
   landerGroup.quaternion.copy(lander.quat);
   landerMeshRoot.rotation.set(0, 0, 0);
 
   if (switchToFlight) {
     setGameMode('lander');
-    showToast(`Warped Lander to ${lm.shortName}`, 'gold');
+    showToast(onGround ? `Landed at ${lm.shortName} — SPACE to lift off` : `Warped Lander to ${lm.shortName}`, 'gold');
     sound.playPing(640, 0.14);
   }
 }

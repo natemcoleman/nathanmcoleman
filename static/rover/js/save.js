@@ -129,7 +129,9 @@ export function applySave() {
   gameState.sunAutoCycle = !!d.settings.sunCycle;
   document.getElementById('sun-cycle-check').checked = gameState.sunAutoCycle;
   orbitRingState.enabled = d.settings.orbitRing !== false;
-  gameState.hoverAssist = d.settings.hover !== false;
+  // Nov 25: auto hold is now off by default — switch it off once for older saves too
+  if (!d.settings.hoverOffV2) { d.settings.hover = false; d.settings.hoverOffV2 = true; }
+  gameState.hoverAssist = d.settings.hover === true;
   hudPrefs.popups = d.settings.popups === 'essential' ? 'essential' : 'all';
   syncOrbitRingToggleUI();
   sound.musicMuted = d.settings.music === false;

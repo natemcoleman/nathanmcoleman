@@ -556,19 +556,20 @@ export function updateRoverPhysics(dt) {
  * - Smoothly tracks flight/driving trajectory and gently recenters user orbit while driving
  * - Dynamic distance, look-ahead, FOV kick on boost, and exact terrain clearance
  */
-export function applySmoothRoverChaseCamera(dt) {
+// subj: the rover by default; the astronaut on foot uses the very same camera (see astro.js)
+export function applySmoothRoverChaseCamera(dt, subj = rover) {
   const safeDt = THREE.MathUtils.clamp(dt || 0.016, 0.001, 0.05);
-  _rcMoonUp.copy(rover.pos).normalize();
+  _rcMoonUp.copy(subj.pos).normalize();
 
   // Compute horizontal velocity along the lunar tangent plane
-  _rcHorizVel.copy(rover.vel).addScaledVector(_rcMoonUp, -rover.vel.dot(_rcMoonUp));
+  _rcHorizVel.copy(subj.vel).addScaledVector(_rcMoonUp, -subj.vel.dot(_rcMoonUp));
   const horizSpeed = _rcHorizVel.length();
 
   // Follow flight/travel direction when moving fast so 360° mid-air spins don't whip the camera
   if (horizSpeed > 0.45) {
     _rcDesiredHead.copy(_rcHorizVel).divideScalar(horizSpeed);
   } else {
-    _rcDesiredHead.copy(rover.forward).addScaledVector(_rcMoonUp, -rover.forward.dot(_rcMoonUp));
+    _rcDesiredHead.copy(subj.forward).addScaledVector(_rcMoonUp, -subj.forward.dot(_rcMoonUp));
     if (_rcDesiredHead.lengthSq() < 1e-6) {
       const ref = Math.abs(_rcMoonUp.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
       _rcDesiredHead.crossVectors(ref, _rcMoonUp);
@@ -591,7 +592,7 @@ export function applySmoothRoverChaseCamera(dt) {
     } else {
       roverCam.heading.normalize();
     }
-    const headRate = rover.isGrounded && !rover.isTumbling ? 6.2 : 2.8;
+    const headRate = subj.isGrounded && !subj.isTumbling ? 6.2 : 2.8;
     roverCam.heading.lerp(_rcDesiredHead, 1 - Math.exp(-headRate * safeDt)).normalize();
 
     // Gently recenter mouse-orbit yaw when driving at speed and not dragging
@@ -603,17 +604,17 @@ export function applySmoothRoverChaseCamera(dt) {
   // Apply optional manual orbit yaw around local lunar up
   _rcViewDir.copy(roverCam.heading).applyAxisAngle(roverCam.up, roverCam.userYaw).normalize();
 
-  const speedFactor = THREE.MathUtils.clamp(rover.speed / 6.0, 0, 1);
-  const airPull = THREE.MathUtils.clamp(rover.aglUnits * 0.42, 0, 0.55);
+  const speedFactor = THREE.MathUtils.clamp(subj.speed / 6.0, 0, 1);
+  const airPull = THREE.MathUtils.clamp(subj.aglUnits * 0.42, 0, 0.55);
   const boostPull = keys.boost ? 0.14 : 0;
   const dist = roverCam.zoom * (1.0 + speedFactor * 0.34) + airPull + boostPull;
   const pitch = THREE.MathUtils.clamp(
-    0.26 + roverCam.userPitch + THREE.MathUtils.clamp(rover.aglUnits * 0.14, 0, 0.22),
+    0.26 + roverCam.userPitch + THREE.MathUtils.clamp(subj.aglUnits * 0.14, 0, 0.22),
     0.06,
     1.28
   );
 
-  _rcDesiredPos.copy(rover.pos)
+  _rcDesiredPos.copy(subj.pos)
     .addScaledVector(_rcViewDir, -Math.cos(pitch) * dist)
     .addScaledVector(roverCam.up, Math.sin(pitch) * dist + 0.045);
 
@@ -624,9 +625,9 @@ export function applySmoothRoverChaseCamera(dt) {
   }
 
   // Subtle velocity look-ahead and slight downward framing during high jumps
-  _rcDesiredLook.copy(rover.pos)
+  _rcDesiredLook.copy(subj.pos)
     .addScaledVector(_rcHorizVel, Math.min(0.065, 0.22 / Math.max(0.5, horizSpeed)))
-    .addScaledVector(roverCam.up, 0.028 - THREE.MathUtils.clamp(rover.aglUnits * 0.12, 0, 0.15));
+    .addScaledVector(roverCam.up, 0.028 - THREE.MathUtils.clamp(subj.aglUnits * 0.12, 0, 0.15));
 
   if (!roverCam.initialized) {
     roverCam.pos.copy(_rcDesiredPos);

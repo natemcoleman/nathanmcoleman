@@ -27,7 +27,7 @@ export const gameState = {
   started: false,
   mode: 'lander',      // 'lander' | 'rover' | 'orbital'
   autoGyro: true,      // true = SAS Upright Stabilized | false = Free 360° Acrobatic Mode
-  hoverAssist: true,
+  hoverAssist: false,   // auto hold off by default (menu → Hover assist, or H)
   autoSoftLand: false,
   retroHold: false,    // SAS retrograde hold (engine against direction of travel)
   progradeHold: false, // SAS prograde hold (engine along direction of travel)

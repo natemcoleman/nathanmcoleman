@@ -207,7 +207,7 @@ function startA11Run() {
 
   // Start inside the crater's eastern half, flying west, ~20 km up — exactly where Eagle's computer was taking it
   const lat = WEST_CRATER.lat, lon = WEST_CRATER.lon + 0.6;
-  warpLanderToLandmark({ id: gameState.targetLandmarkId, lat: lat + 0.28, lon, shortName: 'West Crater' }, false);
+  warpLanderToLandmark({ id: gameState.targetLandmarkId, lat: lat + 0.28, lon, shortName: 'West Crater' }, false, false);
   const surfR = getSurfaceRadiusAtLatLon(lat, lon);
   latLonToVec3(lat, lon, surfR + landerFootOffset() + 1.2, lander.pos);
   lander.up.copy(lander.pos).normalize();

@@ -20,11 +20,12 @@ import { getSurfaceNormalAtPosition, getSurfaceRadiusAtPosition, sampleTerrainAt
 import { showToast } from './hud.js';
 import { sound } from './audio.js';
 import { ui } from './context-ui.js';
+import { applySmoothRoverChaseCamera } from './rover.js';
 
 // The astronaut is ~0.042 units tall; at that size one unit is about 43 m, so on-foot readouts use this human scale
 export const ASTRO_M_PER_UNIT = 43;
-const WALK = 0.09;           // ≈ 3.9 m/s on that scale
-const RUN = 0.18;            // bounding lope
+const WALK = 0.14;           // ≈ 6 m/s on that scale (game-fast, like the rover)
+const RUN = 0.5;             // bounding lope — SHIFT
 const JET_UP = 1.95;         // jetpack lift — just over lunar g (≈ 1.6 here), for gentle, precise climbs
 const JET_SIDE = 0.55;       // sideways jet thrust
 const JET_MAX_UP = 0.2;      // climb-rate cap (u/s)
@@ -53,6 +54,10 @@ export const astro = {
   airTime: 0,
   group: null,
   parts: null,
+  // So the rover's chase camera can follow the astronaut too
+  get forward() { return this.heading; },
+  get isGrounded() { return this.onGround; },
+  isTumbling: false,
 };
 globalThis.__lroAstro = astro;   // state.js can't import this module (it would be circular)
 
@@ -63,8 +68,6 @@ const _r = new THREE.Vector3();
 const _d = new THREE.Vector3();
 const _m = new THREE.Matrix4();
 const _q = new THREE.Quaternion();
-const _look = new THREE.Vector3();
-const _cam = new THREE.Vector3();
 
 // ---------------- Model: a white suit, gold visor and a backpack with jets ----------------
 function buildAstronaut() {
@@ -137,13 +140,11 @@ function stepOut() {
   astro.stumble = 0;
   astro.jetOn = 0;
   astro.active = true;
-  roverCam.astroInit = false;
   astro.group.visible = true;
   (rover.seatedCrew || []).forEach((m) => { m.visible = false; });
   rover.vel.set(0, 0, 0);
   rover.speed = 0;
   gameState.mode = 'astro';
-  roverCam.zoom = Math.max(roverCam.zoom, 0.68);
   showToast(ui.touch ? 'On foot. Stick to walk, hold JET to fly, tap Board to drive again' : 'EVA — WASD walk · SHIFT run · SPACE jetpack · V back in the rover', 'sage');
   sound.playPing(620, 0.1);
 }
@@ -310,23 +311,7 @@ function poseModel(dt) {
   parts.flames.forEach((f) => { f.scale.set(1, Math.max(0.01, astro.jetOn * flick), 1); });
 }
 
-// ---------------- Camera: close behind the astronaut, drag to look around ----------------
+// ---------------- Camera: exactly the rover's chase camera (same distance, drag and zoom) ----------------
 export function updateAstroCamera(dt) {
-  const up = astro.up;
-  if (!roverCam.dragging && astro.speed > 0.05) roverCam.userYaw *= Math.exp(-1.5 * dt);
-  _f.copy(astro.heading).applyAxisAngle(up, roverCam.userYaw);
-  const dist = 0.16 * roverCam.zoom / 0.68;
-  const pitch = 0.32 + roverCam.userPitch * 0.9;
-  _cam.copy(astro.pos)
-    .addScaledVector(_f, -dist * Math.cos(pitch))
-    .addScaledVector(up, 0.035 + dist * Math.sin(pitch));
-  const minR = getSurfaceRadiusAtPosition(_cam) + 0.012;
-  if (_cam.length() < minR) _cam.setLength(minR);
-  if (!roverCam.astroInit) { camera.position.copy(_cam); roverCam.astroInit = true; }
-  camera.position.lerp(_cam, Math.min(1, dt * 9));
-  camera.up.lerp(up, Math.min(1, dt * 8)).normalize();
-  _look.copy(astro.pos).addScaledVector(up, 0.03);
-  camera.lookAt(_look);
+  applySmoothRoverChaseCamera(dt, astro);
 }
-
-export function astroCameraReset() { roverCam.astroInit = false; }

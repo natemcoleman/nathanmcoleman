@@ -359,7 +359,6 @@ function showFindCard(f) {
 }
 
 // ---------------- Ping (sonar-style signal) ----------------
-const BEARINGS = ['ahead', 'ahead-right', 'right', 'behind-right', 'behind', 'behind-left', 'left', 'ahead-left'];
 export function pingFinds() {
   const now = performance.now();
   if (now - finds.lastPing < 1500) return;
@@ -389,6 +388,8 @@ export function pingFinds() {
   pill.classList.remove('hidden');
   finds.signalTimer = 9;
   if (!target) {
+    finds.pingTarget = null;
+    document.getElementById('signal-arrow').style.display = 'none';
     bars.textContent = '▯▯▯▯▯';
     txt.textContent = 'No signal within 700 km — try another region, or track a find from the Journal';
     sound.playPing(300, 0.25);
@@ -400,27 +401,36 @@ export function pingFinds() {
   finds.lastDist.set(target.id, dist);
   let trend = '';
   if (prev !== undefined) trend = dist < prev - 0.05 ? 'stronger ↑' : (dist > prev + 0.05 ? 'weaker ↓' : 'steady');
-  // Bearing relative to the camera (same frame as the waypoint arrow)
-  let bearing = '';
-  const to = target.unit.clone().sub(up);
-  to.addScaledVector(up, -to.dot(up));
-  const camFwd = new THREE.Vector3();
-  camera.getWorldDirection(camFwd);
-  camFwd.addScaledVector(up, -camFwd.dot(up));
-  if (to.lengthSq() > 1e-10 && camFwd.lengthSq() > 1e-8) {
-    to.normalize(); camFwd.normalize();
-    const right = new THREE.Vector3().crossVectors(camFwd, up).normalize();
-    const deg = THREE.MathUtils.radToDeg(Math.atan2(to.dot(right), to.dot(camFwd)));
-    bearing = BEARINGS[((Math.round(deg / 45) % 8) + 8) % 8];
-  }
+  // Direction: an arrow in the signal panel, updated live (see updateSignalArrow)
+  finds.pingTarget = target;
+  updateSignalArrow();
   const parts = [];
   if (tracked) parts.push('tracked signal');
   if (dist < 1) parts.push('very close — look around');
-  else if (bearing) parts.push(`strongest ${bearing}`);
+  else parts.push(dist < 3 ? 'close' : dist < 8 ? 'nearby' : 'far');
   if (trend) parts.push(trend);
   txt.textContent = parts.join(' · ');
   sound.playPing(380 + n * 140, 0.22);
   if (n >= 4) setTimeout(() => sound.playPing(520 + n * 140, 0.16), 140);
+}
+
+// Arrow pointing to the pinged find, relative to where the camera is looking (straight up = ahead)
+const _sa = new THREE.Vector3(), _sf = new THREE.Vector3(), _sr = new THREE.Vector3();
+function updateSignalArrow() {
+  const el = document.getElementById('signal-arrow');
+  const t = finds.pingTarget;
+  if (!el) return;
+  if (!t || !t.unit) { el.style.display = 'none'; return; }
+  const up = activeCraftForFinds().craft.up;
+  _sa.copy(t.unit).addScaledVector(up, -t.unit.dot(up));          // direction along the ground
+  camera.getWorldDirection(_sf);
+  _sf.addScaledVector(up, -_sf.dot(up));
+  if (_sa.lengthSq() < 1e-12 || _sf.lengthSq() < 1e-10) { el.style.display = 'none'; return; }
+  _sa.normalize(); _sf.normalize();
+  _sr.crossVectors(_sf, up).normalize();
+  const deg = THREE.MathUtils.radToDeg(Math.atan2(_sa.dot(_sr), _sa.dot(_sf)));
+  el.style.display = '';
+  el.style.transform = `rotate(${deg.toFixed(1)}deg)`;
 }
 
 function trackFind(id) {
@@ -435,7 +445,8 @@ export function updateFinds(dt, now) {
   updateFindMarkers(now);
   if (finds.signalTimer > 0) {
     finds.signalTimer -= dt;
-    if (finds.signalTimer <= 0) document.getElementById('signal-pill').classList.add('hidden');
+    updateSignalArrow();
+    if (finds.signalTimer <= 0) { document.getElementById('signal-pill').classList.add('hidden'); finds.pingTarget = null; }
   }
   if (finds.cardTimer > 0) {
     finds.cardTimer -= dt;

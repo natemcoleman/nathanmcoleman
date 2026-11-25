@@ -324,7 +324,7 @@ export function bindInputs() {
     setTimeout(() => say('welcome'), 1800);
     maybeStartTutorial();
     if (save.loaded) showToast(welcomeBackText(), 'sage');
-    else showToast(ui.touch ? 'Left thumb to fly · hold THRUST to hover, slide up or down to climb or descend' : 'WASD to fly · SPACE engine · press G to auto-land', 'gold');
+    else showToast(ui.touch ? 'You’re on the ground at Tranquility Base · Deploy Rover to drive, LIFT OFF to fly' : 'On the ground at Tranquility Base · R deploys the rover · SPACE lifts off', 'gold');
   });
 
   document.getElementById('start-open-kit-btn').addEventListener('click', () => {
