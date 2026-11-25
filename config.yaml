@@ -13,18 +13,6 @@ menu:
       name: Blog
       url: /blog
       weight: 40
-    - identifier: configurator
-      name: Mini Radar
-      url: /radar/
-      weight: 30  
-    - identifier: venn
-      name: Venn
-      url: /venn/
-      weight: 35
-    - identifier: rover
-      name: Moon Rover
-      url: /rover/
-      weight: 36
     - identifier: projects
       name: Projects
       url: /projects
