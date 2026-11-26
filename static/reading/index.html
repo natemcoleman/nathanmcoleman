@@ -18,7 +18,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .today{background:transparent;border:1.5px solid #9fb4d2;color:#f4f7fb}
 .today.on{background:var(--acc);border-color:var(--acc);color:#1d0b05}
 .tabs{position:sticky;top:0;z-index:5;display:flex;background:var(--band);padding:0 max(5vw,16px);gap:4px;border-bottom:1px solid var(--line)}
-.tabs a{color:#c9d6e8;text-decoration:none;padding:12px 14px;min-height:44px;border-bottom:3px solid transparent;font-weight:500}
+.tabs{overflow-x:auto;scrollbar-width:none}.tabs a{flex:none;color:#c9d6e8;text-decoration:none;padding:12px 12px;min-height:44px;border-bottom:3px solid transparent;font-weight:500}
 .tabs a[aria-current]{color:#fff;border-color:var(--acc)}
 main{max-width:760px;margin:0 auto;padding:20px 16px 90px}
 .btn{min-height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:var(--card);cursor:pointer;font-weight:500;white-space:nowrap}
@@ -77,10 +77,11 @@ select{min-height:40px;border-radius:10px;border:1px solid var(--line);backgroun
 .calsum{color:var(--mut);margin:14px 0 0}
 .sheet{position:fixed;inset:0;z-index:20;background:rgba(10,15,25,.45);display:flex;align-items:flex-end;justify-content:center}
 .sheet[hidden]{display:none}
-.panel{background:var(--bg);width:min(620px,100%);max-height:90vh;overflow:auto;border-radius:20px 20px 0 0;padding:22px 18px 28px;animation:up .22s ease-out}
+.panel{background:var(--bg);width:min(620px,100%);max-height:90vh;max-height:90dvh;overflow:auto;border-radius:20px 20px 0 0;padding:22px 18px 0;animation:up .22s ease-out}
 @keyframes up{from{transform:translateY(30px);opacity:0}}
 @media (prefers-reduced-motion:reduce){.panel{animation:none}}
 .panel h2{margin-bottom:4px}
+.panel>.acts:last-child{position:sticky;bottom:0;z-index:2;margin:18px -18px 0;padding:12px 18px calc(14px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--line);box-shadow:0 -6px 16px rgba(0,0,0,.06)}
 .fld{display:grid;gap:4px;margin-top:12px}.fld span{font-size:13px;color:var(--mut);font-weight:500}
 .fld input,.fld select,.fld textarea{width:100%;min-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--card);padding:8px 12px;font-size:16px}
 .two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
@@ -104,19 +105,26 @@ select{min-height:40px;border-radius:10px;border:1px solid var(--line);backgroun
 .bar{height:10px;border-radius:99px;background:var(--line);overflow:hidden;margin:12px 0 8px}.bar i{display:block;height:100%;background:var(--acc);border-radius:99px}
 .foot{color:var(--mut);font-size:13px;text-align:center;margin:32px 0 0}
 .sugg button{display:flex;gap:12px;align-items:center}
-@media(max-width:600px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stat{padding:10px}.two{grid-template-columns:1fr}.rate{grid-template-columns:repeat(5,minmax(0,1fr))}.top{padding-top:20px}.rank{display:none}}
+@media(max-width:600px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stat{padding:10px}.two{grid-template-columns:1fr}.rate{grid-template-columns:repeat(5,minmax(0,1fr))}.top{padding-top:20px}.rank{display:none}.tabs{padding:0 8px;gap:0}.tabs a{padding:12px 10px}}
 </style></head><body><div id="root"></div><template id="shell">
 <header class="top"><div><a href="/projects/" style="color:#c9d6e8;font-size:14px">← Projects</a><h1>My reading</h1><p id="sum" class="sum"></p></div><button class="btn today" data-act="today" id="todayBtn">I read today</button></header>
-<nav class="tabs"><a href="#queue" data-tab="queue">Queue</a><a href="#finished" data-tab="finished">Finished</a><a href="#calendar" data-tab="calendar">Calendar</a></nav>
+<nav class="tabs"><a href="#queue" data-tab="queue">Queue</a><a href="#wishlist" data-tab="wishlist">Wishlist</a><a href="#finished" data-tab="finished">Finished</a><a href="#calendar" data-tab="calendar">Calendar</a></nav>
 <main>
-<section id="v-queue">
+<div id="addbox">
 <form class="search" id="sform"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><label for="q" class="sr">Add a book by title</label><input id="q" type="search" autocomplete="off" placeholder="Add a book: type a title"><button class="btn pri sm" type="submit">Find</button></form>
 <p id="hint" class="hint">Start typing a title. Author, pages, genre and tags fill in for you.</p>
 <ul id="sugg" class="sugg"></ul>
+</div>
+<section id="v-queue">
 <div id="reading"></div>
 <div class="listhead"><h2>Up next</h2><span class="meta" id="qhint">Drag the grip to reorder</span></div>
 <div id="qchips" class="chips"></div>
 <ol id="qlist" class="list"></ol>
+</section>
+<section id="v-wishlist" hidden>
+<div class="listhead"><h2>Wishlist</h2><span class="meta" id="wcount"></span></div>
+<div id="wchips" class="chips"></div>
+<ul id="wlist" class="list"></ul>
 </section>
 <section id="v-finished" hidden>
 <div id="dgoal"></div><div class="stats" id="dstats"></div>
@@ -158,7 +166,7 @@ const GC={'Fiction':'#3b6fb6','Literary fiction':'#2f8f9d','Sci-fi':'#6a4bc4','F
 const gcol=g=>GC[g]||'hsl('+hue(g)+' 45% 42%)';
 const cov=(b,c)=>'<span class="art '+(c||'')+'" style="--c:'+gcol(b.genre)+'" aria-hidden="true">'+esc(String(b.title||'?').trim().charAt(0))+(/^https:\/\//.test(String(b.cover||''))?'<img src="'+esc(b.cover)+'" alt="" loading="lazy">':'')+'</span>';
 document.addEventListener('error',e=>{const t=e.target;if(t&&t.tagName==='IMG'&&t.parentElement&&t.parentElement.classList.contains('art'))t.remove()},true);
-let moreTags={qf:false,df:false};
+let moreTags={qf:false,df:false,wf:false},wf='';
 const GRIP='<svg width="14" height="20" viewBox="0 0 14 20" fill="currentColor" aria-hidden="true"><circle cx="4" cy="4" r="1.8"/><circle cx="10" cy="4" r="1.8"/><circle cx="4" cy="10" r="1.8"/><circle cx="10" cy="10" r="1.8"/><circle cx="4" cy="16" r="1.8"/><circle cx="10" cy="16" r="1.8"/></svg>';
 
 function buildDoc(){
@@ -176,7 +184,7 @@ async function flush(){
   }
 }
 
-function render(){renderHead();renderQueue();renderDone();renderCal();showTab()}
+function render(){renderHead();renderQueue();renderWish();renderDone();renderCal();showTab()}
 function renderHead(){
   const y=String(new Date().getFullYear());
   const done=S.books.filter(b=>b.status==='done'&&!b.dnf&&String(b.finished||'').startsWith(y)).length;
@@ -200,6 +208,12 @@ function renderQueue(){
   $('#qchips').innerHTML=chipsHtml(q,qf,'qf');
   $('#qhint').textContent=qf?'Clear the filter to reorder':(q.length>1?'Drag the grip to reorder':'');
   $('#qlist').innerHTML=q.length?q.map((b,i)=>has(b,qf)?'<li class="row" data-id="'+esc(b.id)+'">'+(qf?'':'<button class="handle" data-drag aria-label="Drag to reorder '+esc(b.title)+'">'+GRIP+'</button>')+'<span class="rank">'+(i+1)+'</span>'+cov(b)+'<button class="main" data-act="open" data-id="'+esc(b.id)+'"><div class="ttl">'+esc(b.title)+'</div>'+metaLine(b)+'</button><button class="btn sm" data-act="start" data-id="'+esc(b.id)+'">Start</button></li>':'').join(''):'<li class="empty">Your queue is empty. Add a book above.</li>';
+}
+function renderWish(){
+  const w=S.books.filter(b=>b.status==='wish').sort((a,b)=>String(b.added).localeCompare(String(a.added)));if(wf&&!w.some(b=>has(b,wf)))wf='';
+  $('#wcount').textContent=w.length?w.length+(w.length===1?' book':' books'):'';
+  $('#wchips').innerHTML=chipsHtml(w,wf,'wf');
+  $('#wlist').innerHTML=w.length?w.filter(b=>has(b,wf)).map(b=>'<li class="row" data-id="'+esc(b.id)+'">'+cov(b)+'<button class="main" data-act="open" data-id="'+esc(b.id)+'"><div class="ttl">'+esc(b.title)+'</div>'+metaLine(b)+(b.note?'<div class="meta"><em>'+esc(b.note)+'</em></div>':'')+'</button><button class="btn sm" data-act="toqueue" data-id="'+esc(b.id)+'">To queue</button></li>').join(''):'<li class="empty">Drop any book you hear about here. When you are ready to read one, tap To queue.</li>';
 }
 function renderDone(){
   const d=S.books.filter(b=>b.status==='done');if(df&&!d.some(b=>has(b,df)))df='';
@@ -230,8 +244,8 @@ function renderCal(){
   $('#calsum').textContent=cnt?cnt+(cnt===1?' reading day':' reading days')+' this month. Tap any day to mark or unmark it.':'Tap a day to mark that you read. No streaks, no pressure.';
   $('#calbooks').innerHTML=ev.map(b=>'<li class="row">'+cov(b,'sm')+'<div class="main"><div class="ttl">'+esc(b.title)+'</div><div class="meta">'+[String(b.started||'').startsWith(mk)?'Started '+fd(b.started):'',String(b.finished||'').startsWith(mk)?(b.dnf?'Stopped ':'Finished ')+fd(b.finished):''].filter(Boolean).map(esc).join(' · ')+'</div></div></li>').join('');
 }
-const tab=()=>({'#finished':'finished','#calendar':'calendar'})[location.hash]||'queue';
-function showTab(){const t=tab();['queue','finished','calendar'].forEach(k=>{$('#v-'+k).hidden=k!==t});document.querySelectorAll('.tabs a').forEach(a=>{a.dataset.tab===t?a.setAttribute('aria-current','page'):a.removeAttribute('aria-current')})}
+const tab=()=>({'#wishlist':'wishlist','#finished':'finished','#calendar':'calendar'})[location.hash]||'queue';
+function showTab(){const t=tab();['queue','wishlist','finished','calendar'].forEach(k=>{$('#v-'+k).hidden=k!==t});$('#addbox').hidden=!(t==='queue'||t==='wishlist');$('#q').placeholder=t==='wishlist'?'Add to wishlist: type a title':'Add to queue: type a title';document.querySelectorAll('.tabs a').forEach(a=>{a.dataset.tab===t?a.setAttribute('aria-current','page'):a.removeAttribute('aria-current')})}
 
 let toastT=null,undoFn=null;
 function toast(msg,undo){const el=$('#toast');undoFn=undo||null;el.innerHTML='<span>'+esc(msg)+'</span>'+(undo?'<button data-act="undo">Undo</button>':'');el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{el.hidden=true;undoFn=null},5000)}
@@ -243,7 +257,7 @@ function tagsEditor(){return draftTags.map((t,i)=>'<span class="tag">'+esc(t)+' 
 function openBook(id,draft){
   const b=id?byId(id):draft;editId=id;draftTags=[...(b.tags||[])];
   const gs=[...new Set([...S.genres,b.genre].filter(Boolean))];
-  const acts=b.status==='queue'?'<button class="btn sm" data-act="top">Move to top</button><button class="btn sm" data-act="start" data-id="'+esc(id)+'">Start reading</button>':b.status==='reading'?'<button class="btn sm" data-act="finish" data-id="'+esc(id)+'">Finish</button><button class="btn sm" data-act="back">Back to queue</button>':b.status==='done'?'<button class="btn sm" data-act="finish" data-id="'+esc(id)+'">Change rating</button><button class="btn sm" data-act="requeue">Read again</button>':'';
+  const acts=b.status==='wish'?'<button class="btn sm" data-act="toqueue" data-id="'+esc(id)+'">Move to queue</button><button class="btn sm" data-act="start" data-id="'+esc(id)+'">Start reading</button>':b.status==='queue'?'<button class="btn sm" data-act="top">Move to top</button><button class="btn sm" data-act="start" data-id="'+esc(id)+'">Start reading</button><button class="btn sm" data-act="towish">Move to wishlist</button>':b.status==='reading'?'<button class="btn sm" data-act="finish" data-id="'+esc(id)+'">Finish</button><button class="btn sm" data-act="back">Back to queue</button>':b.status==='done'?'<button class="btn sm" data-act="finish" data-id="'+esc(id)+'">Change rating</button><button class="btn sm" data-act="requeue">Read again</button>':'';
   openSheet('<h2>'+(id?esc(b.title):'Add a book')+'</h2>'+(b.blurb?'<p class="meta">'+esc(b.blurb)+'</p>':'')+(id?'<div class="acts" style="margin-top:8px">'+acts+'</div>':'')+
   '<label class="fld"><span>Title</span><input id="f-title" value="'+esc(b.title)+'"></label><label class="fld"><span>Author</span><input id="f-author" value="'+esc(b.author)+'"></label>'+
   '<div class="two"><label class="fld"><span>Pages</span><input id="f-pages" inputmode="numeric" value="'+esc(b.pages)+'"></label><label class="fld"><span>Year</span><input id="f-year" inputmode="numeric" value="'+esc(b.year)+'"></label></div>'+
@@ -258,7 +272,7 @@ function saveBook(){
   if(!v('title'))return;
   const data={title:v('title'),author:v('author'),pages:parseInt(v('pages'))||'',year:parseInt(v('year'))||'',genre:g,tags:draftTags,note:v('note')};
   if(g&&!S.genres.includes(g))S.genres.push(g);
-  if(editId)Object.assign(byId(editId),data);else S.books.push({id:uid(),status:'queue',added:today(),...data});
+  if(editId)Object.assign(byId(editId),data);else S.books.push({id:uid(),status:tab()==='wishlist'?'wish':'queue',added:today(),...data});
   closeSheet();save();render();
 }
 function openFinish(id){
@@ -325,9 +339,9 @@ function pick(i){
   const r=results[i];if(!r)return;
   if(S.books.some(b=>b.title.toLowerCase()===String(r.title).toLowerCase()&&b.status!=='done')){toast('Already on your list');return}
   const g=String(r.genre||'').trim();if(g&&!S.genres.includes(g))S.genres.push(g);
-  const b={id:uid(),title:String(r.title),subtitle:String(r.subtitle||''),author:String(r.author||''),year:parseInt(r.year)||'',pages:parseInt(r.pages)||'',genre:g,tags:(Array.isArray(r.tags)?r.tags:[]).map(String).slice(0,5),blurb:String(r.blurb||''),cover:/^https:\/\//.test(String(r.cover||''))?String(r.cover):'',status:'queue',added:today()};
+  const b={id:uid(),title:String(r.title),subtitle:String(r.subtitle||''),author:String(r.author||''),year:parseInt(r.year)||'',pages:parseInt(r.pages)||'',genre:g,tags:(Array.isArray(r.tags)?r.tags:[]).map(String).slice(0,5),blurb:String(r.blurb||''),cover:/^https:\/\//.test(String(r.cover||''))?String(r.cover):'',status:tab()==='wishlist'?'wish':'queue',added:today()};
   S.books.push(b);results=[];$('#q').value='';$('#q').blur();$('#sugg').innerHTML='';$('#hint').textContent='Added. Type another title to keep going.';
-  save();render();toast('Added '+b.title,()=>{S.books=S.books.filter(x=>x!==b);save();render()});
+  save();render();toast((b.status==='wish'?'Added to wishlist: ':'Added to queue: ')+b.title,()=>{S.books=S.books.filter(x=>x!==b);save();render()});
 }
 
 root.addEventListener('submit',e=>{e.preventDefault();clearTimeout(deb);lookup($('#q').value,true)});
@@ -349,6 +363,9 @@ root.addEventListener('click',e=>{
   else if(a==='addtag')addTag();
   else if(a==='rmtag'){draftTags.splice(+el.dataset.i,1);$('#f-tags').innerHTML=tagsEditor()}
   else if(a==='top'){moveToQueueTop(b);closeSheet();save();render()}
+  else if(a==='wf'){wf=el.dataset.v;renderWish()}
+  else if(a==='toqueue'){S.books=S.books.filter(x=>x!==b);b.status='queue';S.books.push(b);closeSheet();save();render();toast('Moved to the end of your queue: '+b.title)}
+  else if(a==='towish'){b.status='wish';b.added=today();closeSheet();save();render();toast('Moved to your wishlist: '+b.title)}
   else if(a==='back'){moveToQueueTop(b);closeSheet();save();render();toast('Back at the top of your queue')}
   else if(a==='requeue'){const c={...b,id:uid(),status:'queue',added:today(),rating:null,dnf:false,finished:'',started:'',qrank:'',tags:(b.tags||[]).filter(t=>t!=='DNF')};S.books.push(c);closeSheet();save();render();toast('Added to your queue again')}
   else if(a==='del'){if(el.dataset.sure){const i=S.books.indexOf(b);S.books.splice(i,1);closeSheet();save();render();toast('Deleted '+b.title,()=>{S.books.splice(i,0,b);save();render()})}else{el.dataset.sure=1;el.textContent='Tap again to delete'}}
@@ -356,7 +373,7 @@ root.addEventListener('click',e=>{
   else if(a==='pick')pick(+el.dataset.i);
   else if(a==='manual'){const t=$('#q').value.trim();$('#q').value='';results=[];$('#sugg').innerHTML='';openBook(null,{title:t,genre:S.genres[0]||'',tags:[]})}
   else if(a==='qf'){qf=el.dataset.v;renderQueue()}
-  else if(a==='moretags'){const k=el.dataset.k;moreTags[k]=!moreTags[k];if(!moreTags[k]){if(k==='qf'&&qf&&!S.books.some(x=>x.genre===qf))qf='';if(k==='df'&&df&&!S.books.some(x=>x.genre===df))df=''}k==='qf'?renderQueue():renderDone()}
+  else if(a==='moretags'){const k=el.dataset.k;moreTags[k]=!moreTags[k];if(!moreTags[k]){if(k==='wf'&&wf&&!S.books.some(x=>x.genre===wf))wf='';if(k==='qf'&&qf&&!S.books.some(x=>x.genre===qf))qf='';if(k==='df'&&df&&!S.books.some(x=>x.genre===df))df=''}k==='qf'?renderQueue():k==='wf'?renderWish():renderDone()}
   else if(a==='goal')openSheet('<h2>Yearly goal</h2><p class="meta">How many books would you like to finish this year? You can change it any time.</p><label class="fld"><span>Books</span><input id="f-goal" type="number" inputmode="numeric" min="1" max="365" value="'+(S.goal||12)+'"></label><div class="acts"><button class="btn pri" data-act="savegoal">Save</button><button class="btn" data-act="close">Cancel</button></div>')
   else if(a==='savegoal'){const g=parseInt($('#f-goal').value);if(g>0){S.goal=Math.min(365,g);closeSheet();save();render()}}
   else if(a==='df'){df=el.dataset.v;renderDone()}
