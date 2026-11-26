@@ -17,6 +17,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 .sum{margin:6px 0 0;color:#c9d6e8;font-size:15px}
 .today{background:transparent;border:1.5px solid #9fb4d2;color:#f4f7fb}
 .today.on{background:var(--acc);border-color:var(--acc);color:#1d0b05}
+.hbtns{display:flex;gap:8px;flex-wrap:wrap}
+.today.sync.on{background:transparent;border-color:#9fb4d2;color:#f4f7fb}
+.codebox{font:600 21px/1.3 Inter,system-ui,sans-serif;letter-spacing:.02em;background:var(--panel);border-radius:12px;padding:14px 16px;margin:8px 0 12px;overflow-wrap:anywhere;user-select:all}
+.panel h3{font:600 19px/1.2 Literata,Georgia,serif;margin:26px 0 2px}
 .tabs{position:sticky;top:0;z-index:5;display:flex;background:var(--band);padding:0 max(5vw,16px);gap:4px;border-bottom:1px solid var(--line)}
 .tabs{overflow-x:auto;scrollbar-width:none}.tabs a{flex:none;color:#c9d6e8;text-decoration:none;padding:12px 12px;min-height:44px;border-bottom:3px solid transparent;font-weight:500}
 .tabs a[aria-current]{color:#fff;border-color:var(--acc)}
@@ -107,7 +111,7 @@ select{min-height:40px;border-radius:10px;border:1px solid var(--line);backgroun
 .sugg button{display:flex;gap:12px;align-items:center}
 @media(max-width:600px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stat{padding:10px}.two{grid-template-columns:1fr}.rate{grid-template-columns:repeat(5,minmax(0,1fr))}.top{padding-top:20px}.rank{display:none}.tabs{padding:0 8px;gap:0}.tabs a{padding:12px 10px}}
 </style></head><body><div id="root"></div><template id="shell">
-<header class="top"><div><a href="/projects/" style="color:#c9d6e8;font-size:14px">← Projects</a><h1>My reading</h1><p id="sum" class="sum"></p></div><button class="btn today" data-act="today" id="todayBtn">I read today</button></header>
+<header class="top"><div><a href="/projects/" style="color:#c9d6e8;font-size:14px">← Projects</a><h1>My reading</h1><p id="sum" class="sum"></p></div><div class="hbtns"><button class="btn today sync" data-act="sync" id="syncBtn">Sync</button><button class="btn today" data-act="today" id="todayBtn">I read today</button></div></header>
 <nav class="tabs"><a href="#queue" data-tab="queue">Queue</a><a href="#finished" data-tab="finished">Finished</a><a href="#calendar" data-tab="calendar">Calendar</a><a href="#wishlist" data-tab="wishlist">Wishlist</a></nav>
 <main>
 <div id="addbox">
@@ -138,7 +142,7 @@ select{min-height:40px;border-radius:10px;border:1px solid var(--line);backgroun
 <p class="calsum" id="calsum"></p>
 <ul id="calbooks" class="list"></ul>
 </section>
-<p class="foot">Your lists are saved in this browser only.</p>
+<p class="foot" id="foot">Your lists are saved in this browser only.</p>
 </main>
 <div id="sheet" class="sheet" hidden><div class="panel" role="dialog" aria-modal="true" id="panel"></div></div>
 <div id="toast" class="toast" hidden></div>
@@ -173,7 +177,7 @@ function buildDoc(){
   const st=JSON.stringify(S).replace(/</g,'\\u003c');
   return '<!DOCTYPE html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reading Queue</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="'+FONT+'" rel="stylesheet"><style id="css">'+$('#css').textContent+'</style></head><body><div id="root"></div><template id="shell">'+$('#shell').innerHTML+'</template><script type="application/json" id="state">'+st+'<\/script><script id="app">'+$('#app').textContent+'<\/script></body></html>';
 }
-function save(){S.saved=Date.now();try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}clearTimeout(timer);if(art&&canSave){setStatus('Saving…');timer=setTimeout(flush,1800)}}
+function save(){S.saved=Date.now();try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}schedulePush();clearTimeout(timer);if(art&&canSave){setStatus('Saving…');timer=setTimeout(flush,1800)}}
 function busy(){const a=document.activeElement;return sheetOpen||dragging||(a&&a.id==='q'&&a.value)}
 async function flush(){
   if(busy()){timer=setTimeout(flush,1500);return}
@@ -369,6 +373,7 @@ root.addEventListener('click',e=>{
   else if(a==='back'){moveToQueueTop(b);closeSheet();save();render();toast('Back at the top of your queue')}
   else if(a==='requeue'){const c={...b,id:uid(),status:'queue',added:today(),rating:null,dnf:false,finished:'',started:'',qrank:'',tags:(b.tags||[]).filter(t=>t!=='DNF')};S.books.push(c);closeSheet();save();render();toast('Added to your queue again')}
   else if(a==='del'){if(el.dataset.sure){const i=S.books.indexOf(b);S.books.splice(i,1);closeSheet();save();render();toast('Deleted '+b.title,()=>{S.books.splice(i,0,b);save();render()})}else{el.dataset.sure=1;el.textContent='Tap again to delete'}}
+  else if(['sync','syncon','synccode','copycode','syncnow','newcode','syncoff','backup','restore'].includes(a))syncAction(a,el);
   else if(a==='undo'){if(undoFn)undoFn();$('#toast').hidden=true;undoFn=null}
   else if(a==='pick')pick(+el.dataset.i);
   else if(a==='manual'){const t=$('#q').value.trim();$('#q').value='';results=[];$('#sugg').innerHTML='';openBook(null,{title:t,genre:S.genres[0]||'',tags:[]})}
@@ -385,7 +390,98 @@ root.addEventListener('pointermove',e=>{if(!dragging)return;const y=e.clientY,{l
 function endDrag(){if(!dragging)return;const order=[...dragging.list.children].map(x=>x.dataset.id);dragging.li.classList.remove('dragging');dragging=null;const q=order.map(byId).filter(Boolean);S.books=[...S.books.filter(b=>b.status!=='queue'),...q];save();render()}
 root.addEventListener('pointerup',endDrag);root.addEventListener('pointercancel',endDrag);
 addEventListener('hashchange',showTab);
-render();
+const SC='reading-sync-code',SR='reading-sync-rev',SA='reading-sync-at',API='/api/reading';
+const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+const lsSet=(k,v)=>{try{v===null?localStorage.removeItem(k):localStorage.setItem(k,String(v))}catch(e){}};
+const sync={code:lsGet(SC)||'',rev:lsGet(SR)===null?null:Number(lsGet(SR)),at:Number(lsGet(SA)||0),state:'off',pushing:false,pending:false,t:null};
+const WORDS='amber anchor apple arrow aspen atlas basil birch bison bloom brook cedar cinder clover comet coral crane delta dune ember fable fern fjord flint forest frost garnet glade harbor hazel heron iris ivory juniper kestrel lagoon lark linen lotus maple meadow mesa moss nectar oak ocean olive opal orchid otter pebble pine plum prairie quartz raven reef ridge river robin saffron sage sierra slate sparrow spruce summit thistle tidal topaz tundra violet willow wren'.split(' ');
+const B32='abcdefghjkmnpqrstuvwxyz23456789';
+function genCode(){const r=crypto.getRandomValues(new Uint32Array(10));let c='';for(let i=2;i<10;i++){c+=B32[r[i]%B32.length];if(i===5)c+='-'}return WORDS[r[0]%WORDS.length]+'-'+WORDS[r[1]%WORDS.length]+'-'+c}
+const normCode=c=>String(c||'').trim().toLowerCase().replace(/[\s_]+/g,'-');
+const okCode=c=>c.length>=16&&c.length<=64&&/^[a-z0-9]+(-[a-z0-9]+)*$/.test(c);
+function keepSync(){lsSet(SC,sync.code||null);lsSet(SR,sync.rev===null?null:sync.rev);lsSet(SA,sync.at||null)}
+async function api(method,q,body){
+  const r=await fetch(API+(q||''),{method,cache:'no-store',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});
+  let j=null;try{j=await r.json()}catch(e){}
+  return{status:r.status,body:j};
+}
+const SYNC_LABEL={off:'Sync',ok:'Synced',saving:'Syncing…',offline:'Sync paused',unavailable:'Sync',gone:'Sync stopped'};
+function setSync(st){
+  sync.state=st;const b=$('#syncBtn');if(b){b.textContent=SYNC_LABEL[st]||'Sync';b.classList.toggle('on',st==='ok')}
+  const f=$('#foot');if(f)f.textContent=!sync.code?'Your lists are saved in this browser only. Tap Sync to use them on other devices.':st==='ok'?'Synced across your devices.':st==='saving'?'Syncing…':st==='unavailable'?'Sync is not available on this copy of the page. Your lists are saved in this browser.':st==='gone'?'This sync code no longer works, maybe because a new one was made. Tap Sync to enter the new code.':'Can’t reach sync right now. Your changes are saved here and will sync when you’re back online.';
+  const s=$('#syncstat');if(s)s.textContent=f?f.textContent:'';
+}
+function applyRemote(rec,note){
+  const d=rec.data||{};S=d;S.books=S.books||[];S.days=S.days||[];S.genres=S.genres||[];S.saved=S.saved||rec.saved||Date.now();
+  try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}
+  sync.rev=rec.rev;sync.at=S.saved;keepSync();setSync('ok');render();if(note)toast(note);
+}
+function schedulePush(){if(!sync.code||sync.state==='gone')return;clearTimeout(sync.t);setSync('saving');sync.t=setTimeout(()=>push(false),1200)}
+async function push(force){
+  if(!sync.code)return;if(sync.pushing){sync.pending=true;return}
+  sync.pushing=true;const snap=S.saved;
+  try{
+    const r=await api('PUT','',{code:sync.code,data:S,base:sync.rev,force:!!force});
+    if(r.status===200&&r.body){sync.rev=r.body.rev;sync.at=snap;keepSync();setSync(S.saved>snap?'saving':'ok');if(S.saved>snap)sync.pending=true}
+    else if(r.status===409&&r.body){const theirs=(r.body.data&&r.body.data.saved)||r.body.saved||0;if(S.saved>theirs){sync.rev=r.body.rev;sync.pending=true}else applyRemote(r.body,'Loaded newer lists from another device')}
+    else setSync(r.body?'offline':'unavailable');
+  }catch(e){setSync('offline')}
+  finally{sync.pushing=false;if(sync.pending){sync.pending=false;push(false)}}
+}
+async function pull(){
+  if(!sync.code||sheetOpen||dragging||sync.pushing)return;
+  try{
+    const r=await api('GET','?code='+encodeURIComponent(sync.code));
+    const dirty=S.saved>sync.at;
+    if(r.status===200&&r.body){
+      if(r.body.rev===sync.rev){dirty?push(false):setSync('ok')}
+      else if(!dirty)applyRemote(r.body,sync.rev===null?'':'Updated from another device');
+      else{const theirs=(r.body.data&&r.body.data.saved)||r.body.saved||0;if(S.saved>theirs){sync.rev=r.body.rev;push(false)}else applyRemote(r.body,'Loaded newer lists from another device')}
+    }else if(r.status===404&&r.body){if(sync.rev===null)push(false);else setSync('gone')}
+    else setSync(r.body?'offline':'unavailable');
+  }catch(e){setSync('offline')}
+}
+function syncSheet(msg){
+  const backup='<h3>Backup</h3><p class="meta">A copy of all your lists as text. Keep it somewhere safe, or paste it into another browser.</p><div class="acts" style="margin-top:8px"><button class="btn sm" data-act="backup">Copy backup</button></div><label class="fld"><span>Restore from a backup</span><textarea id="f-restore" rows="2" placeholder="Paste a backup here"></textarea></label><div class="acts" style="margin-top:8px"><button class="btn sm" data-act="restore">Restore</button></div>';
+  const m=msg?'<p class="hint" role="status">'+esc(msg)+'</p>':'';
+  openSheet(sync.code&&sync.state!=='gone'
+    ?'<h2>Sync is on</h2><p class="meta" id="syncstat"></p><p class="lab" style="margin:16px 0 0">Your sync code</p><div class="codebox">'+esc(sync.code)+'</div><div class="acts" style="margin-top:0"><button class="btn pri sm" data-act="copycode">Copy code</button><button class="btn sm" data-act="syncnow">Sync now</button></div>'+m+'<p>On another phone or computer, open this page, tap <b>Sync</b> and enter the code. Keep it private: anyone with it can see and change your lists.</p><div class="acts" style="margin-top:8px"><button class="btn sm" data-act="newcode">Make a new code</button><button class="btn sm warn" data-act="syncoff">Turn off on this browser</button></div>'+backup+'<div class="acts"><button class="btn" data-act="close">Done</button></div>'
+    :'<h2>Sync across devices</h2><p>Keep these lists on your phone, laptop and any other browser. Sync makes a private code; enter it once on each device.</p><div class="acts" style="margin-top:8px"><button class="btn pri" data-act="syncon">Turn on sync</button></div><h3>Already have a code?</h3><label class="fld"><span>Sync code</span><input id="f-code" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="e.g. river-falcon-7q2m-k9xd"></label><div class="acts" style="margin-top:8px"><button class="btn sm" data-act="synccode">Use this code</button></div>'+m+backup+'<div class="acts"><button class="btn" data-act="close">Done</button></div>');
+  setSync(sync.state);
+}
+async function syncAction(a,el){
+  if(a==='sync')syncSheet();
+  else if(a==='syncon'){sync.code=genCode();sync.rev=null;sync.at=0;keepSync();setSync('saving');await push(true);syncSheet(sync.state==='ok'?'Sync is on. Copy your code to use it on other devices.':'')}
+  else if(a==='synccode'){
+    const c=normCode($('#f-code').value);if(!okCode(c)){syncSheet('That doesn’t look like a sync code. It has four parts, like river-falcon-7q2m-k9xd.');return}
+    el.disabled=true;let r;try{r=await api('GET','?code='+encodeURIComponent(c))}catch(e){r={status:0}}el.disabled=false;
+    if(r.status===200&&r.body){
+      if(S.books.length&&!el.dataset.sure){el.dataset.sure=1;el.textContent='Replace this browser’s lists? Tap again';return}
+      sync.code=c;applyRemote(r.body);syncSheet('Done. This browser now shares your lists.');
+    }else if(r.status===404&&r.body)syncSheet('No lists were found for that code. Check it and try again.');
+    else syncSheet(r.body?'Couldn’t reach sync. Try again in a moment.':'Sync is not available on this copy of the page.');
+  }
+  else if(a==='copycode'){try{await navigator.clipboard.writeText(sync.code);toast('Code copied')}catch(e){toast('Select the code and copy it')}}
+  else if(a==='syncnow'){await pull();syncSheet()}
+  else if(a==='newcode'){
+    if(!el.dataset.sure){el.dataset.sure=1;el.textContent='Your other devices will need the new code. Tap again';return}
+    const old=sync.code;sync.code=genCode();sync.rev=null;sync.at=0;keepSync();await push(true);
+    if(sync.state==='ok'){try{await api('DELETE','?code='+encodeURIComponent(old))}catch(e){}}
+    syncSheet('New code made. The old code no longer works.');
+  }
+  else if(a==='syncoff'){sync.code='';sync.rev=null;sync.at=0;keepSync();setSync('off');syncSheet('Sync is off on this browser. Your lists stay here, and your code still works on other devices.')}
+  else if(a==='backup'){try{await navigator.clipboard.writeText(JSON.stringify(S));toast('Backup copied. Paste it somewhere safe.')}catch(e){toast('Couldn’t copy. Try again from a tap.')}}
+  else if(a==='restore'){
+    let d;try{d=JSON.parse($('#f-restore').value)}catch(e){d=null}
+    if(!d||!Array.isArray(d.books)){toast('That isn’t a backup from this page');return}
+    if(!el.dataset.sure){el.dataset.sure=1;el.textContent='This replaces your current lists. Tap again';return}
+    S=d;S.days=S.days||[];S.genres=S.genres||[];closeSheet();save();render();toast('Restored '+S.books.length+(S.books.length===1?' book':' books'))
+  }
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')pull()});
+addEventListener('online',()=>pull());
+setInterval(()=>{if(document.visibilityState==='visible')pull()},60000);
+render();setSync(sync.code?'saving':'off');pull();
 (async()=>{
   try{art=window.claude&&claude.use?await claude.use('artifact'):null}catch(e){art=null}
   if(!art)setStatus('Saved in this browser');else{try{const b=JSON.parse(localStorage.getItem(LS)||'null');if(b&&b.saved>0&&b.saved===S.saved&&b.saved>JSON.parse($('#state').textContent).saved)save()}catch(e){}}

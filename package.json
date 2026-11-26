@@ -1,10 +1,11 @@
 {
   "name": "nathanmcoleman-site",
   "private": true,
-  "description": "Hugo site. The api/ folder holds Vercel Functions for the Venn game (no npm packages needed). Moon Rover build helpers are in tools/rover/.",
+  "description": "Hugo site. The api/ folder holds Vercel Functions for the Venn game and the reading tracker's sync (no npm packages needed). Moon Rover build helpers are in tools/rover/.",
   "scripts": {
     "test:venn": "node --test tools/venn/engine.test.js tools/venn/scores.test.mjs",
     "rover:vendor": "node tools/rover/fetch-vendor.mjs",
-    "rover:css": "node tools/rover/build-css.mjs"
+    "rover:css": "node tools/rover/build-css.mjs",
+    "test:reading": "node --test tools/reading/sync.test.mjs"
   }
 }
