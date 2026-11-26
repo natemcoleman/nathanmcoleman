@@ -108,7 +108,7 @@ select{min-height:40px;border-radius:10px;border:1px solid var(--line);backgroun
 @media(max-width:600px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stat{padding:10px}.two{grid-template-columns:1fr}.rate{grid-template-columns:repeat(5,minmax(0,1fr))}.top{padding-top:20px}.rank{display:none}.tabs{padding:0 8px;gap:0}.tabs a{padding:12px 10px}}
 </style></head><body><div id="root"></div><template id="shell">
 <header class="top"><div><a href="/projects/" style="color:#c9d6e8;font-size:14px">← Projects</a><h1>My reading</h1><p id="sum" class="sum"></p></div><button class="btn today" data-act="today" id="todayBtn">I read today</button></header>
-<nav class="tabs"><a href="#queue" data-tab="queue">Queue</a><a href="#wishlist" data-tab="wishlist">Wishlist</a><a href="#finished" data-tab="finished">Finished</a><a href="#calendar" data-tab="calendar">Calendar</a></nav>
+<nav class="tabs"><a href="#queue" data-tab="queue">Queue</a><a href="#finished" data-tab="finished">Finished</a><a href="#calendar" data-tab="calendar">Calendar</a><a href="#wishlist" data-tab="wishlist">Wishlist</a></nav>
 <main>
 <div id="addbox">
 <form class="search" id="sform"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><label for="q" class="sr">Add a book by title</label><input id="q" type="search" autocomplete="off" placeholder="Add a book: type a title"><button class="btn pri sm" type="submit">Find</button></form>
