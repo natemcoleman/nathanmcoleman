@@ -11,5 +11,5 @@ build:
   render: never
   list: always
 cover:
-    image: "rover/lroc_color_2k.jpg"
+    image: "projects/rover/cover.jpg"
 ---

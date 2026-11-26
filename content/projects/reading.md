@@ -10,4 +10,6 @@ link: "/reading/"
 build:
   render: never
   list: always
+cover:
+    image: "projects/reading/cover.jpg"
 ---

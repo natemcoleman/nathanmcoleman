@@ -11,5 +11,5 @@ build:
   render: never
   list: always
 cover:
-    image: "radar/classic2.jpg"
+    image: "projects/radar/cover.jpg"
 ---

@@ -102,3 +102,10 @@
     color: var(--secondary);
     box-shadow: 0 1px 0 var(--primary);
 }
+
+/* Project cards: every cover is cropped to the same 16:9 box so the cards line up. */
+.project-entry .entry-cover img {
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    height: auto;
+}
